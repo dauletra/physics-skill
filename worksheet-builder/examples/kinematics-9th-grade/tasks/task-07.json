@@ -4,7 +4,8 @@
   "prompt": "На графике представлена зависимость скорости двух тел от времени.",
   "components": [
     {
-      "type": "chart",
+      "type": "visual",
+      "answerable": false,
       "prompt": "",
       "chart_spec": {
         "chart_type": "line",
@@ -19,9 +20,10 @@
       }
     },
     {
-      "type": "text_no_solution",
+      "type": "prompt_response",
+      "answerable": true,
       "prompt": "Определите ускорение каждого тела.",
-      "answer_blank": true,
+      "response": "blank",
       "answer": "a<sub>A</sub> = Δυ/Δt = 20/10 = 2 м/с²; a<sub>B</sub> = 10/10 = 1 м/с²"
     }
   ]

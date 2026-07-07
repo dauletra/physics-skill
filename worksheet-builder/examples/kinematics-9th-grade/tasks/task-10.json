@@ -4,7 +4,8 @@
   "prompt": "Велосипедист разгоняется равноускоренно из состояния покоя. На графике показана зависимость его скорости от времени.",
   "components": [
     {
-      "type": "chart",
+      "type": "visual",
+      "answerable": false,
       "chart_spec": {
         "chart_type": "line",
         "x_label": "t, с",
@@ -15,16 +16,18 @@
       }
     },
     {
-      "type": "text_with_solution",
+      "type": "prompt_response",
+      "answerable": true,
       "prompt": "Найдите ускорение велосипедиста.",
-      "solution_lines": 3,
+      "response": "lines:3",
       "points": 2,
       "answer": "a = Δυ/Δt = 8/4 = 2 м/с²"
     },
     {
-      "type": "text_no_solution",
+      "type": "prompt_response",
+      "answerable": true,
       "prompt": "Используя график, определите путь, пройденный велосипедистом за первые 4 с.",
-      "answer_blank": true,
+      "response": "blank",
       "points": 3,
       "answer": "s = υt/2 = 8*4/2 = 16 м"
     }

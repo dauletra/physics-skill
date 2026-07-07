@@ -4,14 +4,16 @@
   "prompt": "Брусок массой m находится на наклонной плоскости с углом α = 30°, m = 2 кг.",
   "components": [
     {
-      "type": "illustration",
+      "type": "visual",
+      "answerable": false,
       "prompt": "",
       "svg_snippet": {"name": "inclined_plane", "params": {"angle": 30, "mass_label": "m = 2 кг"}}
     },
     {
-      "type": "text_no_solution",
+      "type": "prompt_response",
+      "answerable": true,
       "prompt": "Найдите проекцию силы тяжести вдоль плоскости.",
-      "answer_blank": true,
+      "response": "blank",
       "answer": "F = mg∙sin(α) = 2 ∙ 9.8 ∙ 0.5 = 9.8 Н"
     }
   ]

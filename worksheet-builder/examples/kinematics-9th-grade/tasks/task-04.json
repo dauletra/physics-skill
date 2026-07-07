@@ -3,12 +3,14 @@
   "points": 2,
   "components": [
     {
-      "type": "true_false",
+      "type": "list",
+      "answerable": true,
+      "item_style": "statement_bool",
       "prompt": "Отметьте, верны ли утверждения.",
-      "statements": [
-        {"text": "Скорость — векторная величина.", "answer": true},
-        {"text": "При равноускоренном движении ускорение равно нулю.", "answer": false},
-        {"text": "1 Н = 1 кг·м/с².", "answer": true}
+      "items": [
+        {"text": "Скорость — векторная величина.", "correct": true},
+        {"text": "При равноускоренном движении ускорение равно нулю.", "correct": false},
+        {"text": "1 Н = 1 кг·м/с².", "correct": true}
       ]
     }
   ]

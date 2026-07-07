@@ -3,9 +3,10 @@
   "points": 2,
   "components": [
     {
-      "type": "text_with_solution",
+      "type": "prompt_response",
+      "answerable": true,
       "prompt": "Автомобиль движется равномерно со скоростью υ = 72 км/ч. Какой путь он пройдёт за t = 15 мин?",
-      "solution_lines": 4,
+      "response": "lines:4",
       "answer": "υ = 20 м/с, t = 900 с, s = υt = 20 * 900 = 18000 м = 18 км"
     }
   ]

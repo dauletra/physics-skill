@@ -3,7 +3,8 @@
   "points": 3,
   "components": [
     {
-      "type": "fill_blank_table",
+      "type": "table",
+      "answerable": true,
       "prompt": "Тело движется равноускоренно из состояния покоя с ускорением a = 2 м/с². Заполните таблицу значений скорости и пути.",
       "headers": ["t, с", "υ, м/с", "s, м"],
       "rows": [

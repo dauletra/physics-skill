@@ -4,7 +4,8 @@
   "layout": [1, 2],
   "components": [
     {
-      "type": "chart",
+      "type": "visual",
+      "answerable": false,
       "chart_spec": {
         "chart_type": "line",
         "x_label": "T, К",
@@ -17,7 +18,8 @@
       }
     },
     {
-      "type": "chart_fill",
+      "type": "visual",
+      "answerable": true,
       "prompt": "Постройте график в координатах p-V.",
       "chart_spec": {
         "x_label": "V, м³",
@@ -37,7 +39,8 @@
       }
     },
     {
-      "type": "chart_fill",
+      "type": "visual",
+      "answerable": true,
       "prompt": "Постройте график в координатах p-T.",
       "chart_spec": {
         "x_label": "T, К",

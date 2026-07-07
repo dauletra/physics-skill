@@ -103,23 +103,29 @@ body {
    Python from `layout`), not from a fixed set of CSS classes, so any
    percentage split works, not just a handful of presets. */
 .task-components { }
-.task-row { display: flex; gap: 6mm; align-items: flex-start; margin-bottom: 2mm; }
+.task-row { display: flex; gap: 6mm; align-items: flex-start; margin-bottom: 2mm; position: relative; }
 .task-row:last-child { margin-bottom: 0; }
 .task-col { min-width: 0; }
 .task-col svg.visual-svg { display: block; width: 100%; height: auto; }
 .task-component-lettered { margin: 3mm 0 3mm 6mm; }
-/* Emergency fallback toggled by the "row-layout" toolbar control: collapses
-   every row back to one full-width column per component, ignoring the
-   authored `layout` split. */
-.task-components.row-layout-stacked .task-row { flex-direction: column; }
-.task-components.row-layout-stacked .task-col { flex-basis: 100% !important; max-width: 100% !important; }
-.task-component > ul, .task-component > ol { margin: 2mm 0 0 0; padding-left: 6mm; }
-.reference-data-box {
-    display: inline-block; border: 1px solid #000; padding: 2mm 4mm;
-    font-size: 11pt; margin-top: 2mm;
+/* Hover-only per-row column controls, built entirely client-side by
+   initRowControls()/rebuildTaskRows() in LAYOUT_JS — see design-system.md
+   ("Интерактивные элементы вёрстки в браузере"). Highlight + buttons only
+   ever show on :hover, and are additionally forced hidden under print
+   below for determinism (same reasoning as .layout-toolbar/.global-toolbar). */
+.task-row:hover { background: #f6f6f6; outline: 1px dashed #bbb; outline-offset: 2px; }
+.row-controls { position: absolute; top: 1mm; right: 1mm; display: none; gap: 1mm; z-index: 1; }
+.task-row:hover .row-controls { display: flex; }
+.row-controls button {
+    width: 5mm; height: 5mm; padding: 0; border: 1px solid #999;
+    background: #fff; border-radius: 2px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
 }
-.reference-data-row { margin-bottom: 1mm; }
-.reference-data-row:last-child { margin-bottom: 0; }
+.row-controls button:hover { background: #eee; }
+.row-controls button:disabled { opacity: 0.35; cursor: default; }
+.row-controls button:disabled:hover { background: #fff; }
+.row-controls button svg { width: 3mm; height: 3mm; }
+.task-component > ul, .task-component > ol { margin: 2mm 0 0 0; padding-left: 6mm; }
 .chart-wrap { margin-top: 2mm; }
 .chart-legend { display: flex; gap: 4mm; font-size: 8pt; margin-top: 1mm; flex-wrap: wrap; }
 .illustration-wrap { margin-top: 2mm; }
@@ -179,6 +185,8 @@ body.page-view { background: #ddd; width: auto; padding: 10mm 0; }
     .a4-page:last-child { break-after: auto; }
     .task { break-inside: avoid; }
     .layout-toolbar { display: none !important; }
+    .row-controls { display: none !important; }
+    .task-row:hover { background: none; outline: none; }
 }
 """.strip()
 
@@ -211,23 +219,22 @@ def t(lang, key):
 
 
 # Generic, declarative layout-toggle framework: Python only marks which
-# control groups apply to a block (LAYOUT_CONTROLS_BY_TYPE + an empty
-# data-controls div, see render_layout_toolbar); this script fills the
-# toolbar with buttons and wires them up client-side, purely on-screen
-# (@media print hides .layout-toolbar — see BASE_CSS). To add a new
-# switchable option later: add a CONTROL_GROUPS entry here, list its key in
-# LAYOUT_CONTROLS_BY_TYPE for the relevant component type(s) (or wire it up
-# directly, like the task-level "row-layout" group is), and make sure the
-# rendered HTML has an element matching `target`.
+# control groups apply to a block (render_layout_toolbar() + an empty
+# data-controls div); this script fills the toolbar with buttons and wires
+# them up client-side, purely on-screen (@media print hides .layout-toolbar
+# — see BASE_CSS). To add a new switchable option later: add a
+# CONTROL_GROUPS entry here, a matching condition in render_layout_toolbar()
+# for the relevant component shape, and make sure the rendered HTML has an
+# element matching `target`. Note: the per-row
+# column controls (initRowControls()/rebuildTaskRows() below) are a
+# separate, non-declarative mechanism — they rebuild DOM structure rather
+# than toggle a CSS class, so they don't go through CONTROL_GROUPS.
 LAYOUT_JS = """
 // UI_STRINGS mirrors the Python STRINGS dict below — keep both in sync
 // whenever a label changes or a language is added. WORKSHEET_LANG is
 // injected as a preceding `const` by build_document() (see LANG_STRINGS_JS).
 const UI_STRINGS = {
     ru: {
-        row_layout_label: "Раскладка",
-        row_layout_authored: "Как в JSON",
-        row_layout_stacked: "Всё в столбик",
         solution_toggle_label: "Место для решения",
         solution_show: "Показать",
         solution_hide: "Скрыть",
@@ -235,21 +242,13 @@ const UI_STRINGS = {
         variants_single: "1 колонка",
         variants_two: "2 колонки",
         variants_inline: "В строку",
+        column_add_title: "Добавить колонку",
+        column_remove_title: "Убрать колонку",
     },
 };
 const UI = UI_STRINGS[typeof WORKSHEET_LANG !== "undefined" && UI_STRINGS[WORKSHEET_LANG] ? WORKSHEET_LANG : "ru"];
 
 const CONTROL_GROUPS = {
-    "row-layout": {
-        label: UI.row_layout_label,
-        target: ".task-components",
-        type: "radio",
-        classPrefix: "row-layout-",
-        options: [
-            {value: "authored", label: UI.row_layout_authored},
-            {value: "stacked", label: UI.row_layout_stacked},
-        ],
-    },
     "solution-toggle": {
         label: UI.solution_toggle_label,
         target: ".solution-area",
@@ -465,8 +464,101 @@ function buildGlobalToolbar() {
     document.body.insertBefore(bar, document.body.firstChild);
 }
 
+// Per-row column controls: hover-only "+"/"-" buttons on each .task-row
+// that let the teacher regroup a task's components into rows/columns
+// entirely in the browser (see "Интерактивные элементы вёрстки в браузере"
+// in design-system.md). Icons copied once from Lucide (plus.svg/minus.svg,
+// MIT-licensed) as plain strings — no npm/node_modules in this repo.
+const ROW_ICONS = {
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+    minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>',
+};
+
+// Rebuilds a task's .task-components from scratch: `widths[i]` is how many
+// consecutive items of the flat, ordered `cols` list (the task's .task-col
+// nodes — never recreated, just re-parented) go into row i. This is the
+// single source of truth for the current layout; both button handlers below
+// only ever mutate `widths` and then call this to repaint.
+function rebuildTaskRows(container, widths, cols) {
+    container.innerHTML = "";
+    let idx = 0;
+    widths.forEach(function (width, rowIndex) {
+        const rowEl = document.createElement("div");
+        rowEl.className = "task-row";
+        const pct = (100 / width).toFixed(2) + "%";
+        for (let c = 0; c < width; c++) {
+            const col = cols[idx++];
+            col.style.flex = "0 0 " + pct;
+            col.style.maxWidth = pct;
+            rowEl.appendChild(col);
+        }
+        rowEl.appendChild(buildRowControlsEl(container, widths, cols, rowIndex));
+        container.appendChild(rowEl);
+    });
+    schedulePaginate();
+}
+
+function buildRowControlsEl(container, widths, cols, rowIndex) {
+    const wrap = document.createElement("div");
+    wrap.className = "row-controls";
+
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.title = UI.column_add_title;
+    addBtn.innerHTML = ROW_ICONS.plus;
+    addBtn.disabled = rowIndex === widths.length - 1;
+    addBtn.addEventListener("click", function () {
+        // Pull the first component of the next row in as a new column of
+        // this row; drop the next row entirely if it's now empty.
+        widths[rowIndex] += 1;
+        widths[rowIndex + 1] -= 1;
+        if (widths[rowIndex + 1] === 0) widths.splice(rowIndex + 1, 1);
+        rebuildTaskRows(container, widths, cols);
+    });
+    wrap.appendChild(addBtn);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.title = UI.column_remove_title;
+    removeBtn.innerHTML = ROW_ICONS.minus;
+    removeBtn.disabled = widths[rowIndex] === 1;
+    removeBtn.addEventListener("click", function () {
+        // Evict this row's last component into a fresh full-width row at
+        // the very end. Every row after this one keeps its own width, so
+        // its content shifts by one position — a cascade that falls out of
+        // the width bookkeeping automatically, not an explicit loop here.
+        widths[rowIndex] -= 1;
+        widths.push(1);
+        rebuildTaskRows(container, widths, cols);
+    });
+    wrap.appendChild(removeBtn);
+
+    return wrap;
+}
+
+function initRowControls() {
+    document.querySelectorAll(".task-components").forEach(function (container) {
+        // Same "Save Page As" reopen guard as the toolbar builder below —
+        // without it, re-running this against an already-rebuilt DOM would
+        // re-wrap rows and double up .row-controls on every reopen cycle.
+        if (container.dataset.rowControlsBuilt) return;
+        container.dataset.rowControlsBuilt = "1";
+
+        // Deliberately :scope > .task-row > .task-col, not row.children —
+        // a rebuilt row also contains a .row-controls sibling, which would
+        // otherwise get miscounted as an extra column.
+        const cols = Array.from(container.querySelectorAll(":scope > .task-row > .task-col"));
+        if (cols.length <= 1) return;
+        const widths = Array.from(container.querySelectorAll(":scope > .task-row")).map(function (row) {
+            return row.querySelectorAll(":scope > .task-col").length;
+        });
+        rebuildTaskRows(container, widths, cols);
+    });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     buildGlobalToolbar();
+    initRowControls();
     document.querySelectorAll(".layout-toolbar[data-controls]").forEach(function (toolbar) {
         // Guards against double-building: a browser "Save Page As" captures
         // the live DOM, i.e. a toolbar that's already been filled with
@@ -563,95 +655,15 @@ def render_header(meta):
 # Per-task-type renderers. Each returns (body_html, answer_html_or_None).
 # ---------------------------------------------------------------------------
 
-def render_text_with_solution(task, is_teacher, lang):
-    lines = int(task.get("solution_lines", 4))
-    show_solution = task.get("show_solution", True)
-    style = ' style="display:none;"' if not show_solution else ""
-    body = f'<div class="solution-area"{style}>' + "".join(
-        '<div class="solution-line"></div>' for _ in range(lines)
-    ) + "</div>"
-    return body, task.get("answer")
-
-
-def render_text_no_solution(task, is_teacher, lang):
-    if task.get("answer_blank", True):
-        body = f'<div>{t(lang, "answer_label")} <span class="answer-line"></span></div>'
-    else:
-        body = ""
-    return body, task.get("answer")
-
-
-def render_matching(task, is_teacher, lang):
-    left_items = task.get("left_items", [])
-    right_items = task.get("right_items", [])
-    answer_map = task.get("answer_map", {})
-    left_html = "".join(f"<li>{esc(item)}</li>" for item in left_items)
-    letters = {item: LETTERS[i] for i, item in enumerate(right_items)}
-    right_html = "".join(f"<li>{esc(item)}</li>" for item in right_items)
-    body = (
-        '<div class="matching-columns">'
-        f'<ol type="1">{left_html}</ol>'
-        f'<ol type="A" style="list-style-type: upper-latin;">{right_html}</ol>'
-        "</div>"
-    )
-    answer = None
-    if answer_map:
-        pairs = []
-        for i, item in enumerate(left_items, start=1):
-            matched = answer_map.get(item)
-            letter = letters.get(matched, "?")
-            pairs.append(f"{i}-{letter}")
-        answer = ", ".join(pairs)
-    return body, answer
-
-
-def render_true_false(task, is_teacher, lang):
-    statements = task.get("statements", [])
-    rows = []
-    for st in statements:
-        text = esc(st.get("text", ""))
-        correct = st.get("answer")
-        true_mark = "&#10005;" if is_teacher and correct is True else ""
-        false_mark = "&#10005;" if is_teacher and correct is False else ""
-        rows.append(
-            '<div class="tf-row">'
-            f'<span class="tf-statement">{text}</span>'
-            '<span class="tf-box">'
-            f'<span class="tf-square">{true_mark}</span> {t(lang, "true_label")}&nbsp;&nbsp;'
-            f'<span class="tf-square">{false_mark}</span> {t(lang, "false_label")}'
-            "</span>"
-            "</div>"
-        )
-    return "".join(rows), None
-
-
-def render_multiple_choice(task, is_teacher, lang):
-    options = task.get("options", [])
-    correct = task.get("correct")
-    multi_select = task.get("multi_select", False)
-    if multi_select:
-        correct_set = set(correct) if correct else set()
-    else:
-        correct_set = {correct} if correct is not None else set()
-    layout = task.get("variants_layout", "single-column")
-    items = []
-    for i, opt in enumerate(options):
-        is_correct = is_teacher and i in correct_set
-        mark = "&#10003;" if is_correct else ""
-        css = "mc-option mc-correct" if is_correct else "mc-option"
-        items.append(
-            f'<span class="{css}"><span class="mc-marker">{mark}</span> '
-            f'{LOWER_LETTERS[i]}) {esc(opt)}</span>'
-        )
-    body = f'<div class="mc-options mc-layout-{esc(layout)}">' + "".join(items) + "</div>"
-    return body, task.get("answer")
-
-
-def render_fill_blank_text(task, is_teacher, lang):
-    template = task.get("text_template", "")
+def render_text(task, is_teacher, lang):
+    template = task.get("text_template")
+    if template is None:
+        # No inline blanks: the component's own prompt (rendered by the
+        # caller as its header line) *is* the content — nothing else to
+        # render in the body.
+        return "", None
     blanks = task.get("blanks", {})
-    body = _fill_blank_render(template, blanks, is_teacher)
-    return f"<p>{body}</p>", None
+    return f"<p>{_fill_blank_render(template, blanks, is_teacher)}</p>", None
 
 
 def _fill_blank_render(template, blanks, is_teacher):
@@ -669,7 +681,77 @@ def _fill_blank_render(template, blanks, is_teacher):
     return "".join(pieces)
 
 
-def render_fill_blank_table(task, is_teacher, lang):
+def render_list(task, is_teacher, lang):
+    # Two-column mode (old `matching`): `left_items`/`right_items` replace
+    # `items` entirely, mutually exclusive with the one-column modes below.
+    if "left_items" in task or "right_items" in task:
+        left_items = task.get("left_items", [])
+        right_items = task.get("right_items", [])
+        answer_map = task.get("answer_map", {})
+        left_html = "".join(f"<li>{esc(item)}</li>" for item in left_items)
+        letters = {item: LETTERS[i] for i, item in enumerate(right_items)}
+        right_html = "".join(f"<li>{esc(item)}</li>" for item in right_items)
+        body = (
+            '<div class="matching-columns">'
+            f'<ol type="1">{left_html}</ol>'
+            f'<ol type="A" style="list-style-type: upper-latin;">{right_html}</ol>'
+            "</div>"
+        )
+        answer = None
+        if answer_map:
+            pairs = []
+            for i, item in enumerate(left_items, start=1):
+                matched = answer_map.get(item)
+                letter = letters.get(matched, "?")
+                pairs.append(f"{i}-{letter}")
+            answer = ", ".join(pairs)
+        return body, answer
+
+    items = task.get("items", [])
+    style = task.get("item_style", "plain")
+
+    if style == "statement_bool":
+        rows = []
+        for it in items:
+            text = esc(it.get("text", ""))
+            correct = it.get("correct")
+            true_mark = "&#10005;" if is_teacher and correct is True else ""
+            false_mark = "&#10005;" if is_teacher and correct is False else ""
+            rows.append(
+                '<div class="tf-row">'
+                f'<span class="tf-statement">{text}</span>'
+                '<span class="tf-box">'
+                f'<span class="tf-square">{true_mark}</span> {t(lang, "true_label")}&nbsp;&nbsp;'
+                f'<span class="tf-square">{false_mark}</span> {t(lang, "false_label")}'
+                "</span>"
+                "</div>"
+            )
+        return "".join(rows), None
+
+    if style == "choice":
+        layout = task.get("variants_layout", "single-column")
+        parts = []
+        for i, it in enumerate(items):
+            is_correct = is_teacher and bool(it.get("correct"))
+            mark = "&#10003;" if is_correct else ""
+            css = "mc-option mc-correct" if is_correct else "mc-option"
+            parts.append(
+                f'<span class="{css}"><span class="mc-marker">{mark}</span> '
+                f'{LOWER_LETTERS[i]}) {esc(it.get("text", ""))}</span>'
+            )
+        body = f'<div class="mc-options mc-layout-{esc(layout)}">' + "".join(parts) + "</div>"
+        return body, task.get("answer")
+
+    # "plain" — bare bullet/numbered list, no correctness marks (informational).
+    tag = "ol" if task.get("ordered") else "ul"
+    items_html = "".join(f"<li>{esc(item)}</li>" for item in items)
+    return f"<{tag}>{items_html}</{tag}>", None
+
+
+def render_table(task, is_teacher, lang):
+    # Cell `null` = under-fill blank, revealed via `answers["r,c"]` for the
+    # teacher version; a table with no `null` cells is just a plain
+    # reference table (informational) — one code path covers both.
     headers = task.get("headers", [])
     rows = task.get("rows", [])
     answers = task.get("answers", {})
@@ -692,6 +774,22 @@ def render_fill_blank_table(task, is_teacher, lang):
         "</table>"
     )
     return table, None
+
+
+def render_prompt_response(task, is_teacher, lang):
+    response = str(task.get("response", "none"))
+    if response.startswith("lines:"):
+        lines = int(response.split(":", 1)[1])
+        show_response = task.get("show_response", True)
+        style = ' style="display:none;"' if not show_response else ""
+        body = f'<div class="solution-area"{style}>' + "".join(
+            '<div class="solution-line"></div>' for _ in range(lines)
+        ) + "</div>"
+    elif response == "blank":
+        body = f'<div>{t(lang, "answer_label")} <span class="answer-line"></span></div>'
+    else:
+        body = ""
+    return body, task.get("answer")
 
 
 DASH_PATTERNS = {"solid": None, "dashed": "8,4", "dotted": "1,3"}
@@ -836,62 +934,6 @@ def build_chart_svg(spec):
     return f'<div class="chart-wrap">{svg}{legend_html}</div>'
 
 
-def render_chart(task, is_teacher, lang):
-    # Pure stimulus now: the given graph never carries its own answer — "read
-    # the graph and answer" is expressed as this component followed by a
-    # separate answerable component in the same task's `components` list.
-    return build_chart_svg(task["chart_spec"]), None
-
-
-def render_chart_fill(task, is_teacher, lang):
-    # Student sees blank axes (chart_spec with no series); teacher sees the
-    # same axes with the correct series drawn in, via answer_chart_spec —
-    # the "answer" is visual, not text, so no separate answer string.
-    spec = task.get("answer_chart_spec") if (is_teacher and task.get("answer_chart_spec")) else task.get("chart_spec", {})
-    return build_chart_svg(spec), None
-
-
-def render_text(task, is_teacher, lang):
-    # The component's own prompt (rendered by the caller as its header line)
-    # *is* the content — nothing else to render in the body.
-    return "", None
-
-
-def render_list(task, is_teacher, lang):
-    items = task.get("items", [])
-    tag = "ol" if task.get("ordered") else "ul"
-    items_html = "".join(f"<li>{esc(item)}</li>" for item in items)
-    return f"<{tag}>{items_html}</{tag}>", None
-
-
-def render_table(task, is_teacher, lang):
-    headers = task.get("headers", [])
-    rows = task.get("rows", [])
-    thead = "".join(f"<th>{esc(h)}</th>" for h in headers)
-    body_rows = "".join(
-        "<tr>" + "".join(f"<td>{esc(cell)}</td>" for cell in row) + "</tr>" for row in rows
-    )
-    table = (
-        '<table class="fill-table">'
-        f"<thead><tr>{thead}</tr></thead>"
-        f"<tbody>{body_rows}</tbody>"
-        "</table>"
-    )
-    return table, None
-
-
-def render_reference_data(task, is_teacher, lang):
-    items = task.get("items", [])
-    rows_html = "".join(
-        '<div class="reference-data-row">'
-        f'<span class="reference-data-symbol">{esc(it.get("symbol", ""))}</span> = '
-        f'<span class="reference-data-value">{esc(it.get("value", ""))}</span>'
-        "</div>"
-        for it in items
-    )
-    return f'<div class="reference-data-box">{rows_html}</div>', None
-
-
 # --- SVG snippet library for common illustrations -------------------------
 
 def _snippet_inclined_plane(params):
@@ -956,18 +998,19 @@ def _resolve_svg(task, snippet_key, raw_key):
     return None
 
 
-def render_illustration(task, is_teacher, lang):
-    # Pure stimulus now, same reasoning as render_chart: no answer field.
-    svg = _resolve_svg(task, "svg_snippet", "raw_svg")
-    if svg is None:
-        raise ValueError(f"Illustration task {task.get('id')} needs svg_snippet or raw_svg")
-    return f'<div class="illustration-wrap">{svg}</div>', None
+def render_visual(task, is_teacher, lang):
+    # Exactly one of chart_spec / svg_snippet / raw_svg is expected to supply
+    # the base visual, and optionally one of answer_chart_spec /
+    # answer_svg_snippet / answer_raw_svg supplies a second, teacher-only
+    # visual (old chart/chart_fill and illustration/illustration_draw were
+    # four types around this same "source + optional answer source" shape —
+    # merged here into one dispatch, field names unchanged). No source at
+    # all renders a blank box (e.g. freeform "draw the diagram yourself").
+    if is_teacher and "answer_chart_spec" in task:
+        return build_chart_svg(task["answer_chart_spec"]), task.get("answer")
+    if "chart_spec" in task:
+        return build_chart_svg(task["chart_spec"]), task.get("answer")
 
-
-def render_illustration_draw(task, is_teacher, lang):
-    # Student sees the optional base svg (or blank space) to draw on top of;
-    # teacher sees the reference answer drawing if one is given, falling back
-    # to the base svg, plus an optional text `answer` note either way.
     if is_teacher:
         svg = _resolve_svg(task, "answer_svg_snippet", "answer_raw_svg") or _resolve_svg(task, "svg_snippet", "raw_svg")
     else:
@@ -976,58 +1019,36 @@ def render_illustration_draw(task, is_teacher, lang):
     return body, task.get("answer")
 
 
+# 5 structural formats replace the old 15 semantic types — grouped by what
+# shape of data the renderer actually consumes, not by pedagogical intent.
+# Whether a component carries a letter (a/b/в...) and an answer for the
+# teacher version is decided purely by the component's own `answerable`
+# flag (see render_task()), never by which format it uses.
 COMPONENT_RENDERERS = {
-    # Informational components — never carry an answer.
     "text": render_text,
     "list": render_list,
     "table": render_table,
-    "reference_data": render_reference_data,
-    "chart": render_chart,
-    "illustration": render_illustration,
-    # Answerable components — always carry an answer for the teacher version
-    # (see ANSWERABLE_TYPES below, which drives lettering).
-    "text_with_solution": render_text_with_solution,
-    "text_no_solution": render_text_no_solution,
-    "matching": render_matching,
-    "true_false": render_true_false,
-    "fill_blank_text": render_fill_blank_text,
-    "fill_blank_table": render_fill_blank_table,
-    "multiple_choice": render_multiple_choice,
-    "chart_fill": render_chart_fill,
-    "illustration_draw": render_illustration_draw,
+    "prompt_response": render_prompt_response,
+    "visual": render_visual,
 }
 
-# Component types that carry an answer for the teacher version. Whether a
-# component gets a letter (a/b/в...) is derived from membership here, not
-# from a separate per-component "role" field — see task-schema.md.
-ANSWERABLE_TYPES = frozenset({
-    "text_with_solution",
-    "text_no_solution",
-    "matching",
-    "true_false",
-    "fill_blank_text",
-    "fill_blank_table",
-    "multiple_choice",
-    "chart_fill",
-    "illustration_draw",
-})
-
-# Which on-screen layout-toolbar control groups (see LAYOUT_JS) apply to each
-# component type. To make a new type's block interactively adjustable: add an
-# entry here (comma-separated control-group keys) and a matching CONTROL_GROUPS
-# entry in LAYOUT_JS whose `target` selector matches an element this type's
-# renderer already emits. (The task-level "row-layout" group isn't keyed by
-# type here — it's wired directly in render_task, since it applies to the
-# whole component list, not one component.)
-LAYOUT_CONTROLS_BY_TYPE = {
-    "text_with_solution": "solution-toggle",
-    "multiple_choice": "variants-layout",
-}
-
-
-def render_layout_toolbar(ttype):
-    controls = LAYOUT_CONTROLS_BY_TYPE.get(ttype)
-    return f'<div class="layout-toolbar" data-controls="{controls}"></div>' if controls else ""
+# Which on-screen layout-toolbar control groups (see LAYOUT_JS) apply to a
+# component. Keyed off the full component (not just `type`) because one
+# format now covers several old types that only some of which need a
+# toolbar: to wire up a new one, add a condition here plus a matching
+# CONTROL_GROUPS entry in LAYOUT_JS whose `target` selector matches an
+# element this format's renderer already emits. (The per-row column
+# controls are unrelated — they're built unconditionally per task by
+# initRowControls() in LAYOUT_JS, not through this function.)
+def render_layout_toolbar(comp):
+    controls = []
+    if comp.get("type") == "prompt_response" and str(comp.get("response", "")).startswith("lines:"):
+        controls.append("solution-toggle")
+    if comp.get("type") == "list" and comp.get("item_style") == "choice":
+        controls.append("variants-layout")
+    if not controls:
+        return ""
+    return f'<div class="layout-toolbar" data-controls="{",".join(controls)}"></div>'
 
 
 def render_header_line(num_html, prompt, points, lang):
@@ -1067,9 +1088,7 @@ def render_task(index, task, is_teacher, lang):
     if not components:
         raise ValueError(f"Task {task.get('id')} has no components")
 
-    answerable_positions = [
-        i for i, c in enumerate(components) if c.get("type") in ANSWERABLE_TYPES
-    ]
+    answerable_positions = [i for i, c in enumerate(components) if c.get("answerable")]
     # Letters are only meaningful when there's more than one thing to answer —
     # a lone answerable component reads as a plain simple task, no letter.
     letter_for = {}
@@ -1084,14 +1103,19 @@ def render_task(index, task, is_teacher, lang):
     # header line, instead of two stacked header lines for one question.
     single_component = len(components) == 1 and not task_prompt
 
-    parts_html = []
-    if not single_component:
-        parts_html.append(
-            render_header_line(f'<span class="task-num">{index}.</span>', task_prompt, task_points, lang)
-        )
-
     rows = _partition_layout(components, task.get("layout"))
     row_htmls = []
+    if not single_component:
+        # The task-level intro (number + prompt) is itself a component for
+        # layout purposes — it gets its own full-width row 0 by default, same
+        # as any other component, so the hover +/- controls (initRowControls
+        # in LAYOUT_JS) can merge it into a neighboring row too, not just
+        # rearrange the "real" JSON components after it.
+        header_html = render_header_line(f'<span class="task-num">{index}.</span>', task_prompt, task_points, lang)
+        row_htmls.append(
+            f'<div class="task-row"><div class="task-col" style="flex:0 0 100%;max-width:100%;">{header_html}</div></div>'
+        )
+
     idx = 0
     for row in rows:
         width = row if isinstance(row, int) else len(row)
@@ -1109,7 +1133,7 @@ def render_task(index, task, is_teacher, lang):
 
             comp_prompt = comp.get("prompt", "")
             comp_points = comp.get("points")
-            is_answerable = ctype in ANSWERABLE_TYPES
+            is_answerable = bool(comp.get("answerable"))
             show_letter = (not single_component) and is_answerable and len(answerable_positions) > 1
             label = (comp.get("label") or letter_for.get(idx)) if show_letter else None
 
@@ -1130,7 +1154,7 @@ def render_task(index, task, is_teacher, lang):
             if is_teacher and answer:
                 answer_html = f'<div class="answer-block"><strong>{t(lang, "answer_label")}</strong> {esc(answer)}</div>'
 
-            toolbar_html = render_layout_toolbar(ctype)
+            toolbar_html = render_layout_toolbar(comp)
             comp_class = "task-component task-component-lettered" if label else "task-component"
             pct = pct_list[cell_i]
             cell_htmls.append(
@@ -1141,13 +1165,9 @@ def render_task(index, task, is_teacher, lang):
             idx += 1
         row_htmls.append(f'<div class="task-row">{"".join(cell_htmls)}</div>')
 
-    components_html = f'<div class="task-components row-layout-authored">{"".join(row_htmls)}</div>'
+    components_html = f'<div class="task-components">{"".join(row_htmls)}</div>'
 
-    row_toolbar_html = ""
-    if task.get("layout") and any((row if isinstance(row, int) else len(row)) > 1 for row in rows):
-        row_toolbar_html = '<div class="layout-toolbar" data-controls="row-layout"></div>'
-
-    return f'<div class="task">{"".join(parts_html)}{components_html}{row_toolbar_html}</div>'
+    return f'<div class="task">{components_html}</div>'
 
 
 def build_document(meta, tasks, is_teacher):

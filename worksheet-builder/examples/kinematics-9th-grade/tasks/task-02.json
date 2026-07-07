@@ -1,8 +1,12 @@
 {
   "id": "task-02",
-  "type": "text_no_solution",
   "points": 1,
-  "prompt": "Чему приблизительно равно ускорение свободного падения на поверхности Земли?",
-  "answer_blank": true,
-  "answer": "g ≈ 9.8 м/с²"
+  "components": [
+    {
+      "type": "text_no_solution",
+      "prompt": "Чему приблизительно равно ускорение свободного падения на поверхности Земли?",
+      "answer_blank": true,
+      "answer": "g ≈ 9.8 м/с²"
+    }
+  ]
 }

@@ -96,22 +96,34 @@ body {
 .fill-table th { background: #eee; }
 .fill-blank { display: inline-block; min-width: 18mm; border-bottom: 1px solid #000; margin: 0 1mm; text-align: center; }
 .fill-blank.answered { border-bottom: none; font-weight: bold; text-decoration: underline; }
-.subtask { margin: 3mm 0 3mm 6mm; }
 .subtask-label { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
-.task-with-visual { display: flex; gap: 6mm; align-items: flex-start; }
-.task-with-visual .task-text { flex: 1 1 auto; min-width: 0; }
-.task-with-visual .task-visual { flex: 0 0 36%; max-width: 36%; }
-.task-with-visual .task-visual.visual-width-30 { flex-basis: 30%; max-width: 30%; }
-.task-with-visual .task-visual.visual-width-36 { flex-basis: 36%; max-width: 36%; }
-.task-with-visual .task-visual.visual-width-40 { flex-basis: 40%; max-width: 40%; }
-.task-with-visual .task-visual.visual-width-50 { flex-basis: 50%; max-width: 50%; }
-.task-with-visual .task-visual.visual-width-60 { flex-basis: 60%; max-width: 60%; }
-.task-with-visual.visual-position-below { flex-direction: column; }
-.task-with-visual.visual-position-below .task-visual { flex-basis: auto; max-width: 100%; }
-.task-with-visual .task-visual svg.visual-svg { display: block; width: 100%; height: auto; }
+/* Generic row/column layout for a task's components (see `layout` in
+   task-schema.md), replacing the old fixed "text | one visual" pair. Column
+   width comes from an inline `style="flex:0 0 N%"` per .task-col (set in
+   Python from `layout`), not from a fixed set of CSS classes, so any
+   percentage split works, not just a handful of presets. */
+.task-components { }
+.task-row { display: flex; gap: 6mm; align-items: flex-start; margin-bottom: 2mm; }
+.task-row:last-child { margin-bottom: 0; }
+.task-col { min-width: 0; }
+.task-col svg.visual-svg { display: block; width: 100%; height: auto; }
+.task-component-lettered { margin: 3mm 0 3mm 6mm; }
+/* Emergency fallback toggled by the "row-layout" toolbar control: collapses
+   every row back to one full-width column per component, ignoring the
+   authored `layout` split. */
+.task-components.row-layout-stacked .task-row { flex-direction: column; }
+.task-components.row-layout-stacked .task-col { flex-basis: 100% !important; max-width: 100% !important; }
+.task-component > ul, .task-component > ol { margin: 2mm 0 0 0; padding-left: 6mm; }
+.reference-data-box {
+    display: inline-block; border: 1px solid #000; padding: 2mm 4mm;
+    font-size: 11pt; margin-top: 2mm;
+}
+.reference-data-row { margin-bottom: 1mm; }
+.reference-data-row:last-child { margin-bottom: 0; }
 .chart-wrap { margin-top: 2mm; }
 .chart-legend { display: flex; gap: 4mm; font-size: 8pt; margin-top: 1mm; flex-wrap: wrap; }
 .illustration-wrap { margin-top: 2mm; }
+.illustration-blank { min-height: 30mm; border: 1px dashed #999; margin-top: 2mm; }
 .mc-options { margin-top: 2mm; display: flex; flex-direction: column; gap: 1.5mm; }
 .mc-options.mc-layout-two-column { display: block; column-count: 2; column-gap: 8mm; }
 .mc-options.mc-layout-two-column .mc-option { display: block; margin-bottom: 1.5mm; break-inside: avoid-column; }
@@ -173,21 +185,16 @@ body.page-view { background: #ddd; width: auto; padding: 10mm 0; }
 LETTERS = string.ascii_uppercase
 LOWER_LETTERS = string.ascii_lowercase
 
-# Fixed UI chrome strings, keyed by meta.json's "language" ("ru"/"kk"). Mirrors
-# UI_STRINGS in LAYOUT_JS below — keep both in sync whenever a label changes
-# or a language is added. Content (task prompt/answer/options/...) is NOT
-# covered here: that's translated by hand into a separate workspace folder
-# per references/translation.md, never auto-translated by this script.
-#
-# footer_text is only consumed by render_worksheet_docx.py (Word footer) —
-# the HTML path has no footer, see the on-screen A4 page-view instead.
+# Fixed UI chrome strings, keyed by meta.json's "language" (only "ru" is
+# supported). Mirrors UI_STRINGS in LAYOUT_JS below — keep both in sync
+# whenever a label changes. Content (task prompt/answer/options/...) is NOT
+# covered here: that's authored directly in the task JSON.
 STRINGS = {
     "ru": {
         "school_class": "Школа/класс:",
         "date": "Дата:",
         "full_name": "Фамилия Имя:",
         "grade_suffix": "класс",
-        "footer_text": "— стр. 1 —",
         "answer_label": "Ответ:",
         "true_label": "Верно",
         "false_label": "Неверно",
@@ -195,20 +202,6 @@ STRINGS = {
         "teacher_variant": "Учитель (с ответами)",
         "student_variant": "Ученик",
         "default_title": "Рабочий лист",
-    },
-    "kk": {
-        "school_class": "Мектеп/сынып:",
-        "date": "Күні:",
-        "full_name": "Аты-жөні:",
-        "grade_suffix": "сынып",
-        "footer_text": "— 1-бет —",
-        "answer_label": "Жауабы:",
-        "true_label": "Дұрыс",
-        "false_label": "Дұрыс емес",
-        "points_suffix": "ұ.",
-        "teacher_variant": "Мұғалім (жауаптарымен)",
-        "student_variant": "Оқушы",
-        "default_title": "Жұмыс парағы",
     },
 }
 
@@ -223,18 +216,18 @@ def t(lang, key):
 # toolbar with buttons and wires them up client-side, purely on-screen
 # (@media print hides .layout-toolbar — see BASE_CSS). To add a new
 # switchable option later: add a CONTROL_GROUPS entry here, list its key in
-# LAYOUT_CONTROLS_BY_TYPE for the relevant task type(s), and make sure that
-# type's rendered HTML has an element matching `target`.
+# LAYOUT_CONTROLS_BY_TYPE for the relevant component type(s) (or wire it up
+# directly, like the task-level "row-layout" group is), and make sure the
+# rendered HTML has an element matching `target`.
 LAYOUT_JS = """
 // UI_STRINGS mirrors the Python STRINGS dict below — keep both in sync
 // whenever a label changes or a language is added. WORKSHEET_LANG is
 // injected as a preceding `const` by build_document() (see LANG_STRINGS_JS).
 const UI_STRINGS = {
     ru: {
-        visual_width_label: "Ширина рисунка",
-        visual_position_label: "Расположение",
-        visual_position_side: "Рядом с текстом",
-        visual_position_below: "Опустить вниз",
+        row_layout_label: "Раскладка",
+        row_layout_authored: "Как в JSON",
+        row_layout_stacked: "Всё в столбик",
         solution_toggle_label: "Место для решения",
         solution_show: "Показать",
         solution_hide: "Скрыть",
@@ -243,44 +236,18 @@ const UI_STRINGS = {
         variants_two: "2 колонки",
         variants_inline: "В строку",
     },
-    kk: {
-        visual_width_label: "Сурет ені",
-        visual_position_label: "Орналасуы",
-        visual_position_side: "Мәтін жанында",
-        visual_position_below: "Төменге түсіру",
-        solution_toggle_label: "Шешім орны",
-        solution_show: "Көрсету",
-        solution_hide: "Жасыру",
-        variants_layout_label: "Нұсқалар",
-        variants_single: "1 баған",
-        variants_two: "2 баған",
-        variants_inline: "Бір жолға",
-    },
 };
 const UI = UI_STRINGS[typeof WORKSHEET_LANG !== "undefined" && UI_STRINGS[WORKSHEET_LANG] ? WORKSHEET_LANG : "ru"];
 
 const CONTROL_GROUPS = {
-    "visual-width": {
-        label: UI.visual_width_label,
-        target: ".task-visual",
+    "row-layout": {
+        label: UI.row_layout_label,
+        target: ".task-components",
         type: "radio",
-        classPrefix: "visual-width-",
+        classPrefix: "row-layout-",
         options: [
-            {value: "30", label: "30%"},
-            {value: "36", label: "36%"},
-            {value: "40", label: "40%"},
-            {value: "50", label: "50%"},
-            {value: "60", label: "60%"},
-        ],
-    },
-    "visual-position": {
-        label: UI.visual_position_label,
-        target: ".task-with-visual",
-        type: "radio",
-        classPrefix: "visual-position-",
-        options: [
-            {value: "side", label: UI.visual_position_side},
-            {value: "below", label: UI.visual_position_below},
+            {value: "authored", label: UI.row_layout_authored},
+            {value: "stacked", label: UI.row_layout_stacked},
         ],
     },
     "solution-toggle": {
@@ -509,7 +476,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // (and a third on the next save/reopen cycle, and so on).
         if (toolbar.dataset.built) return;
         toolbar.dataset.built = "1";
-        const block = toolbar.closest(".task, .subtask");
+        const block = toolbar.closest(".task, .task-component");
         if (!block) return;
         toolbar.dataset.controls.split(",").forEach(function (key) {
             const group = CONTROL_GROUPS[key];
@@ -661,10 +628,15 @@ def render_true_false(task, is_teacher, lang):
 def render_multiple_choice(task, is_teacher, lang):
     options = task.get("options", [])
     correct = task.get("correct")
+    multi_select = task.get("multi_select", False)
+    if multi_select:
+        correct_set = set(correct) if correct else set()
+    else:
+        correct_set = {correct} if correct is not None else set()
     layout = task.get("variants_layout", "single-column")
     items = []
     for i, opt in enumerate(options):
-        is_correct = is_teacher and correct is not None and i == correct
+        is_correct = is_teacher and i in correct_set
         mark = "&#10003;" if is_correct else ""
         css = "mc-option mc-correct" if is_correct else "mc-option"
         items.append(
@@ -865,7 +837,59 @@ def build_chart_svg(spec):
 
 
 def render_chart(task, is_teacher, lang):
-    return build_chart_svg(task["chart_spec"]), task.get("answer")
+    # Pure stimulus now: the given graph never carries its own answer — "read
+    # the graph and answer" is expressed as this component followed by a
+    # separate answerable component in the same task's `components` list.
+    return build_chart_svg(task["chart_spec"]), None
+
+
+def render_chart_fill(task, is_teacher, lang):
+    # Student sees blank axes (chart_spec with no series); teacher sees the
+    # same axes with the correct series drawn in, via answer_chart_spec —
+    # the "answer" is visual, not text, so no separate answer string.
+    spec = task.get("answer_chart_spec") if (is_teacher and task.get("answer_chart_spec")) else task.get("chart_spec", {})
+    return build_chart_svg(spec), None
+
+
+def render_text(task, is_teacher, lang):
+    # The component's own prompt (rendered by the caller as its header line)
+    # *is* the content — nothing else to render in the body.
+    return "", None
+
+
+def render_list(task, is_teacher, lang):
+    items = task.get("items", [])
+    tag = "ol" if task.get("ordered") else "ul"
+    items_html = "".join(f"<li>{esc(item)}</li>" for item in items)
+    return f"<{tag}>{items_html}</{tag}>", None
+
+
+def render_table(task, is_teacher, lang):
+    headers = task.get("headers", [])
+    rows = task.get("rows", [])
+    thead = "".join(f"<th>{esc(h)}</th>" for h in headers)
+    body_rows = "".join(
+        "<tr>" + "".join(f"<td>{esc(cell)}</td>" for cell in row) + "</tr>" for row in rows
+    )
+    table = (
+        '<table class="fill-table">'
+        f"<thead><tr>{thead}</tr></thead>"
+        f"<tbody>{body_rows}</tbody>"
+        "</table>"
+    )
+    return table, None
+
+
+def render_reference_data(task, is_teacher, lang):
+    items = task.get("items", [])
+    rows_html = "".join(
+        '<div class="reference-data-row">'
+        f'<span class="reference-data-symbol">{esc(it.get("symbol", ""))}</span> = '
+        f'<span class="reference-data-value">{esc(it.get("value", ""))}</span>'
+        "</div>"
+        for it in items
+    )
+    return f'<div class="reference-data-box">{rows_html}</div>', None
 
 
 # --- SVG snippet library for common illustrations -------------------------
@@ -917,46 +941,85 @@ SVG_SNIPPETS = {
 }
 
 
-def render_illustration(task, is_teacher, lang):
-    if "svg_snippet" in task:
-        name = task["svg_snippet"]["name"]
-        params = task["svg_snippet"].get("params", {})
+def _resolve_svg(task, snippet_key, raw_key):
+    if snippet_key in task:
+        name = task[snippet_key]["name"]
+        params = task[snippet_key].get("params", {})
         if name not in SVG_SNIPPETS:
             raise ValueError(
-                f"Unknown svg_snippet '{name}'. Available: {list(SVG_SNIPPETS)}. "
+                f"Unknown {snippet_key} '{name}'. Available: {list(SVG_SNIPPETS)}. "
                 "Use raw_svg instead, or add a generator to SVG_SNIPPETS."
             )
-        svg = SVG_SNIPPETS[name](params)
-    elif "raw_svg" in task:
-        svg = task["raw_svg"]
-    else:
+        return SVG_SNIPPETS[name](params)
+    if raw_key in task:
+        return task[raw_key]
+    return None
+
+
+def render_illustration(task, is_teacher, lang):
+    # Pure stimulus now, same reasoning as render_chart: no answer field.
+    svg = _resolve_svg(task, "svg_snippet", "raw_svg")
+    if svg is None:
         raise ValueError(f"Illustration task {task.get('id')} needs svg_snippet or raw_svg")
-    return f'<div class="illustration-wrap">{svg}</div>', task.get("answer")
+    return f'<div class="illustration-wrap">{svg}</div>', None
 
 
-TASK_RENDERERS = {
+def render_illustration_draw(task, is_teacher, lang):
+    # Student sees the optional base svg (or blank space) to draw on top of;
+    # teacher sees the reference answer drawing if one is given, falling back
+    # to the base svg, plus an optional text `answer` note either way.
+    if is_teacher:
+        svg = _resolve_svg(task, "answer_svg_snippet", "answer_raw_svg") or _resolve_svg(task, "svg_snippet", "raw_svg")
+    else:
+        svg = _resolve_svg(task, "svg_snippet", "raw_svg")
+    body = f'<div class="illustration-wrap">{svg}</div>' if svg else '<div class="illustration-blank"></div>'
+    return body, task.get("answer")
+
+
+COMPONENT_RENDERERS = {
+    # Informational components — never carry an answer.
+    "text": render_text,
+    "list": render_list,
+    "table": render_table,
+    "reference_data": render_reference_data,
+    "chart": render_chart,
+    "illustration": render_illustration,
+    # Answerable components — always carry an answer for the teacher version
+    # (see ANSWERABLE_TYPES below, which drives lettering).
     "text_with_solution": render_text_with_solution,
     "text_no_solution": render_text_no_solution,
     "matching": render_matching,
     "true_false": render_true_false,
     "fill_blank_text": render_fill_blank_text,
     "fill_blank_table": render_fill_blank_table,
-    "chart": render_chart,
-    "illustration": render_illustration,
     "multiple_choice": render_multiple_choice,
+    "chart_fill": render_chart_fill,
+    "illustration_draw": render_illustration_draw,
 }
 
-
-SIDE_VISUAL_TYPES = {"chart", "illustration"}
+# Component types that carry an answer for the teacher version. Whether a
+# component gets a letter (a/b/в...) is derived from membership here, not
+# from a separate per-component "role" field — see task-schema.md.
+ANSWERABLE_TYPES = frozenset({
+    "text_with_solution",
+    "text_no_solution",
+    "matching",
+    "true_false",
+    "fill_blank_text",
+    "fill_blank_table",
+    "multiple_choice",
+    "chart_fill",
+    "illustration_draw",
+})
 
 # Which on-screen layout-toolbar control groups (see LAYOUT_JS) apply to each
-# task type. To make a new type's block interactively adjustable: add an
+# component type. To make a new type's block interactively adjustable: add an
 # entry here (comma-separated control-group keys) and a matching CONTROL_GROUPS
 # entry in LAYOUT_JS whose `target` selector matches an element this type's
-# renderer already emits.
+# renderer already emits. (The task-level "row-layout" group isn't keyed by
+# type here — it's wired directly in render_task, since it applies to the
+# whole component list, not one component.)
 LAYOUT_CONTROLS_BY_TYPE = {
-    "chart": "visual-width,visual-position",
-    "illustration": "visual-width,visual-position",
     "text_with_solution": "solution-toggle",
     "multiple_choice": "variants-layout",
 }
@@ -982,72 +1045,109 @@ def render_header_line(num_html, prompt, points, lang):
     return f'<div class="task-header">{num_html}{prompt_html}</div>'
 
 
-def render_content_block(ttype, task_data, header_html, body_html, answer_html):
-    toolbar_html = render_layout_toolbar(ttype)
-    if ttype in SIDE_VISUAL_TYPES:
-        # Chart/illustration sit beside the header+prompt (~36% width) instead
-        # of stacked full-width below it, so the visual doesn't dominate the page.
-        # visual_width/visual_position are optional JSON fields (defaults match
-        # the previous fixed 36%-beside-text behavior); the layout-toolbar lets
-        # the browser override them live without touching the JSON.
-        width = esc(task_data.get("visual_width", "36"))
-        position = esc(task_data.get("visual_position", "side"))
-        return (
-            f'<div class="task-with-visual visual-position-{position}">'
-            f'<div class="task-text">{header_html}{answer_html}</div>'
-            f'<div class="task-visual visual-width-{width}">{body_html}</div>'
-            f"</div>{toolbar_html}"
+def _partition_layout(components, layout):
+    # Default: every component on its own full-width row (today's "all
+    # stacked" look). Otherwise each entry is either an int N (N equal
+    # columns) or a list of explicit percentages (one per column) — see
+    # "Раскладка: layout" in task-schema.md. Validated by simple arithmetic:
+    # the partition must account for exactly every component, no addressable
+    # cells to get out of sync.
+    if not layout:
+        return [1] * len(components)
+    total = sum(row if isinstance(row, int) else len(row) for row in layout)
+    if total != len(components):
+        raise ValueError(
+            f"layout describes {total} component(s) but there are {len(components)}"
         )
-    return f"{header_html}{body_html}{answer_html}{toolbar_html}"
-
-
-def render_compound_task(index, task, is_teacher, lang):
-    points = task.get("points")
-    prompt = task.get("prompt", "")
-    header_html = render_header_line(f'<span class="task-num">{index}.</span>', prompt, points, lang)
-
-    parts_html = []
-    for i, part in enumerate(task.get("parts", [])):
-        ptype = part.get("type")
-        if ptype == "compound":
-            raise ValueError(f"Nested 'compound' part not allowed in task {task.get('id')}")
-        renderer = TASK_RENDERERS.get(ptype)
-        if renderer is None:
-            raise ValueError(f"Unknown part type '{ptype}' in task {task.get('id')} (part {i})")
-        body_html, answer = renderer(part, is_teacher, lang)
-
-        label = part.get("label") or LOWER_LETTERS[i]
-        part_points = part.get("points")
-        part_prompt = part.get("prompt", "")
-        sub_header_html = render_header_line(f'<span class="subtask-label">{esc(label)})</span>', part_prompt, part_points, lang)
-
-        answer_html = ""
-        if is_teacher and answer:
-            answer_html = f'<div class="answer-block"><strong>{t(lang, "answer_label")}</strong> {esc(answer)}</div>'
-
-        content = render_content_block(ptype, part, sub_header_html, body_html, answer_html)
-        parts_html.append(f'<div class="subtask">{content}</div>')
-
-    return f'<div class="task">{header_html}{"".join(parts_html)}</div>'
+    return layout
 
 
 def render_task(index, task, is_teacher, lang):
-    ttype = task.get("type")
-    if ttype == "compound":
-        return render_compound_task(index, task, is_teacher, lang)
-    renderer = TASK_RENDERERS.get(ttype)
-    if renderer is None:
-        raise ValueError(f"Unknown task type '{ttype}' in task {task.get('id')}")
-    body_html, answer = renderer(task, is_teacher, lang)
-    points = task.get("points")
-    prompt = task.get("prompt", "")
-    header_html = render_header_line(f'<span class="task-num">{index}.</span>', prompt, points, lang)
-    answer_html = ""
-    if is_teacher and answer:
-        answer_html = f'<div class="answer-block"><strong>{t(lang, "answer_label")}</strong> {esc(answer)}</div>'
+    components = task.get("components", [])
+    if not components:
+        raise ValueError(f"Task {task.get('id')} has no components")
 
-    content = render_content_block(ttype, task, header_html, body_html, answer_html)
-    return f'<div class="task">{content}</div>'
+    answerable_positions = [
+        i for i, c in enumerate(components) if c.get("type") in ANSWERABLE_TYPES
+    ]
+    # Letters are only meaningful when there's more than one thing to answer —
+    # a lone answerable component reads as a plain simple task, no letter.
+    letter_for = {}
+    if len(answerable_positions) > 1:
+        for letter_i, pos in enumerate(answerable_positions):
+            letter_for[pos] = LOWER_LETTERS[letter_i]
+
+    task_prompt = task.get("prompt", "")
+    task_points = task.get("points")
+    # A single component with no task-level intro reads exactly like today's
+    # plain flat task: its own prompt/points merge into the one task-number
+    # header line, instead of two stacked header lines for one question.
+    single_component = len(components) == 1 and not task_prompt
+
+    parts_html = []
+    if not single_component:
+        parts_html.append(
+            render_header_line(f'<span class="task-num">{index}.</span>', task_prompt, task_points, lang)
+        )
+
+    rows = _partition_layout(components, task.get("layout"))
+    row_htmls = []
+    idx = 0
+    for row in rows:
+        width = row if isinstance(row, int) else len(row)
+        pct_list = [100.0 / width] * width if isinstance(row, int) else row
+        cell_htmls = []
+        for cell_i in range(width):
+            comp = components[idx]
+            ctype = comp.get("type")
+            renderer = COMPONENT_RENDERERS.get(ctype)
+            if renderer is None:
+                raise ValueError(
+                    f"Unknown component type '{ctype}' in task {task.get('id')} (component {idx})"
+                )
+            body_html, answer = renderer(comp, is_teacher, lang)
+
+            comp_prompt = comp.get("prompt", "")
+            comp_points = comp.get("points")
+            is_answerable = ctype in ANSWERABLE_TYPES
+            show_letter = (not single_component) and is_answerable and len(answerable_positions) > 1
+            label = (comp.get("label") or letter_for.get(idx)) if show_letter else None
+
+            if single_component:
+                num_html = f'<span class="task-num">{index}.</span>'
+                merged_points = comp_points if comp_points is not None else task_points
+                header_html = render_header_line(num_html, comp_prompt, merged_points, lang)
+            elif label:
+                header_html = render_header_line(
+                    f'<span class="subtask-label">{esc(label)})</span>', comp_prompt, comp_points, lang
+                )
+            elif comp_prompt or comp_points:
+                header_html = render_header_line("", comp_prompt, comp_points, lang)
+            else:
+                header_html = ""
+
+            answer_html = ""
+            if is_teacher and answer:
+                answer_html = f'<div class="answer-block"><strong>{t(lang, "answer_label")}</strong> {esc(answer)}</div>'
+
+            toolbar_html = render_layout_toolbar(ctype)
+            comp_class = "task-component task-component-lettered" if label else "task-component"
+            pct = pct_list[cell_i]
+            cell_htmls.append(
+                f'<div class="task-col" style="flex:0 0 {pct:.2f}%;max-width:{pct:.2f}%;">'
+                f'<div class="{comp_class}">{header_html}{body_html}{answer_html}{toolbar_html}</div>'
+                "</div>"
+            )
+            idx += 1
+        row_htmls.append(f'<div class="task-row">{"".join(cell_htmls)}</div>')
+
+    components_html = f'<div class="task-components row-layout-authored">{"".join(row_htmls)}</div>'
+
+    row_toolbar_html = ""
+    if task.get("layout") and any((row if isinstance(row, int) else len(row)) > 1 for row in rows):
+        row_toolbar_html = '<div class="layout-toolbar" data-controls="row-layout"></div>'
+
+    return f'<div class="task">{"".join(parts_html)}{components_html}{row_toolbar_html}</div>'
 
 
 def build_document(meta, tasks, is_teacher):
@@ -1094,14 +1194,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("workspace", help="Path to the worksheet draft folder (contains meta.json, tasks/)")
     parser.add_argument("--task", help="Render only this single task id as a preview HTML")
-    parser.add_argument(
-        "--docx",
-        action="store_true",
-        help=(
-            "Also write worksheet-student.docx/worksheet-teacher.docx "
-            "(requires: pip install -r requirements-docx.txt)"
-        ),
-    )
     args = parser.parse_args()
 
     workspace = Path(args.workspace)
@@ -1125,21 +1217,6 @@ def main():
     (output_dir / "worksheet-teacher.html").write_text(teacher_html, encoding="utf-8")
     print(f"Wrote {output_dir / 'worksheet-student.html'}")
     print(f"Wrote {output_dir / 'worksheet-teacher.html'}")
-
-    if args.docx:
-        try:
-            from render_worksheet_docx import build_docx_documents
-        except ImportError as e:
-            sys.exit(
-                "Не найдены зависимости для --docx. Установите их один раз:\n"
-                "  pip install -r worksheet-builder/scripts/requirements-docx.txt\n"
-                f"(исходная ошибка: {e})"
-            )
-        student_doc, teacher_doc = build_docx_documents(meta, tasks)
-        student_doc.save(output_dir / "worksheet-student.docx")
-        teacher_doc.save(output_dir / "worksheet-teacher.docx")
-        print(f"Wrote {output_dir / 'worksheet-student.docx'}")
-        print(f"Wrote {output_dir / 'worksheet-teacher.docx'}")
 
 
 if __name__ == "__main__":

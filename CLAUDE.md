@@ -14,13 +14,9 @@ one task doesn't require reading/rewriting the whole document. **Don't
 reintroduce hand-authored HTML output** when touching this skill — if a
 change needs new visual behavior, change the renderer/CSS, not per-task HTML.
 
-**One language = one separate workspace folder.** `meta.json → "language"`
-(`"ru"`/`"kk"`) switches fixed UI chrome automatically via `STRINGS`/
-`UI_STRINGS` in the script; translating a workspace's actual task content
-into the other language is a manual, on-demand job done by writing a full
-sibling folder (see `references/translation.md`), never by adding parallel
-fields (`prompt_ru`/`prompt_kk`) inside one task JSON. Don't reintroduce
-dual-language fields in the schema.
+Only Russian (`meta.json → "language": "ru"`) is supported. Fixed UI chrome
+strings live in `STRINGS`/`UI_STRINGS` in the script. Don't add
+per-language content fields (`prompt_ru`, etc.) to the task schema.
 
 ## Where things live
 
@@ -30,11 +26,7 @@ dual-language fields in the schema.
 - `worksheet-builder/references/charts-and-graphs.md` — `chart_spec` format and the B&W-safe visual code
 - `worksheet-builder/references/symbols.md` — the text > `<sup>`/`<sub>` > LaTeX priority rule for any non-ASCII notation, plus a Greek-alphabet table and a list of Greek letters that are visually identical to Latin letters in the design-system font stack (verified by rendering, not guessed). This project's specific convention: velocity is `υ` (upsilon), not Latin `v` — `v` renders indistinguishable from `ν` (nu, frequency) in this font. Don't "simplify" example content back to Latin `v` for velocity without re-reading this file.
 - `worksheet-builder/scripts/render_worksheet.py` — the only place that generates HTML. Illustration templates live here too, in the `SVG_SNIPPETS` dict (`_snippet_inclined_plane`, `_snippet_simple_circuit`) — there is deliberately no `assets/svg-snippets/` folder; don't recreate one without also wiring it into the loader. `esc()` deliberately passes through literal `<sup>`/`<sub>` tags (see `SUPSUB_TAGS`) instead of escaping everything — that's what lets task JSON use them per `symbols.md`; don't replace `esc()` calls with raw `html.escape()`. There's no printed page-number footer — instead `LAYOUT_JS`'s `paginate()` splits the on-screen flow into `.a4-page` cards (a JS-computed approximation of print pagination, not a hand-authored one) and a separate, extensible top toolbar (`GLOBAL_TOOLBAR_TOOLS`/`buildGlobalToolbar()`, distinct from the per-task `.layout-toolbar`/`CONTROL_GROUPS`) lets the teacher swap print-margin presets live; see `references/design-system.md`'s "Page-view" section for how these fit together, including why the CSS-only path (not a hidden HTML footer) was chosen and why the "Minimum" margin preset is a documented approximation rather than an exact Chrome value.
-- `worksheet-builder/scripts/render_worksheet_docx.py` — optional second renderer, same JSON in, a Word `.docx` out instead of HTML. Only triggered by `--docx` on `render_worksheet.py` and only imported inside that flag's branch (lazy import) — this keeps the plain HTML path dependency-free. It reuses `render_worksheet.py`'s `build_chart_svg`/`SVG_SNIPPETS`/`STRINGS` rather than duplicating them, so the two outputs can't silently drift apart. It is a deliberate best-effort approximation, not a pixel copy — see "Экспорт в Word" in `design-system.md` for what's intentionally simplified (no interactive toolbar, charts/illustrations become static raster images, LaTeX becomes an image). Needs `worksheet-builder/scripts/requirements-docx.txt` installed (`python-docx`, `matplotlib`, `svglib` + `pycairo`/`rlPyCairo`, which `svglib`'s PNG rasterization needs since reportlab 5 dropped its old non-Cairo backend — both still ship self-contained Windows wheels, no separate Cairo/GTK install required) — don't add these as a hard dependency of `render_worksheet.py` itself.
-  **Paused, pending a real visual check.** Only verified structurally so far (`python-docx` can re-open the output; paragraph/table/image counts and ru/kk strings check out) — nobody has opened the result in actual Word/LibreOffice yet, since the sandbox this was built in can't. See `design-system.md`'s "Экспорт в Word" and `SKILL.md`'s Фаза 2: don't proactively offer `--docx` to the teacher until that visual pass happens and this note is updated/removed.
-- `worksheet-builder/references/translation.md` — on-demand ru/kk content-translation workflow (what fields to translate vs. leave alone, where the translated copy lives). Fixed UI-chrome localization itself is code, not docs — see `STRINGS`/`UI_STRINGS` in `render_worksheet.py`.
 - `worksheet-builder/examples/kinematics-9th-grade/` — a worked draft covering every task type (12 task files — task-09 demonstrates the text/sup-sub/LaTeX symbol hierarchy, task-10 is a `compound` task, task-12 is `multiple_choice`), used for manual testing
-- `worksheet-builder/examples/kinematics-9th-grade-kk/` — a Kazakh translation of two tasks from the example above, demonstrating `translation.md`'s workflow
 - `preview-worksheet/` — a generated copy of the main (`ru`) example, kept at the project root purely so a human can open the rendered HTML. **Not part of the skill.** Safe to overwrite/regenerate; don't fold it back into `worksheet-builder/`.
 
 ## How to validate a change

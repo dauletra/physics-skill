@@ -1,9 +1,0 @@
-python-docx
-matplotlib
-svglib
-# svglib's SVG->PNG rasterization goes through reportlab.graphics.renderPM.
-# reportlab >=5 dropped its old bundled C backend and requires these two for
-# rasterization; both ship self-contained wheels on Windows (pycairo bundles
-# its own Cairo binary), so no separate native Cairo/GTK install is needed.
-pycairo
-rlPyCairo

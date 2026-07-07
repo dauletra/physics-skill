@@ -1,11 +1,15 @@
 {
   "id": "task-04",
-  "type": "true_false",
   "points": 2,
-  "prompt": "Отметьте, верны ли утверждения.",
-  "statements": [
-    {"text": "Скорость — векторная величина.", "answer": true},
-    {"text": "При равноускоренном движении ускорение равно нулю.", "answer": false},
-    {"text": "1 Н = 1 кг·м/с².", "answer": true}
+  "components": [
+    {
+      "type": "true_false",
+      "prompt": "Отметьте, верны ли утверждения.",
+      "statements": [
+        {"text": "Скорость — векторная величина.", "answer": true},
+        {"text": "При равноускоренном движении ускорение равно нулю.", "answer": false},
+        {"text": "1 Н = 1 кг·м/с².", "answer": true}
+      ]
+    }
   ]
 }

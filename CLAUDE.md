@@ -1,71 +1,87 @@
-# Project: worksheet-builder skill
+# Проект: скилл worksheet-builder
 
-This repo *is* a single Claude skill (`worksheet-builder/`) plus a scratch
-output folder (`preview-worksheet/`). There's no app to build or test suite to
-run — "development" here means editing the skill's SKILL.md/references/script
-and validating by rendering the example workspace.
+Этот репозиторий *и есть* один скилл Claude (`worksheet-builder/`) плюс папка
+для черновых выводов (`preview-worksheet/`). Здесь нет приложения для сборки
+или тестового набора для запуска — «разработка» здесь означает правку
+SKILL.md/references/скрипта скилла и проверку через рендер примерного
+workspace.
 
-## Core architectural rule
+## Ключевое архитектурное правило
 
-The skill never hand-writes the final worksheet HTML. Content lives in small
-JSON files (`meta.json` + `tasks/task-NN.json`); `scripts/render_worksheet.py`
-deterministically renders them into HTML. This split exists so that editing
-one task doesn't require reading/rewriting the whole document. **Don't
-reintroduce hand-authored HTML output** when touching this skill — if a
-change needs new visual behavior, change the renderer/CSS, not per-task HTML.
+Скилл никогда не пишет итоговый HTML рабочего листа руками. Контент живёт в
+маленьких JSON-файлах (`meta.json` + `tasks/task-NN.json`); `scripts/`
+детерминированно рендерит их в HTML (`render_worksheet.py` — тонкий CLI,
+вся логика — в соседних `assets.py`/`strings.py`/`render_helpers.py`/
+`visuals.py`/`components.py`/`document.py`, см. подробный разбор ниже). Это
+разделение существует, чтобы правка одного задания не требовала
+чтения/переписывания всего документа. **Не возвращай рукописный HTML-вывод**
+при правке этого скилла — если для изменения нужно новое визуальное
+поведение, меняй рендерер/CSS, а не HTML конкретного задания.
 
-Only Russian (`meta.json → "language": "ru"`) is supported. Fixed UI chrome
-strings live in `STRINGS`/`UI_STRINGS` in the script. Don't add
-per-language content fields (`prompt_ru`, etc.) to the task schema.
+Поддерживается только русский язык (`meta.json → "language": "ru"`).
+Служебные строки интерфейса живут в `STRINGS` (`scripts/strings.py`) и
+`UI_STRINGS` (JS, внутри `LAYOUT_JS` в `scripts/assets.py`). Не добавляй в
+схему задания языковые поля контента (`prompt_ru` и т.п.).
 
-## Where things live
+## Где что лежит
 
-- `worksheet-builder/SKILL.md` — the workflow Claude follows when using the skill
-- `worksheet-builder/references/task-schema.md` — JSON schema for meta.json + every task type
-- `worksheet-builder/references/design-system.md` — CSS design tokens (fonts, margins, header, numbering, the side-by-side chart/illustration layout). Keep this in sync with `BASE_CSS` in the script whenever you change either.
-- `worksheet-builder/references/charts-and-graphs.md` — `chart_spec` format and the B&W-safe visual code
-- `worksheet-builder/references/symbols.md` — the text > `<sup>`/`<sub>` > LaTeX priority rule for any non-ASCII notation, plus a Greek-alphabet table and a list of Greek letters that are visually identical to Latin letters in the design-system font stack (verified by rendering, not guessed). This project's specific convention: velocity is `υ` (upsilon), not Latin `v` — `v` renders indistinguishable from `ν` (nu, frequency) in this font. Don't "simplify" example content back to Latin `v` for velocity without re-reading this file.
-- `worksheet-builder/scripts/render_worksheet.py` — the only place that generates HTML. Illustration templates live here too, in the `SVG_SNIPPETS` dict (`_snippet_inclined_plane`, `_snippet_simple_circuit`) — there is deliberately no `assets/svg-snippets/` folder; don't recreate one without also wiring it into the loader. `esc()` deliberately passes through literal `<sup>`/`<sub>` tags (see `SUPSUB_TAGS`) instead of escaping everything — that's what lets task JSON use them per `symbols.md`; don't replace `esc()` calls with raw `html.escape()`. There's no printed page-number footer — instead `LAYOUT_JS`'s `paginate()` splits the on-screen flow into `.a4-page` cards (a JS-computed approximation of print pagination, not a hand-authored one) and a separate, extensible top toolbar (`GLOBAL_TOOLBAR_TOOLS`/`buildGlobalToolbar()`, distinct from the per-task `.layout-toolbar`/`CONTROL_GROUPS`) lets the teacher swap print-margin presets live; see `references/design-system.md`'s "Page-view" section for how these fit together, including why the CSS-only path (not a hidden HTML footer) was chosen and why the "Minimum" margin preset is a documented approximation rather than an exact Chrome value.
-- `worksheet-builder/examples/kinematics-9th-grade/` — a worked draft covering all 5 component formats (`text`, `list`, `table`, `prompt_response`, `visual`) and both `answerable` values (13 task files — task-09 demonstrates the text/sup-sub/LaTeX symbol hierarchy, task-10 has multiple answerable components around one shared `visual`, task-12 is `list` with `item_style: "choice"`), used for manual testing
-- `preview-worksheet/` — a generated copy of the main (`ru`) example, kept at the project root purely so a human can open the rendered HTML. **Not part of the skill.** Safe to overwrite/regenerate; don't fold it back into `worksheet-builder/`.
+- `worksheet-builder/SKILL.md` — рабочий процесс, которому Claude следует при использовании скилла
+- `worksheet-builder/references/task-schema.md` — JSON-схема для meta.json и каждого типа задания
+- `worksheet-builder/references/design-system.md` — CSS-токены дизайна (шрифты, поля, шапка, нумерация, раскладка график/иллюстрация бок о бок). Держи этот файл в синхроне с `BASE_CSS` (`scripts/assets.py`) при изменении любого из них.
+- `worksheet-builder/references/charts-and-graphs.md` — формат `chart_spec` и ч/б-безопасный код визуалов
+- `worksheet-builder/references/symbols.md` — правило приоритета текст → `<sup>`/`<sub>` → LaTeX для любых не-ASCII обозначений, плюс таблица греческого алфавита и список греческих букв, визуально неотличимых от латинских в шрифтовом стеке дизайн-системы (проверено рендером, а не предположено). Специфичная для проекта конвенция: скорость — это `υ` (ипсилон), а не латинская `v` — `v` в этом шрифте рендерится неотличимо от `ν` (ню, частота). Не "упрощай" пример обратно к латинской `v` для скорости, не перечитав этот файл.
+- `worksheet-builder/scripts/` — единственное место, генерирующее HTML, разложенное на несколько модулей вместо одного файла:
+  - `render_worksheet.py` — тонкая CLI-точка входа (argparse, `load_workspace()`, `main()`); сам импортирует `build_document` из `document.py`.
+  - `assets.py` — статические блобы: `KATEX_HEAD`, `BASE_CSS`, `LAYOUT_JS`. Печатного подвала с номером страницы нет — вместо этого `paginate()` из `LAYOUT_JS` разбивает экранный поток на карточки `.a4-page` (JS-вычисленное приближение печатной пагинации, а не рукописное), а отдельный, расширяемый верхний тулбар (`GLOBAL_TOOLBAR_TOOLS`/`buildGlobalToolbar()`, отличный от подзадачного `.layout-toolbar`/`CONTROL_GROUPS`) позволяет учителю переключать пресеты полей печати прямо на экране; см. раздел "Page-view" в `references/design-system.md` о том, как это всё сочетается, включая то, почему выбран CSS-only путь (а не скрытый HTML-подвал), и почему пресет полей "Минимум" — задокументированное приближение, а не точное значение Chrome.
+  - `strings.py` — `STRINGS`/`t()`, служебные подписи листа.
+  - `render_helpers.py` — `esc()`, `LETTERS`/`LOWER_LETTERS`, заполнение пропусков в `text_template`. `esc()` намеренно пропускает буквальные теги `<sup>`/`<sub>` (см. `SUPSUB_TAGS`) вместо экранирования всего подряд — именно это позволяет JSON заданий использовать их по `symbols.md`; не заменяй вызовы `esc()` на голый `html.escape()`.
+  - `visuals.py` — генератор графиков (`build_chart_svg`) и словарь `SVG_SNIPPETS` (`_snippet_inclined_plane`, `_snippet_simple_circuit`) — папки `assets/svg-snippets/` намеренно нет; не создавай её заново, не подключив при этом к загрузчику.
+  - `components.py` — по одному рендереру на структурный формат (`text`/`list`/`table`/`prompt_response`/`visual`), `COMPONENT_RENDERERS`, `render_layout_toolbar`.
+  - `document.py` — сборка одного задания (`render_task`) и всего документа (`build_document`).
+- `worksheet-builder/examples/kinematics-9th-grade/` — проработанный черновик, покрывающий все 5 форматов компонентов (`text`, `list`, `table`, `prompt_response`, `visual`) и оба значения `answerable` (13 файлов заданий — task-09 показывает иерархию text/sup-sub/LaTeX символов, task-10 содержит несколько отвечаемых компонентов вокруг одного общего `visual`, task-12 — это `list` с `item_style: "choice"`), используется для ручного тестирования
+- `preview-worksheet/` — сгенерированная копия основного (`ru`) примера, лежит в корне проекта исключительно для того, чтобы человек мог открыть отрендеренный HTML. **Не часть скилла.** Можно свободно перезаписывать/перегенерировать; не переноси её обратно в `worksheet-builder/`.
 
-## How to validate a change
+## Как проверять изменения
 
-No automated tests. After editing `render_worksheet.py` or the CSS:
+Автотестов нет. После правки любого файла в `scripts/` или CSS:
 
 ```bash
 python worksheet-builder/scripts/render_worksheet.py preview-worksheet
 ```
 
-then open `preview-worksheet/output/worksheet-teacher.html` (has both the
-questions and the answer blocks, so one file shows everything) in the Preview
-tool and check it visually — especially after CSS changes, since a selector
-that's too broad tends to leak into places it shouldn't (e.g. a past bug where
-`svg { width: 100% }` scoped to the visual column also stretched the tiny
-chart-legend icons — fixed by scoping to `svg.visual-svg` specifically).
-After touching `LAYOUT_JS` specifically (pagination, either toolbar), the
-static screenshot isn't enough — actually click through the top toolbar's
-margin presets and a per-task toolbar control in the Preview tool and confirm
-`.a4-page` count/padding update and the DOM doesn't get duplicated (this has
-regressed silently before).
+затем открой `preview-worksheet/output/worksheet-teacher.html` (в нём и
+вопросы, и блоки с ответами, так что один файл показывает всё) в Preview-тулзе
+и проверь визуально — особенно после правок CSS, поскольку слишком широкий
+селектор имеет свойство просачиваться туда, где не должен (например, был баг,
+когда `svg { width: 100% }`, ограниченный визуальной колонкой, растягивал ещё
+и маленькие иконки в легенде графика — починили, ограничив селектор конкретно
+`svg.visual-svg`). После правок именно `LAYOUT_JS` (пагинация, любой из
+тулбаров) статического скриншота недостаточно — реально прокликай в
+Preview-тулзе пресеты полей верхнего тулбара и один из контролов подзадачного
+тулбара, и убедись, что количество/отступы `.a4-page` обновляются, а DOM не
+задваивается (это уже незаметно регрессировало раньше).
 
-## Known trade-offs (don't "fix" these without asking)
+## Известные компромиссы (не "чини" их без согласования)
 
-- **The generated worksheet assumes the teacher is always online** when
-  opening/printing it. Lean into online tools/CDNs fully instead of adding
-  offline fallbacks, vendoring assets, or feature-detecting connectivity —
-  that's deliberate scope-narrowing, not an oversight to patch.
-- KaTeX loads from a CDN (jsdelivr), not bundled locally — keeps generated
-  HTML small, but means viewing/printing needs internet. This is an instance
-  of the online-only assumption above, not a one-off exception.
-- Exception to the above: the teacher can genuinely be offline at the moment
-  they open/print the file (e.g. printing at school with no/spotty wifi), so
-  `KATEX_HEAD`'s `if (window.renderMathInElement)` guard in
-  `render_worksheet.py` stays — it's not "offline support" (formulas still
-  render as raw `$...$` if KaTeX didn't load, no fallback rendering is added),
-  it just avoids an uncaught JS exception when the CDN script never arrived.
-  Keep this guard; don't make the call unconditional.
-- Chart/illustration SVG viewBox dimensions are tuned for the ~36%-width side
-  column they render in (see comment in `build_chart_svg`), not for full page
-  width — if you resize that column, the font-size/stroke-width constants in
-  the SVG generators likely need retuning too, not just the CSS flex-basis.
+- **Сгенерированный рабочий лист исходит из того, что учитель всегда онлайн**
+  в момент открытия/печати. Опирайся на онлайн-инструменты/CDN полностью,
+  вместо добавления офлайн-фолбэков, вендоринга ассетов или
+  feature-detection подключения к сети — это осознанное сужение области
+  применения, а не недосмотр, который нужно патчить.
+- KaTeX грузится с CDN (jsdelivr), а не встроен локально — это держит
+  сгенерированный HTML маленьким, но означает, что для просмотра/печати нужен
+  интернет. Это частный случай допущения "всегда онлайн" выше, а не отдельное
+  исключение.
+- Исключение из вышесказанного: учитель может реально оказаться офлайн в
+  момент открытия/печати файла (например, печать в школе при плохом/
+  отсутствующем wifi), поэтому проверка `if (window.renderMathInElement)` в
+  `KATEX_HEAD` (`scripts/assets.py`) остаётся — это не "офлайн-поддержка"
+  (формулы всё равно отрендерятся как сырой `$...$`, если KaTeX не
+  подгрузился, никакого фолбэк-рендеринга не добавляется), она просто
+  избегает необработанного JS-исключения, если CDN-скрипт так и не пришёл.
+  Оставь эту проверку; не делай вызов безусловным.
+- Размеры viewBox у SVG графиков/иллюстраций подобраны под боковую колонку
+  шириной ~36% (см. комментарий в `build_chart_svg`, `scripts/visuals.py`), а не под полную ширину
+  страницы — если меняешь ширину этой колонки, константы font-size/
+  stroke-width в SVG-генераторах, скорее всего, тоже нужно подстроить, а не
+  только CSS flex-basis.

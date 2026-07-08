@@ -76,7 +76,7 @@ HTML-документом, каждая такая правка требовал
 5. Для графиков — не рисуй SVG сам, дай данные в `chart_spec` (см.
    `references/charts-and-graphs.md`). Для иллюстраций — сначала проверь,
    нет ли готового генератора в словаре `SVG_SNIPPETS` внутри
-   `scripts/render_worksheet.py`.
+   `scripts/visuals.py`.
 6. Правка = редактирование одного `task-NN.json`. Не открывай и не переписывай
    другие файлы или уже собранный HTML ради одной правки.
 7. Если учитель хочет посмотреть, как будет выглядеть конкретное задание
@@ -143,7 +143,7 @@ hover-кнопки "+"/"-" — можно на месте объединить �
 - `references/charts-and-graphs.md` — формат `chart_spec`, ч/б-безопасный
   визуальный код графиков, и правила для `raw_svg`-иллюстраций, если готового
   генератора в `SVG_SNIPPETS` нет.
-- `scripts/render_worksheet.py` — сам рендерер; `--help` покажет все опции.
+- `scripts/render_worksheet.py` — CLI-точка входа рендерера (`--help` покажет все опции); сама логика разнесена по соседним `scripts/*.py` (assets.py, strings.py, render_helpers.py, visuals.py, components.py, document.py).
 - `examples/kinematics-9th-grade/` — рабочий пример черновика, покрывающий все
   5 форматов и обе роли (`answerable: true`/`false`) — включая `visual` с
   графиком и иллюстрацией наклонной плоскости, задание с несколькими

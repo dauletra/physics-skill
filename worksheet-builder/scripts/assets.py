@@ -74,6 +74,13 @@ body {
     display: inline-block; width: 4.5mm; height: 4.5mm; border: 1.3px solid #000;
     text-align: center; line-height: 4.2mm; font-weight: bold; font-size: 9pt;
 }
+.rank-row { display: flex; align-items: center; justify-content: space-between; gap: 4mm; padding: 1.2mm 2mm; }
+.rank-row:nth-child(even) { background: #f2f2f2; }
+.rank-statement { flex: 1; }
+.rank-square {
+    display: inline-block; flex: 0 0 auto; width: 4.5mm; height: 4.5mm; border: 1.3px solid #000;
+    text-align: center; line-height: 4.2mm; font-weight: bold; font-size: 9pt;
+}
 .fill-table { border-collapse: collapse; width: 100%; margin-top: 2mm; }
 .fill-table th, .fill-table td {
     border: 1px solid #000; padding: 1.5mm 2.5mm; text-align: center; font-size: 11pt;

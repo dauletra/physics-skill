@@ -26,33 +26,64 @@ def render_text(task, is_teacher, lang):
 
 
 def render_list(task, is_teacher, lang):
-    # Двухколоночный режим (старый `matching`): `left_items`/`right_items`
-    # полностью заменяют `items`, взаимоисключающе с одноколоночными режимами ниже.
-    if "left_items" in task or "right_items" in task:
-        left_items = task.get("left_items", [])
+    items = task.get("items", [])
+    style = task.get("item_style", "plain")
+
+    if style == "matching":
+        # Сопоставление: те же `items`, что и у любого другого item_style
+        # (каждый — `{"text", "match"}`), а не отдельная копия схемы через
+        # `left_items`/`answer_map` — раньше режим определялся implicit-dispatch
+        # по наличию `left_items`/`right_items`, что могло разойтись с `items`
+        # (например, если оба поля заданы по ошибке, `items` тихо игнорировался).
+        # `right_items` остаётся отдельным полем осознанно — это порядок/пул
+        # показа правого столбца (может включать дистракторы, не встречающиеся
+        # ни в одном `match`), а не то же самое, что можно вывести из `items`.
         right_items = task.get("right_items", [])
-        answer_map = task.get("answer_map", {})
-        left_html = "".join(f"<li>{esc(item)}</li>" for item in left_items)
-        letters = {item: LETTERS[i] for i, item in enumerate(right_items)}
-        right_html = "".join(f"<li>{esc(item)}</li>" for item in right_items)
+        if not right_items:
+            raise ValueError("list с item_style='matching' требует непустой right_items")
+        letters = {value: LETTERS[i] for i, value in enumerate(right_items)}
+        left_html = "".join(f"<li>{esc(it.get('text', ''))}</li>" for it in items)
+        right_html = "".join(f"<li>{esc(value)}</li>" for value in right_items)
         body = (
             '<div class="matching-columns">'
             f'<ol type="1">{left_html}</ol>'
             f'<ol type="A" style="list-style-type: upper-latin;">{right_html}</ol>'
             "</div>"
         )
-        answer = None
-        if answer_map:
-            pairs = []
-            for i, item in enumerate(left_items, start=1):
-                matched = answer_map.get(item)
-                letter = letters.get(matched, "?")
-                pairs.append(f"{i}-{letter}")
-            answer = ", ".join(pairs)
-        return body, answer
+        pairs = []
+        for i, it in enumerate(items, start=1):
+            matched = it.get("match")
+            if matched not in letters:
+                raise ValueError(
+                    f"list item_style='matching': match {matched!r} не найден в right_items"
+                )
+            pairs.append(f"{i}-{letters[matched]}")
+        return body, ", ".join(pairs) if pairs else None
 
-    items = task.get("items", [])
-    style = task.get("item_style", "plain")
+    if style == "ranking":
+        # Тот же принцип "ответ на самом пункте", что у match/correct: `rank`
+        # — верная позиция (1..N). Порядок показа — это порядок `items`,
+        # авторский (обычно перемешанный) — рендерер намеренно не сортирует и
+        # не перемешивает сам, чтобы результат оставался детерминированным
+        # при перегенерации.
+        missing = [it.get("text", "?") for it in items if not isinstance(it.get("rank"), int)]
+        if missing:
+            raise ValueError(f"list item_style='ranking': нет целого rank у пунктов: {missing}")
+        ranks = [it["rank"] for it in items]
+        if sorted(ranks) != list(range(1, len(items) + 1)):
+            raise ValueError(
+                f"list item_style='ranking': rank должен быть перестановкой 1..{len(items)}, получено {ranks}"
+            )
+        rows = []
+        for it in items:
+            box = str(it["rank"]) if is_teacher else ""
+            rows.append(
+                '<div class="rank-row">'
+                f'<span class="rank-statement">{esc(it.get("text", ""))}</span>'
+                f'<span class="rank-square">{box}</span>'
+                "</div>"
+            )
+        return "".join(rows), None
 
     if style == "statement_bool":
         rows = []

@@ -6,8 +6,10 @@
       "type": "prompt_response",
       "answerable": true,
       "prompt": "Тело массой m = 4 кг движется со скоростью υ = 3 м/с. Кинетическая энергия вычисляется по формуле $$E_k = \\frac{m\\upsilon^2}{2}$$. Чему равна E<sub>k</sub>? Ускорение при этом было a = 2 м/с², а угол наклона α = 30°.",
-      "response": "blank",
-      "answer": "E<sub>k</sub> = 4 ∙ 9 / 2 = 18 Дж"
+      "settings": {
+        "response": "blank",
+        "answer": "E<sub>k</sub> = 4 ∙ 9 / 2 = 18 Дж"
+      }
     }
   ]
 }

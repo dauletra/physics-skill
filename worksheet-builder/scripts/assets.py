@@ -21,15 +21,37 @@ document.addEventListener("DOMContentLoaded", function () {{
 </script>
 """.strip()
 
-BASE_CSS = """
+# Пресеты полей печати, названы по образцу выпадающего списка полей в диалоге
+# печати Chrome ("По умолчанию"/"Нет"/"Минимум"). "default" зеркалит прежнее
+# жёстко зашитое значение @page. У "minimum" нет единственно верного значения
+# — Chrome сам вычисляет своё "Минимум" из непечатаемой области выбранного
+# принтера/драйвера, а это не постоянная величина, так что здесь наше
+# собственное небольшое приближение, без гарантии совпадения с конкретным
+# принтером. Выбор пресета — поле `print_margins` в meta.json, разрешается в
+# конкретные мм ровно один раз при сборке (build_base_css ниже), никакого
+# рантайм-переключателя в браузере больше нет.
+PRINT_MARGIN_PRESETS = {
+    "default": {"top": 15, "right": 15, "bottom": 15, "left": 18},
+    "none": {"top": 0, "right": 0, "bottom": 0, "left": 0},
+    "minimum": {"top": 5, "right": 5, "bottom": 5, "left": 8},
+}
+
+
+def resolve_print_margin_mm(preset_key):
+    preset = PRINT_MARGIN_PRESETS.get(preset_key, PRINT_MARGIN_PRESETS["default"])
+    return f'{preset["top"]}mm {preset["right"]}mm {preset["bottom"]}mm {preset["left"]}mm'
+
+
+_BASE_CSS_TEMPLATE = """
 :root {
     --font-main: "PT Sans", "Segoe UI", Verdana, Arial, sans-serif;
-    /* Экранное-only поле страницы, управляется тулбаром пресетов полей печати
-       (applyMarginPreset() в LAYOUT_JS). Зеркалит margin у @page ниже — оба
-       держатся в синхроне не только в момент генерации, но и в рантайме. */
-    --page-margin: 15mm 15mm 15mm 18mm;
+    /* Поле страницы — фиксируется на сборке из `meta.json.print_margins`
+       (см. build_base_css/resolve_print_margin_mm), никакого рантайм-
+       переключателя в браузере больше нет. Зеркалит margin у @page ниже —
+       оба всегда получают одно и то же значение при генерации. */
+    --page-margin: __PAGE_MARGIN__;
 }
-@page { size: A4; margin: 15mm 15mm 15mm 18mm; }
+@page { size: A4; margin: __PAGE_MARGIN__; }
 * { box-sizing: border-box; }
 html { background: #fff; }
 body {
@@ -94,31 +116,14 @@ body {
    Ширина колонки задаётся инлайновым `style="flex:0 0 N%"` на каждом
    .task-col (проставляется в Python из `layout`), а не фиксированным набором
    CSS-классов, так что работает любое процентное разбиение, а не только
-   горстка пресетов. */
+   горстка пресетов. Раскладка целиком решается на сборке — в браузере её
+   больше нельзя перегруппировать (никаких hover-контролов). */
 .task-components { }
-.task-row { display: flex; gap: 6mm; align-items: flex-start; margin-bottom: 2mm; position: relative; }
+.task-row { display: flex; gap: 6mm; align-items: flex-start; margin-bottom: 2mm; }
 .task-row:last-child { margin-bottom: 0; }
 .task-col { min-width: 0; }
 .task-col svg.visual-svg { display: block; width: 100%; height: auto; }
 .task-component-lettered { margin: 3mm 0 3mm 6mm; }
-/* Per-row контролы колонок, показываются только на hover, целиком строятся
-   на клиенте через initRowControls()/rebuildTaskRows() в LAYOUT_JS — см.
-   design-system.md ("Интерактивные элементы вёрстки в браузере"). Подсветка
-   + кнопки показываются только на :hover, и дополнительно принудительно
-   скрыты при печати ниже для детерминизма (та же логика, что у
-   .layout-toolbar/.global-toolbar). */
-.task-row:hover { background: #f6f6f6; outline: 1px dashed #bbb; outline-offset: 2px; }
-.row-controls { position: absolute; top: 1mm; right: 1mm; display: none; gap: 1mm; z-index: 1; }
-.task-row:hover .row-controls { display: flex; }
-.row-controls button {
-    width: 5mm; height: 5mm; padding: 0; border: 1px solid #999;
-    background: #fff; border-radius: 2px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-}
-.row-controls button:hover { background: #eee; }
-.row-controls button:disabled { opacity: 0.35; cursor: default; }
-.row-controls button:disabled:hover { background: #fff; }
-.row-controls button svg { width: 3mm; height: 3mm; }
 .task-component > ul, .task-component > ol { margin: 2mm 0 0 0; padding-left: 6mm; }
 .chart-wrap { margin-top: 2mm; }
 .chart-legend { display: flex; gap: 4mm; font-size: 8pt; margin-top: 1mm; flex-wrap: wrap; }
@@ -131,18 +136,6 @@ body {
 .mc-options.mc-layout-inline .mc-option { display: inline-block; margin-right: 6mm; }
 .mc-marker { display: inline-block; width: 4mm; text-align: center; font-weight: bold; }
 .mc-correct { font-weight: bold; }
-.layout-toolbar {
-    margin-top: 2mm; padding-top: 1.5mm; border-top: 1px dotted #ccc;
-    display: flex; flex-wrap: wrap; gap: 3mm; font-size: 8.5pt; color: #555;
-}
-.layout-toolbar-group { display: flex; align-items: center; gap: 1mm; flex-wrap: wrap; }
-.layout-toolbar-label { font-weight: bold; }
-.layout-toolbar button {
-    font-size: 8.5pt; padding: 0.5mm 2mm; border: 1px solid #999;
-    background: #fafafa; border-radius: 2px; cursor: pointer;
-}
-.layout-toolbar button:hover { background: #eee; }
-.layout-toolbar button.active { background: #ddd; font-weight: bold; }
 body.page-view { background: #ddd; width: auto; padding: 10mm 0; }
 .a4-page {
     /* Полный лист A4 (210mm x 297mm) с настоящими полями, совпадающими с
@@ -155,22 +148,7 @@ body.page-view { background: #ddd; width: auto; padding: 10mm 0; }
     padding: var(--page-margin); box-shadow: 0 0 8px rgba(0,0,0,.25);
     min-height: 297mm; box-sizing: border-box;
 }
-.global-toolbar {
-    position: sticky; top: 0; z-index: 10;
-    background: #fafafa; border-bottom: 1px solid #ccc;
-    padding: 2mm 4mm; margin-bottom: 4mm;
-    display: flex; flex-wrap: wrap; gap: 4mm; font-size: 9pt;
-}
-.global-toolbar-group { display: flex; align-items: center; gap: 1.5mm; flex-wrap: wrap; }
-.global-toolbar-label { font-weight: bold; }
-.global-toolbar button {
-    font-size: 9pt; padding: 0.8mm 2.5mm; border: 1px solid #999;
-    background: #fff; border-radius: 2px; cursor: pointer;
-}
-.global-toolbar button:hover { background: #eee; }
-.global-toolbar button.active { background: #ddd; font-weight: bold; }
 @media print {
-    .global-toolbar { display: none !important; }
     body { padding: 0; width: auto; }
     body.page-view { background: #fff; padding: 0; }
     .a4-page {
@@ -179,135 +157,29 @@ body.page-view { background: #ddd; width: auto; padding: 10mm 0; }
     }
     .a4-page:last-child { break-after: auto; }
     .task { break-inside: avoid; }
-    .layout-toolbar { display: none !important; }
-    .row-controls { display: none !important; }
-    .task-row:hover { background: none; outline: none; }
 }
 """.strip()
 
-# Общий, декларативный фреймворк переключателей раскладки: Python только
-# помечает, какие группы контролов применимы к блоку (render_layout_toolbar()
-# + пустой div data-controls); этот скрипт наполняет тулбар кнопками и
-# навешивает обработчики на клиенте, чисто на экране (@media print скрывает
-# .layout-toolbar — см. BASE_CSS). Чтобы добавить новую переключаемую опцию
-# позже: добавь запись в CONTROL_GROUPS здесь, соответствующее условие в
-# render_layout_toolbar() для нужной формы компонента, и убедись, что
-# отрендеренный HTML содержит элемент, совпадающий с `target`. Замечание:
-# per-row контролы колонок (initRowControls()/rebuildTaskRows() ниже) — это
-# отдельный, не-декларативный механизм — они перестраивают структуру DOM,
-# а не переключают CSS-класс, поэтому не проходят через CONTROL_GROUPS.
+
+def build_base_css(print_margins_preset):
+    """Печёт фиксированные поля печати (`meta.json.print_margins`) в CSS один
+    раз при сборке — см. `_BASE_CSS_TEMPLATE`/`PRINT_MARGIN_PRESETS` выше."""
+    margin = resolve_print_margin_mm(print_margins_preset)
+    return _BASE_CSS_TEMPLATE.replace("__PAGE_MARGIN__", margin)
+
+
+# Клиентский JS ограничен исключительно пассивным экранным превью разбивки на
+# страницы (paginate() — см. "Page-view" в design-system.md): показывает,
+# сколько печатных страниц выйдет при полях, зафиксированных на сборке, но
+# ничего не редактирует и не переключает. Любая настройка листа/компонента
+# (поля печати, видимость места для решения, раскладка вариантов ответа,
+# раскладка компонентов по строкам) — это поле в JSON, разрешается один раз
+# в Python; рантайм-тулбаров и hover-контролов больше нет.
 LAYOUT_JS = """
-// UI_STRINGS зеркалит Python-словарь STRINGS — держи оба в синхроне при
-// изменении подписи или добавлении языка. WORKSHEET_LANG вставляется как
-// предшествующий `const` через build_document() (см. LANG_STRINGS_JS).
-const UI_STRINGS = {
-    ru: {
-        solution_toggle_label: "Место для решения",
-        solution_show: "Показать",
-        solution_hide: "Скрыть",
-        variants_layout_label: "Варианты",
-        variants_single: "1 колонка",
-        variants_two: "2 колонки",
-        variants_inline: "В строку",
-        column_add_title: "Добавить колонку",
-        column_remove_title: "Убрать колонку",
-    },
-};
-const UI = UI_STRINGS[typeof WORKSHEET_LANG !== "undefined" && UI_STRINGS[WORKSHEET_LANG] ? WORKSHEET_LANG : "ru"];
-
-const CONTROL_GROUPS = {
-    "solution-toggle": {
-        label: UI.solution_toggle_label,
-        target: ".solution-area",
-        type: "toggle-visibility",
-        options: [
-            {value: "show", label: UI.solution_show},
-            {value: "hide", label: UI.solution_hide},
-        ],
-    },
-    "variants-layout": {
-        label: UI.variants_layout_label,
-        target: ".mc-options",
-        type: "radio",
-        classPrefix: "mc-layout-",
-        options: [
-            {value: "single-column", label: UI.variants_single},
-            {value: "two-column", label: UI.variants_two},
-            {value: "inline", label: UI.variants_inline},
-        ],
-    },
-};
-
-function layoutApplyRadio(target, group, value, btn) {
-    group.options.forEach(function (o) {
-        target.classList.remove(group.classPrefix + o.value);
-    });
-    target.classList.add(group.classPrefix + value);
-    btn.parentElement.querySelectorAll("button").forEach(function (b) {
-        b.classList.toggle("active", b === btn);
-    });
-    schedulePaginate();
-}
-
-function layoutApplyToggleVisibility(target, value, btn) {
-    target.style.display = value === "hide" ? "none" : "";
-    btn.parentElement.querySelectorAll("button").forEach(function (b) {
-        b.classList.toggle("active", b === btn);
-    });
-    schedulePaginate();
-}
-
-// Пресеты полей печати, названы по образцу выпадающего списка полей в
-// диалоге печати самого Chrome ("По умолчанию"/"Нет"/"Минимум"). "default"
-// зеркалит правило @page из BASE_CSS (держи оба в синхроне). У "minimum" нет
-// единственно верного значения — Chrome сам вычисляет своё "Минимум" из
-// непечатаемой области выбранного принтера/драйвера, а это не постоянная
-// величина, так что здесь наше собственное небольшое приближение, без
-// гарантии совпадения с конкретным принтером.
-const PRINT_MARGIN_PRESETS = {
-    default: {top: 15, right: 15, bottom: 15, left: 18, label: "По умолчанию"},
-    none: {top: 0, right: 0, bottom: 0, left: 0, label: "Нет"},
-    minimum: {top: 5, right: 5, bottom: 5, left: 8, label: "Минимум"},
-};
-let activeMarginPreset = "default";
-
-function findPageRule() {
-    for (const sheet of document.styleSheets) {
-        let rules;
-        try {
-            rules = sheet.cssRules;
-        } catch (e) {
-            continue;
-        }
-        for (const rule of rules) {
-            if (rule.type === CSSRule.PAGE_RULE) return rule;
-        }
-    }
-    return null;
-}
-
-// Применение пресета переписывает и экранный padding (через кастомное
-// CSS-свойство --page-margin), и живое правило @page через CSSOM — так что
-// печать с собственным выпадающим списком полей Chrome, оставленным на
-// "По умолчанию", всегда совпадает с тем, какой пресет сейчас выбран здесь,
-// какой бы это ни был.
-function applyMarginPreset(key) {
-    const preset = PRINT_MARGIN_PRESETS[key];
-    if (!preset) return;
-    activeMarginPreset = key;
-    const marginStr = preset.top + "mm " + preset.right + "mm " + preset.bottom + "mm " + preset.left + "mm";
-    document.documentElement.style.setProperty("--page-margin", marginStr);
-    const pageRule = findPageRule();
-    if (pageRule) pageRule.style.margin = marginStr;
-    schedulePaginate();
-}
-
 // Экранный "вид по страницам A4": разбивает поток элементов
 // .sheet-header/.task на визуально отдельные карточки размером со страницу,
 // так что при открытии файла количество печатных страниц видно сразу, без
-// номеров страниц. Чисто экранное удобство — вертикальный бюджет на
-// страницу следует за активным пресетом полей печати выше, а не за
-// постоянной константой.
+// номеров страниц. Чисто экранное удобство, ничего не редактирует.
 let paginateScheduled = false;
 
 function schedulePaginate() {
@@ -337,6 +209,17 @@ function measurePxPerMm(body) {
     return pxPerMm;
 }
 
+// Поля страницы фиксированы на сборке (--page-margin в BASE_CSS) — читаем
+// их же значение из вычисленного стиля, а не держим отдельную JS-таблицу
+// пресетов, чтобы бюджет высоты страницы не мог разойтись с тем, что реально
+// напечатает браузер.
+function getPageMarginMm() {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue("--page-margin");
+    const parts = raw.trim().split(/\\s+/).map(function (v) { return parseFloat(v) || 0; });
+    const [top, right, bottom, left] = parts.length === 4 ? parts : [0, 0, 0, 0];
+    return {top: top, right: right, bottom: bottom, left: left};
+}
+
 function paginate() {
     const body = document.body;
     unwrapPages(body);
@@ -346,8 +229,8 @@ function paginate() {
 
     const pxPerMm = measurePxPerMm(body);
     if (!pxPerMm) return;
-    const activePreset = PRINT_MARGIN_PRESETS[activeMarginPreset];
-    const pageContentHeightMm = 297 - activePreset.top - activePreset.bottom;
+    const margin = getPageMarginMm();
+    const pageContentHeightMm = 297 - margin.top - margin.bottom;
     const pageContentHeightPx = pageContentHeightMm * pxPerMm;
 
     const pages = [[]];
@@ -383,208 +266,7 @@ function paginate() {
     });
 }
 
-// Тулбар уровня всего листа, отдельный от подзадачного .layout-toolbar
-// выше: одна панель в самом верху документа (не привязана ни к одному
-// конкретному заданию). Специально расширяемый — добавляй сюда новую запись
-// для любого будущего инструмента уровня листа (в стиле radio, по форме
-// CONTROL_GROUPS); сам рендеринг менять не придётся.
-const GLOBAL_TOOLBAR_TOOLS = [
-    {
-        id: "print-margins",
-        label: "Поля печати",
-        options: [
-            {value: "default", label: PRINT_MARGIN_PRESETS.default.label},
-            {value: "none", label: PRINT_MARGIN_PRESETS.none.label},
-            {value: "minimum", label: PRINT_MARGIN_PRESETS.minimum.label},
-        ],
-        initial: "default",
-        onSelect: applyMarginPreset,
-    },
-];
-
-function buildGlobalToolbar() {
-    // Тот же гвард на переоткрытие через "Сохранить страницу как", что и у
-    // билдера подзадачного тулбара ниже.
-    if (document.querySelector(".global-toolbar")) return;
-    const bar = document.createElement("div");
-    bar.className = "global-toolbar";
-    GLOBAL_TOOLBAR_TOOLS.forEach(function (tool) {
-        const groupEl = document.createElement("div");
-        groupEl.className = "global-toolbar-group";
-        const labelEl = document.createElement("span");
-        labelEl.className = "global-toolbar-label";
-        labelEl.textContent = tool.label + ":";
-        groupEl.appendChild(labelEl);
-        tool.options.forEach(function (opt) {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.textContent = opt.label;
-            if (opt.value === tool.initial) btn.classList.add("active");
-            btn.addEventListener("click", function () {
-                groupEl.querySelectorAll("button").forEach(function (b) {
-                    b.classList.remove("active");
-                });
-                btn.classList.add("active");
-                tool.onSelect(opt.value);
-            });
-            groupEl.appendChild(btn);
-        });
-        bar.appendChild(groupEl);
-    });
-    document.body.insertBefore(bar, document.body.firstChild);
-}
-
-// Per-row контролы колонок: кнопки "+"/"-", видимые только на hover, на
-// каждой .task-row — позволяют учителю перегруппировать компоненты задания
-// по строкам/колонкам прямо в браузере (см. "Интерактивные элементы вёрстки
-// в браузере" в design-system.md). Иконки один раз скопированы из Lucide
-// (plus.svg/minus.svg, лицензия MIT) как обычные строки — в этом репозитории
-// нет npm/node_modules.
-const ROW_ICONS = {
-    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
-    minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>',
-};
-
-// Перестраивает .task-components задания с нуля: `widths[i]` — сколько
-// последовательных элементов плоского упорядоченного списка `cols` (узлы
-// .task-col задания — никогда не создаются заново, только переносятся к
-// новому родителю) идёт в строку i. Это единственный источник истины о
-// текущей раскладке; оба обработчика кнопок ниже только меняют `widths`,
-// а затем вызывают эту функцию для перерисовки.
-//
-// Инвариант, на который это опирается и который нельзя незаметно сломать:
-// когда у задания есть строка-шапка, её .task-col (помечен data-role="header"
-// в Python) — это всегда cols[0] — строка 0 всегда заполняется с индекса 0
-// вперёд, так что шапка всегда оказывается первой колонкой, помещаемой в
-// строку 0. В неё можно только добавлять ("+" затягивает первый элемент
-// следующей строки), но никогда не выселить через "-" (которая всегда
-// убирает только *последнюю* колонку строки, а шапка никогда не последняя,
-// пока ширина > 1). Если порядок заполнения этой функции когда-нибудь
-// изменится — перепроверь, что этот инвариант всё ещё верен.
-function rebuildTaskRows(container, widths, cols) {
-    container.innerHTML = "";
-    let idx = 0;
-    widths.forEach(function (width, rowIndex) {
-        const rowEl = document.createElement("div");
-        rowEl.className = "task-row";
-        const pct = (100 / width).toFixed(2) + "%";
-        for (let c = 0; c < width; c++) {
-            const col = cols[idx++];
-            col.style.flex = "0 0 " + pct;
-            col.style.maxWidth = pct;
-            rowEl.appendChild(col);
-        }
-        rowEl.appendChild(buildRowControlsEl(container, widths, cols, rowIndex));
-        container.appendChild(rowEl);
-    });
-    schedulePaginate();
-}
-
-function buildRowControlsEl(container, widths, cols, rowIndex) {
-    const wrap = document.createElement("div");
-    wrap.className = "row-controls";
-
-    const addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.title = UI.column_add_title;
-    addBtn.innerHTML = ROW_ICONS.plus;
-    addBtn.disabled = rowIndex === widths.length - 1;
-    addBtn.addEventListener("click", function () {
-        // Затягиваем первый компонент следующей строки как новую колонку
-        // этой строки; если следующая строка теперь пуста — убираем её целиком.
-        widths[rowIndex] += 1;
-        widths[rowIndex + 1] -= 1;
-        if (widths[rowIndex + 1] === 0) widths.splice(rowIndex + 1, 1);
-        rebuildTaskRows(container, widths, cols);
-    });
-    wrap.appendChild(addBtn);
-
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.title = UI.column_remove_title;
-    removeBtn.innerHTML = ROW_ICONS.minus;
-    removeBtn.disabled = widths[rowIndex] === 1;
-    removeBtn.addEventListener("click", function () {
-        // Выселяем последний компонент этой строки в свежую полноширинную
-        // строку в самом конце. Каждая строка после этой сохраняет свою
-        // ширину, так что её содержимое сдвигается на одну позицию — этот
-        // каскад сам получается из учёта ширин, без явного цикла здесь.
-        widths[rowIndex] -= 1;
-        widths.push(1);
-        rebuildTaskRows(container, widths, cols);
-    });
-    wrap.appendChild(removeBtn);
-
-    return wrap;
-}
-
-function initRowControls() {
-    document.querySelectorAll(".task-components").forEach(function (container) {
-        // Тот же гвард на переоткрытие через "Сохранить страницу как", что и
-        // у билдера тулбара ниже — без него повторный запуск на уже
-        // перестроенном DOM заново оборачивал бы строки и задваивал
-        // .row-controls на каждом цикле переоткрытия.
-        if (container.dataset.rowControlsBuilt) return;
-        container.dataset.rowControlsBuilt = "1";
-
-        // Намеренно :scope > .task-row > .task-col, а не row.children —
-        // у перестроенной строки есть ещё и соседний .row-controls, который
-        // иначе ошибочно посчитался бы как лишняя колонка.
-        const cols = Array.from(container.querySelectorAll(":scope > .task-row > .task-col"));
-        if (cols.length <= 1) return;
-        const widths = Array.from(container.querySelectorAll(":scope > .task-row")).map(function (row) {
-            return row.querySelectorAll(":scope > .task-col").length;
-        });
-        rebuildTaskRows(container, widths, cols);
-    });
-}
-
 document.addEventListener("DOMContentLoaded", function () {
-    buildGlobalToolbar();
-    initRowControls();
-    document.querySelectorAll(".layout-toolbar[data-controls]").forEach(function (toolbar) {
-        // Защита от повторной постройки: браузерное "Сохранить страницу как"
-        // захватывает живой DOM, т.е. тулбар, уже наполненный кнопками этим
-        // же скриптом при предыдущей загрузке. Повторное открытие такого
-        // сохранённого файла заново запускает этот скрипт на уже построенном
-        // тулбаре; без этого гварда он дописал бы второй набор кнопок поверх
-        // (а третий — при следующем цикле сохранения/открытия, и так далее).
-        if (toolbar.dataset.built) return;
-        toolbar.dataset.built = "1";
-        const block = toolbar.closest(".task, .task-component");
-        if (!block) return;
-        toolbar.dataset.controls.split(",").forEach(function (key) {
-            const group = CONTROL_GROUPS[key];
-            if (!group) return;
-            const target = block.querySelector(group.target);
-            if (!target) return;
-            const groupEl = document.createElement("div");
-            groupEl.className = "layout-toolbar-group";
-            const labelEl = document.createElement("span");
-            labelEl.className = "layout-toolbar-label";
-            labelEl.textContent = group.label + ":";
-            groupEl.appendChild(labelEl);
-            group.options.forEach(function (opt) {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.textContent = opt.label;
-                const isInitial = group.type === "toggle-visibility"
-                    ? (opt.value === "hide") === (target.style.display === "none")
-                    : target.classList.contains(group.classPrefix + opt.value);
-                if (isInitial) btn.classList.add("active");
-                btn.addEventListener("click", function () {
-                    if (group.type === "toggle-visibility") {
-                        layoutApplyToggleVisibility(target, opt.value, btn);
-                    } else {
-                        layoutApplyRadio(target, group, opt.value, btn);
-                    }
-                });
-                groupEl.appendChild(btn);
-            });
-            toolbar.appendChild(groupEl);
-        });
-    });
-
     paginate();
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(paginate);

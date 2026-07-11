@@ -1,7 +1,7 @@
 """Собирает одно задание и весь HTML-документ из meta.json + заданий."""
 
-from assets import BASE_CSS, KATEX_HEAD, LAYOUT_JS
-from components import COMPONENT_RENDERERS, render_layout_toolbar
+from assets import build_base_css, KATEX_HEAD, LAYOUT_JS
+from components import COMPONENT_RENDERERS
 from render_helpers import esc, LOWER_LETTERS
 from strings import STRINGS, t
 
@@ -97,10 +97,7 @@ def render_task(index, task, is_teacher, lang):
     if not single_component:
         # Вступление на уровне задания (номер + prompt) само по себе является
         # компонентом для целей раскладки — по умолчанию оно получает свою
-        # полноширинную строку 0, как и любой другой компонент, так что
-        # hover-контролы +/- (initRowControls в LAYOUT_JS) могут смёрстить его
-        # с соседней строкой тоже, а не только переставлять "настоящие"
-        # JSON-компоненты после него.
+        # полноширинную строку 0, как и любой другой компонент.
         header_html = render_header_line(f'<span class="task-num">{index}.</span>', task_prompt, task_points, lang)
         row_htmls.append(
             f'<div class="task-row"><div class="task-col" data-role="header" style="flex:0 0 100%;max-width:100%;">{header_html}</div></div>'
@@ -119,7 +116,7 @@ def render_task(index, task, is_teacher, lang):
                 raise ValueError(
                     f"Unknown component type '{ctype}' in task {task.get('id')} (component {idx})"
                 )
-            body_html, answer = renderer(comp, is_teacher, lang)
+            body_html, answer = renderer(comp.get("settings", {}), is_teacher, lang)
 
             comp_prompt = comp.get("prompt", "")
             comp_points = comp.get("points")
@@ -144,12 +141,11 @@ def render_task(index, task, is_teacher, lang):
             if is_teacher and answer:
                 answer_html = f'<div class="answer-block"><strong>{t(lang, "answer_label")}</strong> {esc(answer)}</div>'
 
-            toolbar_html = render_layout_toolbar(comp)
             comp_class = "task-component task-component-lettered" if label else "task-component"
             pct = pct_list[cell_i]
             cell_htmls.append(
                 f'<div class="task-col" style="flex:0 0 {pct:.2f}%;max-width:{pct:.2f}%;">'
-                f'<div class="{comp_class}">{header_html}{body_html}{answer_html}{toolbar_html}</div>'
+                f'<div class="{comp_class}">{header_html}{body_html}{answer_html}</div>'
                 "</div>"
             )
             idx += 1
@@ -167,17 +163,17 @@ def build_document(meta, tasks, is_teacher):
         body.append(render_task(i, task, is_teacher, lang))
     variant = t(lang, "teacher_variant") if is_teacher else t(lang, "student_variant")
     js_lang = lang if lang in STRINGS else "ru"
+    css = build_base_css(meta.get("print_margins", "default"))
     return f"""<!DOCTYPE html>
 <html lang="{js_lang}">
 <head>
 <meta charset="UTF-8">
 <title>{esc(meta.get('title') or t(lang, "default_title"))} — {variant}</title>
 {KATEX_HEAD}
-<style>{BASE_CSS}</style>
+<style>{css}</style>
 </head>
 <body>
 {''.join(body)}
-<script>const WORKSHEET_LANG = "{js_lang}";
-{LAYOUT_JS}</script>
+<script>{LAYOUT_JS}</script>
 </body>
 </html>"""

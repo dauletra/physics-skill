@@ -5,14 +5,16 @@
     {
       "type": "list",
       "answerable": true,
-      "item_style": "matching",
       "prompt": "Установите соответствие между физической величиной и её единицей измерения в СИ.",
-      "items": [
-        {"text": "Скорость", "match": "м/с"},
-        {"text": "Ускорение", "match": "м/с²"},
-        {"text": "Путь", "match": "м"}
-      ],
-      "right_items": ["м", "м/с", "м/с²"]
+      "settings": {
+        "item_style": "matching",
+        "items": [
+          {"text": "Скорость", "match": "м/с"},
+          {"text": "Ускорение", "match": "м/с²"},
+          {"text": "Путь", "match": "м"}
+        ],
+        "right_items": ["м", "м/с", "м/с²"]
+      }
     }
   ]
 }

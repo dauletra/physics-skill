@@ -2,29 +2,34 @@
   "id": "task-07",
   "points": 3,
   "prompt": "На графике представлена зависимость скорости двух тел от времени.",
+  "layout": [[50], 1],
   "components": [
     {
       "type": "visual",
       "answerable": false,
       "prompt": "",
-      "chart_spec": {
-        "chart_type": "line",
-        "x_label": "t, с",
-        "y_label": "υ, м/с",
-        "x_range": [0, 10],
-        "y_range": [0, 20],
-        "series": [
-          {"label": "Тело A", "points": [[0, 0], [5, 10], [10, 20]], "style": "solid"},
-          {"label": "Тело B", "points": [[0, 5], [10, 15]], "style": "dashed"}
-        ]
+      "settings": {
+        "chart_spec": {
+          "chart_type": "line",
+          "x_label": "t, с",
+          "y_label": "υ, м/с",
+          "x_range": [0, 10],
+          "y_range": [0, 20],
+          "series": [
+            {"label": "Тело A", "points": [[0, 0], [5, 10], [10, 20]], "style": "solid"},
+            {"label": "Тело B", "points": [[0, 5], [10, 15]], "style": "dashed"}
+          ]
+        }
       }
     },
     {
       "type": "prompt_response",
       "answerable": true,
       "prompt": "Определите ускорение каждого тела.",
-      "response": "blank",
-      "answer": "a<sub>A</sub> = Δυ/Δt = 20/10 = 2 м/с²; a<sub>B</sub> = 10/10 = 1 м/с²"
+      "settings": {
+        "response": "blank",
+        "answer": "a<sub>A</sub> = Δυ/Δt = 20/10 = 2 м/с²; a<sub>B</sub> = 10/10 = 1 м/с²"
+      }
     }
   ]
 }

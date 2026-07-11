@@ -5,13 +5,15 @@
     {
       "type": "list",
       "answerable": true,
-      "item_style": "statement_bool",
       "prompt": "Отметьте, верны ли утверждения.",
-      "items": [
-        {"text": "Скорость — векторная величина.", "correct": true},
-        {"text": "При равноускоренном движении ускорение равно нулю.", "correct": false},
-        {"text": "1 Н = 1 кг·м/с².", "correct": true}
-      ]
+      "settings": {
+        "item_style": "statement_bool",
+        "items": [
+          {"text": "Скорость — векторная величина.", "correct": true},
+          {"text": "При равноускоренном движении ускорение равно нулю.", "correct": false},
+          {"text": "1 Н = 1 кг·м/с².", "correct": true}
+        ]
+      }
     }
   ]
 }

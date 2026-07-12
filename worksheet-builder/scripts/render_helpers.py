@@ -50,6 +50,6 @@ def answer_block(lang, text):
 
 
 def bank_list(lang, items):
-    """"Слова/категории для выбора: ..." списком (для fill_blank/classify)."""
+    """"Слова/категории для выбора: ..." списком (для fill_text/fill_table)."""
     joined = ", ".join(esc(item) for item in items)
     return f'<div class="bank-list"><strong>{t(lang, "bank_label")}</strong> {joined}</div>'

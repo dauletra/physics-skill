@@ -1,46 +1,54 @@
 from components.list import ListComponent
-from questions.base import Question
+from questions.base import Question, envelope
 from render_helpers import answer_block, blank, esc
 
 
 class ClassifyQuestion(Question):
-    """Классифицировать. `answer` — категория → список объектов (каждый
-    объект `items` встречается ровно в одном списке одной категории)."""
+    """Классифицировать. `category` — инлайн у каждого объекта, значение из
+    `categories`; категория без объектов допустима (категория-дистрактор)."""
 
     type = "classify"
 
-    def __init__(self, items, categories, answer=None, **kwargs):
+    def __init__(self, items, categories, **kwargs):
         super().__init__(**kwargs)
         self.items = items
         self.categories = categories
-        self.answer = answer or {}
 
     def validate(self) -> None:
-        seen = []
-        for values in self.answer.values():
-            seen.extend(values)
-        if sorted(seen) != sorted(self.items):
-            raise ValueError(
-                f"classify: answer values {sorted(seen)} do not partition items {sorted(self.items)}"
-            )
+        if not self.categories:
+            raise ValueError("classify: categories must be non-empty")
+        if not self.items:
+            raise ValueError("classify: items must be non-empty")
+        for i, item in enumerate(self.items):
+            if not isinstance(item, dict) or "text" not in item:
+                raise ValueError(f"classify: items[{i}] must be an object with 'text'")
+            if item.get("category") not in self.categories:
+                raise ValueError(
+                    f"classify: items[{i}].category {item.get('category')!r} not found in categories {self.categories}"
+                )
 
-    def render(self, mode, lang) -> str:
+    def render_body(self, mode, lang) -> str:
         if mode == "teacher":
-            items_html = ListComponent(items=[esc(item) for item in self.items], marker="none", columns="single").render()
-            summary = "; ".join(
-                f"{esc(category)}: {', '.join(esc(v) for v in values)}"
-                for category, values in self.answer.items()
-            )
-            return items_html + answer_block(lang, summary)
-        rows = [f'<span class="tf-line"><span class="tf-statement">{esc(item)}</span>{blank(30)}</span>' for item in self.items]
+            items_html = ListComponent(
+                items=[esc(item["text"]) for item in self.items], marker="none", columns="single"
+            ).render()
+            # Сводка по категориям в авторском порядке `categories`; пустая
+            # категория (дистрактор) показывается прочерком.
+            groups = []
+            for category in self.categories:
+                texts = [item["text"] for item in self.items if item["category"] == category]
+                groups.append(f"{esc(category)}: {', '.join(esc(t) for t in texts) if texts else '—'}")
+            return items_html + answer_block(lang, "; ".join(groups))
+        rows = [
+            f'<span class="tf-line"><span class="tf-statement">{esc(item["text"])}</span>{blank(30)}</span>'
+            for item in self.items
+        ]
         return ListComponent(items=rows, marker="none", columns="single").render()
 
     @classmethod
     def from_dict(cls, data: dict) -> "ClassifyQuestion":
         return cls(
-            label=data.get("label"),
-            points=data.get("points"),
             items=data["items"],
             categories=data["categories"],
-            answer=data.get("answer", {}),
+            **envelope(data),
         )

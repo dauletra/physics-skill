@@ -1,8 +1,7 @@
 {
   "id": "task-07",
   "points": 3,
-  "layout": [1, [50], 1, 1],
-  "items": [
+  "blocks": [
     { "type": "text", "body": "На графике представлена зависимость скорости двух тел от времени." },
     { "type": "graph", "x_label": "t, с", "y_label": "υ, м/с", "x_range": [0, 10], "y_range": [0, 20],
       "series": [

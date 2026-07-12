@@ -1,11 +1,10 @@
 """Собирает одно задание и весь HTML-документ из meta.json + заданий."""
 
 from assets import build_base_css, KATEX_HEAD, LAYOUT_JS
-from layout import partition_layout
 from questions.base import Question
 from render_helpers import esc, LOWER_LETTERS
 from strings import STRINGS, t
-from task import Task
+from task import Part, Task
 
 
 def render_header(meta):
@@ -33,15 +32,14 @@ def render_header(meta):
 def render_task_number_line(index, points, lang):
     # Номер задания — всегда своя отдельная строка сверху, с баллами задания,
     # если они заданы. Описательный текст задания — не часть этой строки: он
-    # живёт как обычный `text`-элемент в `Task.items` (см. task-schema.md).
+    # живёт как обычный `text`-блок в `blocks` (см. task-schema.md).
     points_html = f' <span class="task-points">({esc(points)} {t(lang, "points_suffix")})</span>' if points else ""
     return f'<div class="task-header"><span class="task-num">{index}.</span>{points_html}</div>'
 
 
 def render_label_line(label, points, lang):
-    # Маленькая строка только из буквы вопроса и/или его баллов — без текста
-    # (текст вопроса, если он есть, — отдельный `text`-элемент перед этим
-    # вопросом в `items`, никак не связанный с этой строкой на уровне разметки).
+    # Маленькая строка только из буквы подзадания и/или его баллов — без
+    # текста (условие подзадания — обычный `text`-блок внутри `part`).
     # Пусто, если ни буквы, ни баллов нет.
     label_html = f'<span class="subtask-label">{esc(label)})</span>' if label else ""
     points_html = f' <span class="task-points">({esc(points)} {t(lang, "points_suffix")})</span>' if points else ""
@@ -50,63 +48,42 @@ def render_label_line(label, points, lang):
     return f'<div class="task-header">{label_html}{points_html}</div>'
 
 
-def render_task(index, task: Task, is_teacher, lang):
-    items = task.items
-    if not items:
-        raise ValueError(f"Task {task.id} has no items")
+def assign_part_labels(parts):
+    # Буква = part, по порядку следования. Явный `label` побеждает; авто-буквы
+    # пропускают любое значение, уже занятое явным label (см. task-schema.md).
+    explicit_labels = {part.label for part in parts if part.label}
+    auto_letters = iter(l for l in LOWER_LETTERS if l not in explicit_labels)
+    for part in parts:
+        if not part.label:
+            part.label = next(auto_letters)
 
+
+def render_leaf(block, mode, lang):
+    body = block.render(mode, lang) if isinstance(block, Question) else block.render()
+    return f'<div class="task-block">{body}</div>'
+
+
+def render_part(part: Part, mode, lang):
+    header_html = render_label_line(part.label, part.points, lang)
+    inner = "".join(render_leaf(block, mode, lang) for block in part.blocks)
+    return f'<div class="task-part">{header_html}{inner}</div>'
+
+
+def render_task(index, task: Task, is_teacher, lang):
     mode = "teacher" if is_teacher else "student"
 
-    question_positions = [i for i, it in enumerate(items) if isinstance(it, Question)]
-    # Буквы имеют смысл, только когда отвечать нужно больше чем на один вопрос
-    # — одинокий вопрос читается как простое обычное задание, без буквы, ЕСЛИ
-    # ТОЛЬКО автор явно не задал на нём `label`, а это всегда побеждает.
-    # Автогенерируемые буквы пропускают любое значение, уже занятое явным
-    # `label` где-то ещё в этом задании (см. "Буквы и баллы" в task-schema.md).
-    explicit_labels = {items[pos].label for pos in question_positions if items[pos].label}
-    auto_letters = iter(l for l in LOWER_LETTERS if l not in explicit_labels)
-    if len(question_positions) > 1 or explicit_labels:
-        for pos in question_positions:
-            question = items[pos]
-            if not question.label:
-                question.label = next(auto_letters)
+    assign_part_labels([b for b in task.blocks if isinstance(b, Part)])
 
-    task_points = task.points
     # Номер задания — всегда своя отдельная строка сверху (см.
-    # render_task_number_line): описательный текст, если есть, живёт как
-    # обычный `text`-элемент в items, а не мержится с этой строкой.
-    rows = partition_layout(items, task.layout)
-    header_html = render_task_number_line(index, task_points, lang)
-    row_htmls = [
-        f'<div class="task-row"><div class="task-col" data-role="header" style="flex:0 0 100%;max-width:100%;">{header_html}</div></div>'
-    ]
+    # render_task_number_line).
+    block_htmls = [render_task_number_line(index, task.points, lang)]
+    for block in task.blocks:
+        if isinstance(block, Part):
+            block_htmls.append(render_part(block, mode, lang))
+        else:
+            block_htmls.append(render_leaf(block, mode, lang))
 
-    idx = 0
-    for row in rows:
-        width = row if isinstance(row, int) else len(row)
-        pct_list = [100.0 / width] * width if isinstance(row, int) else row
-        cell_htmls = []
-        for cell_i in range(width):
-            item = items[idx]
-
-            if isinstance(item, Question):
-                header_html = render_label_line(item.label, item.points, lang)
-                body_html = item.render(mode, lang)
-                comp_class = "task-component task-component-lettered" if item.label else "task-component"
-                cell_html = f'<div class="{comp_class}">{header_html}{body_html}</div>'
-            else:
-                cell_html = f'<div class="task-component">{item.render()}</div>'
-
-            pct = pct_list[cell_i]
-            cell_htmls.append(
-                f'<div class="task-col" style="flex:0 0 {pct:.2f}%;max-width:{pct:.2f}%;">{cell_html}</div>'
-            )
-            idx += 1
-        row_htmls.append(f'<div class="task-row">{"".join(cell_htmls)}</div>')
-
-    components_html = f'<div class="task-components">{"".join(row_htmls)}</div>'
-
-    return f'<div class="task">{components_html}</div>'
+    return f'<div class="task"><div class="task-blocks">{"".join(block_htmls)}</div></div>'
 
 
 def build_document(meta, tasks, is_teacher):

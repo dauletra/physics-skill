@@ -1,7 +1,7 @@
 """Генерация SVG-графиков (`chart_spec`), используемых компонентом `graph`
-(`components/graph.py`) и `GraphQuestion` (`questions/graph_question.py`).
+(`components/graph.py`) и `PlotQuestion` (`questions/plot.py`).
 
-Иллюстрации/схемы (`svg_snippet`/`raw_svg`) намеренно вне scope v2 — см.
+Иллюстрации/схемы (`svg_snippet`/`raw_svg`) намеренно вне scope — см.
 "Явно вне scope" в references/task-schema.md."""
 
 from render_helpers import esc

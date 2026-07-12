@@ -85,24 +85,24 @@ body {
     background: repeating-linear-gradient(45deg, #fff, #fff 4px, #f2f2f2 4px, #f2f2f2 5px);
 }
 .bank-list { margin-top: 2mm; font-size: 11pt; }
-.matching-columns { display: flex; gap: 12mm; margin-top: 2mm; }
-.matching-columns .list-component { flex: 1; }
-/* Разметка ListComponent (уровень 2, components/list.py) — единый визуальный
-   язык для choice/true_false/ranking/classify/matching и обычных списков, см.
-   "Уровень 2: чистые компоненты" в task-schema.md. */
+.match-columns { display: flex; gap: 12mm; margin-top: 2mm; }
+.match-columns .list-component { flex: 1; }
+/* Разметка ListComponent (components/list.py) — единый визуальный язык для
+   choice/true_false/rank/classify/match и обычных списков, см. "Компоненты"
+   в task-schema.md. */
 .list-component { margin-top: 2mm; }
 .list-row { display: flex; align-items: baseline; gap: 2mm; padding: 1.2mm 2mm; }
 .list-marker { font-weight: bold; flex: 0 0 auto; }
 .list-content { flex: 1 1 auto; min-width: 0; }
 /* Зебра — только для одиночной колонки (single); строится по всем видам
-   list-контента одинаково, а не только для true_false/ranking, как раньше. */
+   list-контента одинаково. */
 .list-component.cols-single .list-row:nth-child(even) { background: #f2f2f2; }
 .list-component.cols-two { display: block; column-count: 2; column-gap: 8mm; }
 .list-component.cols-two .list-row { display: block; margin-bottom: 1.5mm; break-inside: avoid-column; }
 .list-component.cols-inline { display: block; }
 .list-component.cols-inline .list-row { display: inline-block; margin-right: 6mm; }
 /* Внутренняя разбивка строки на "утверждение слева / отметка справа" —
-   переиспользуется true_false.py/ranking.py/classify.py внутри их item-строк
+   переиспользуется true_false.py/rank.py/classify.py внутри их item-строк
    (ListComponent сам об этом не знает — это содержимое `list-content`). */
 .tf-line { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 4mm; }
 .tf-statement { flex: 1; }
@@ -125,19 +125,19 @@ body {
 .fill-blank { display: inline-block; min-width: 18mm; border-bottom: 1px solid #000; margin: 0 1mm; text-align: center; }
 .fill-blank.answered { border-bottom: none; font-weight: bold; text-decoration: underline; }
 .subtask-label { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
-/* Общая раскладка компонентов задания по строкам/колонкам (см. `layout` в
-   task-schema.md), заменяет старую фиксированную пару "текст | один визуал".
-   Ширина колонки задаётся инлайновым `style="flex:0 0 N%"` на каждом
-   .task-col (проставляется в Python из `layout`), а не фиксированным набором
-   CSS-классов, так что работает любое процентное разбиение, а не только
-   горстка пресетов. Раскладка целиком решается на сборке — в браузере её
-   больше нельзя перегруппировать (никаких hover-контролов). */
-.task-components { }
-.task-row { display: flex; gap: 6mm; align-items: flex-start; margin-bottom: 2mm; }
-.task-row:last-child { margin-bottom: 0; }
-.task-col { min-width: 0; }
-.task-col svg.visual-svg { display: block; width: 100%; height: auto; }
-.task-component-lettered { margin: 3mm 0 3mm 6mm; }
+/* Блоки задания идут друг под другом на всю ширину; многоколоночная
+   раскладка (`layout`) зарезервирована и пока не рендерится (см.
+   task-schema.md). График при этом не растягивается на всю страницу:
+   у svg.visual-svg фиксированный max-width — его viewBox/шрифты
+   откалиброваны под боковую колонку, а не под полную ширину листа
+   (см. комментарий в build_chart_svg, scripts/visuals.py). Селектор
+   намеренно узкий (svg.visual-svg, не голый svg) — чтобы не задевать
+   маленькие svg-иконки легенды графика. */
+.task-block { margin-bottom: 2mm; }
+.task-block:last-child { margin-bottom: 0; }
+.task-block svg.visual-svg { display: block; width: 100%; max-width: 88mm; height: auto; }
+/* Подзадание (`part`) — с небольшим отступом от общего условия задания. */
+.task-part { margin: 3mm 0 3mm 6mm; }
 .chart-wrap { margin-top: 2mm; }
 .chart-legend { display: flex; gap: 4mm; font-size: 8pt; margin-top: 1mm; flex-wrap: wrap; }
 body.page-view { background: #ddd; width: auto; padding: 10mm 0; }

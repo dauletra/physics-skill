@@ -10,7 +10,7 @@ worksheet-teacher.html. Вторая форма пишет <workspace_dir>/task-
 только с этим одним заданием — для дешёвой визуальной проверки без полной пересборки.
 
 Сам конвейер рендеринга живёт в соседних модулях этой папки (assets.py,
-strings.py, render_helpers.py, visuals.py, layout.py, task.py, document.py,
+strings.py, render_helpers.py, visuals.py, task.py, document.py,
 components/, questions/) — этот файл — просто CLI-точка входа.
 """
 import argparse

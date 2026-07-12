@@ -65,6 +65,7 @@ node_modules/
 
 # Generated worksheet previews and exports
 preview-worksheet/
+molecular-physics-10th-grade/
 *.preview.html
 **/output/
 *.pdf

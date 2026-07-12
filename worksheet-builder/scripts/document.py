@@ -30,22 +30,24 @@ def render_header(meta):
     return "".join(parts)
 
 
-def render_header_line(num_html, prompt_component, points, lang):
-    # Номер/буква и текст prompt сидят на одной строке (num_html не оборачивается,
-    # поэтому строки переноса виснут с отступом под текстом, а не под номером);
-    # баллы рендерятся инлайн в конце текста, а не рядом с номером — по правилам
-    # нумерации из design-system.md. `prompt_component` — TextComponent (или None,
-    # если у этой строки заголовка вообще нет вопроса) — берём уже готовый,
-    # эскейпнутый `.body`, эскейпинг здесь больше не делается повторно.
+def render_task_number_line(index, points, lang):
+    # Номер задания — всегда своя отдельная строка сверху, с баллами задания,
+    # если они заданы. Описательный текст задания — не часть этой строки: он
+    # живёт как обычный `text`-элемент в `Task.items` (см. task-schema.md).
     points_html = f' <span class="task-points">({esc(points)} {t(lang, "points_suffix")})</span>' if points else ""
-    body = prompt_component.body if prompt_component else ""
-    if body:
-        prompt_html = f'<p class="task-prompt">{body}{points_html}</p>'
-    elif points_html:
-        prompt_html = f'<p class="task-prompt">{points_html.strip()}</p>'
-    else:
-        prompt_html = ""
-    return f'<div class="task-header">{num_html}{prompt_html}</div>'
+    return f'<div class="task-header"><span class="task-num">{index}.</span>{points_html}</div>'
+
+
+def render_label_line(label, points, lang):
+    # Маленькая строка только из буквы вопроса и/или его баллов — без текста
+    # (текст вопроса, если он есть, — отдельный `text`-элемент перед этим
+    # вопросом в `items`, никак не связанный с этой строкой на уровне разметки).
+    # Пусто, если ни буквы, ни баллов нет.
+    label_html = f'<span class="subtask-label">{esc(label)})</span>' if label else ""
+    points_html = f' <span class="task-points">({esc(points)} {t(lang, "points_suffix")})</span>' if points else ""
+    if not label_html and not points_html:
+        return ""
+    return f'<div class="task-header">{label_html}{points_html}</div>'
 
 
 def render_task(index, task: Task, is_teacher, lang):
@@ -70,19 +72,14 @@ def render_task(index, task: Task, is_teacher, lang):
                 question.label = next(auto_letters)
 
     task_points = task.points
-    # Единственный вопрос без раздельных компонентов-стимулов читается ровно
-    # как сегодняшнее простое плоское задание: его собственные prompt/points
-    # сливаются в одну строку заголовка с номером задания, вместо отдельной
-    # строки-заголовка задания над одиноким вопросом.
-    single_item_question = len(items) == 1 and isinstance(items[0], Question)
-
+    # Номер задания — всегда своя отдельная строка сверху (см.
+    # render_task_number_line): описательный текст, если есть, живёт как
+    # обычный `text`-элемент в items, а не мержится с этой строкой.
     rows = partition_layout(items, task.layout)
-    row_htmls = []
-    if not single_item_question:
-        header_html = render_header_line(f'<span class="task-num">{index}.</span>', None, task_points, lang)
-        row_htmls.append(
-            f'<div class="task-row"><div class="task-col" data-role="header" style="flex:0 0 100%;max-width:100%;">{header_html}</div></div>'
-        )
+    header_html = render_task_number_line(index, task_points, lang)
+    row_htmls = [
+        f'<div class="task-row"><div class="task-col" data-role="header" style="flex:0 0 100%;max-width:100%;">{header_html}</div></div>'
+    ]
 
     idx = 0
     for row in rows:
@@ -93,18 +90,7 @@ def render_task(index, task: Task, is_teacher, lang):
             item = items[idx]
 
             if isinstance(item, Question):
-                if single_item_question:
-                    num_html = f'<span class="task-num">{index}.</span>'
-                    merged_points = item.points if item.points is not None else task_points
-                    header_html = render_header_line(num_html, item.prompt, merged_points, lang)
-                elif item.label:
-                    header_html = render_header_line(
-                        f'<span class="subtask-label">{esc(item.label)})</span>', item.prompt, item.points, lang
-                    )
-                elif item.prompt.body or item.points:
-                    header_html = render_header_line("", item.prompt, item.points, lang)
-                else:
-                    header_html = ""
+                header_html = render_label_line(item.label, item.points, lang)
                 body_html = item.render(mode, lang)
                 comp_class = "task-component task-component-lettered" if item.label else "task-component"
                 cell_html = f'<div class="{comp_class}">{header_html}{body_html}</div>'

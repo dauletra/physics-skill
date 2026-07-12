@@ -5,7 +5,7 @@ from strings import t
 
 class OpenQuestion(Question):
     """Открытый вопрос (развёрнутый/короткий), "найти и исправить ошибку" —
-    тот же класс, отличие только в содержимом `prompt`."""
+    тот же класс, отличие только в предшествующем `text`-элементе задания."""
 
     type = "open"
 
@@ -28,7 +28,6 @@ class OpenQuestion(Question):
     @classmethod
     def from_dict(cls, data: dict) -> "OpenQuestion":
         return cls(
-            prompt=data.get("prompt", ""),
             label=data.get("label"),
             points=data.get("points"),
             response=data.get("response", "none"),

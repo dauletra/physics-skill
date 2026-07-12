@@ -41,7 +41,6 @@ class MatchingQuestion(Question):
     @classmethod
     def from_dict(cls, data: dict) -> "MatchingQuestion":
         return cls(
-            prompt=data.get("prompt", ""),
             label=data.get("label"),
             points=data.get("points"),
             left=data["left"],

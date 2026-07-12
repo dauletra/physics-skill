@@ -77,7 +77,6 @@ body {
 .task-header { display: flex; align-items: baseline; gap: 2mm; margin-bottom: 2mm; }
 .task-num { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
 .task-points { font-size: 9pt; color: #333; }
-.task-prompt { flex: 1 1 auto; min-width: 0; margin: 0; }
 .solution-area { margin-top: 2mm; }
 .solution-line { border-bottom: 1px dotted #000; height: 7mm; }
 .answer-line { display: inline-block; min-width: 40mm; border-bottom: 1px solid #000; margin-left: 2mm; }

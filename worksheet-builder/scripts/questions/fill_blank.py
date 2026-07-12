@@ -49,7 +49,6 @@ class FillBlankTextQuestion(Question):
     @classmethod
     def from_dict(cls, data: dict) -> "FillBlankTextQuestion":
         return cls(
-            prompt=data.get("prompt", ""),
             label=data.get("label"),
             points=data.get("points"),
             template=data["template"],
@@ -97,7 +96,6 @@ class FillBlankTableQuestion(Question):
     @classmethod
     def from_dict(cls, data: dict) -> "FillBlankTableQuestion":
         return cls(
-            prompt=data.get("prompt", ""),
             label=data.get("label"),
             points=data.get("points"),
             headers=data["headers"],

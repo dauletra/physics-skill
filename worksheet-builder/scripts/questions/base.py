@@ -4,19 +4,13 @@
 
 Буква (`label`) вычисляется и мутируется в `document.py` (сборка задания), не
 самим классом — вопрос только знает, что с ней делать в своей строке
-заголовка. Строку заголовка (номер/буква + prompt + баллы) тоже строит
-`document.py` через `label`/`prompt`/`points` этого объекта; `render()`
-отдаёт только тело/ответ под этой строкой.
-
-`prompt` хранится как `TextComponent`, не голая строка — тот же примитив,
-что рендерит любой другой текстовый контент (эскейпинг делается один раз,
-здесь, через `TextComponent.from_dict`), а не bespoke `esc()`-вызов внутри
-`document.py`."""
+заголовка. `label`/`points` — чистая метаданные (для буквы и баллов), не
+текст: описательный текст вопроса не хранится на объекте `Question` вообще —
+это обычный `text`-элемент в `Task.items`, идущий перед этим вопросом, как
+любой другой элемент уровня 2 (см. "Буквы и баллы" в task-schema.md)."""
 
 from abc import ABC, abstractmethod
 from typing import ClassVar, Literal, Optional
-
-from components.text import TextComponent
 
 RenderMode = Literal["student", "teacher"]
 
@@ -24,8 +18,7 @@ RenderMode = Literal["student", "teacher"]
 class Question(ABC):
     type: ClassVar[str]
 
-    def __init__(self, prompt: str = "", label: Optional[str] = None, points: Optional[int] = None):
-        self.prompt = TextComponent.from_dict({"body": prompt})
+    def __init__(self, label: Optional[str] = None, points: Optional[int] = None):
         self.label = label
         self.points = points
 

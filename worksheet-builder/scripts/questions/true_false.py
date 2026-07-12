@@ -46,7 +46,6 @@ class TrueFalseQuestion(Question):
     @classmethod
     def from_dict(cls, data: dict) -> "TrueFalseQuestion":
         return cls(
-            prompt=data.get("prompt", ""),
             label=data.get("label"),
             points=data.get("points"),
             statements=data["statements"],

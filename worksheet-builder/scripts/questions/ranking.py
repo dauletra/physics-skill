@@ -40,7 +40,6 @@ class RankingQuestion(Question):
     @classmethod
     def from_dict(cls, data: dict) -> "RankingQuestion":
         return cls(
-            prompt=data.get("prompt", ""),
             label=data.get("label"),
             points=data.get("points"),
             items=data["items"],

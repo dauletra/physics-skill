@@ -41,7 +41,6 @@ class ChoiceQuestion(Question):
     @classmethod
     def from_dict(cls, data: dict) -> "ChoiceQuestion":
         return cls(
-            prompt=data.get("prompt", ""),
             label=data.get("label"),
             points=data.get("points"),
             options=data["options"],

@@ -1,6 +1,8 @@
-"""Генерация SVG-графиков (`chart_spec`) и библиотека сниппетов-иллюстраций
-(`svg_snippet`), используемых форматом компонента `visual` (см. components.py)."""
-import math
+"""Генерация SVG-графиков (`chart_spec`), используемых компонентом `graph`
+(`components/graph.py`) и `GraphQuestion` (`questions/graph_question.py`).
+
+Иллюстрации/схемы (`svg_snippet`/`raw_svg`) намеренно вне scope v2 — см.
+"Явно вне scope" в references/task-schema.md."""
 
 from render_helpers import esc
 
@@ -145,66 +147,3 @@ def build_chart_svg(spec):
         legend_html = f'<div class="chart-legend">{"".join(chips)}</div>'
 
     return f'<div class="chart-wrap">{svg}{legend_html}</div>'
-
-
-# --- Библиотека SVG-сниппетов для типовых иллюстраций ----------------------
-
-def _snippet_inclined_plane(params):
-    angle = params.get("angle", 30)
-    mass_label = esc(params.get("mass_label", "m"))
-
-    rad = math.radians(angle)
-    base_len = 220
-    height = base_len * math.tan(rad)
-    height = min(height, 140)
-    ax, ay = 20, 160
-    bx, by = ax + base_len, ay
-    cx, cy = ax, ay - height
-    return (
-        '<svg class="visual-svg" viewBox="0 0 260 190" xmlns="http://www.w3.org/2000/svg" '
-        'font-family="PT Sans, Segoe UI, Verdana, Arial, sans-serif">'
-        f'<polygon points="{ax},{ay} {bx},{by} {cx},{cy}" fill="none" stroke="#000" stroke-width="1.5"/>'
-        f'<rect x="{(ax+bx)/2-14}" y="{(ay+cy)/2-40}" width="26" height="18" '
-        f'fill="none" stroke="#000" stroke-width="1.5" '
-        f'transform="rotate(-{angle} {(ax+bx)/2} {(ay+cy)/2-31})"/>'
-        f'<text x="{(ax+bx)/2+16}" y="{(ay+cy)/2-30}" font-size="11">{mass_label}</text>'
-        f'<text x="{ax+30}" y="{ay-8}" font-size="11">{angle}&#176;</text>'
-        "</svg>"
-    )
-
-
-def _snippet_simple_circuit(params):
-    r_label = esc(params.get("resistor_label", "R"))
-    v_label = esc(params.get("source_label", "ε"))
-    return (
-        '<svg class="visual-svg" viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg" '
-        'font-family="PT Sans, Segoe UI, Verdana, Arial, sans-serif">'
-        '<rect x="20" y="20" width="180" height="100" fill="none" stroke="#000" stroke-width="1.5"/>'
-        '<rect x="85" y="10" width="50" height="20" fill="#fff" stroke="#000" stroke-width="1.5"/>'
-        f'<text x="110" y="24" font-size="11" text-anchor="middle">{r_label}</text>'
-        '<line x1="20" y1="60" x2="20" y2="80" stroke="#000" stroke-width="2.5"/>'
-        '<line x1="14" y1="65" x2="26" y2="65" stroke="#000" stroke-width="1.5"/>'
-        f'<text x="30" y="74" font-size="11">{v_label}</text>'
-        "</svg>"
-    )
-
-
-SVG_SNIPPETS = {
-    "inclined_plane": _snippet_inclined_plane,
-    "simple_circuit": _snippet_simple_circuit,
-}
-
-
-def _resolve_svg(task, snippet_key, raw_key):
-    if snippet_key in task:
-        name = task[snippet_key]["name"]
-        params = task[snippet_key].get("params", {})
-        if name not in SVG_SNIPPETS:
-            raise ValueError(
-                f"Unknown {snippet_key} '{name}'. Available: {list(SVG_SNIPPETS)}. "
-                "Use raw_svg instead, or add a generator to SVG_SNIPPETS."
-            )
-        return SVG_SNIPPETS[name](params)
-    if raw_key in task:
-        return task[raw_key]
-    return None

@@ -1,20 +1,11 @@
 {
   "id": "task-03",
   "points": 3,
-  "components": [
-    {
-      "type": "list",
-      "answerable": true,
+  "items": [
+    { "type": "matching",
       "prompt": "Установите соответствие между физической величиной и её единицей измерения в СИ.",
-      "settings": {
-        "item_style": "matching",
-        "items": [
-          {"text": "Скорость", "match": "м/с"},
-          {"text": "Ускорение", "match": "м/с²"},
-          {"text": "Путь", "match": "м"}
-        ],
-        "right_items": ["м", "м/с", "м/с²"]
-      }
-    }
+      "left": ["Скорость", "Ускорение", "Путь"],
+      "right": ["м", "м/с", "м/с²"],
+      "pairs": {"0": 1, "1": 2, "2": 0} }
   ]
 }

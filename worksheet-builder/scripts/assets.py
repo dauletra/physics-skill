@@ -85,29 +85,44 @@ body {
     margin-top: 2mm; padding: 2mm 3mm; border: 1px dashed #000; font-size: 11pt;
     background: repeating-linear-gradient(45deg, #fff, #fff 4px, #f2f2f2 4px, #f2f2f2 5px);
 }
+.bank-list { margin-top: 2mm; font-size: 11pt; }
 .matching-columns { display: flex; gap: 12mm; margin-top: 2mm; }
-.matching-columns ol { margin: 0; padding-left: 6mm; }
-.matching-columns li { margin-bottom: 1.5mm; }
-.tf-row { display: flex; align-items: center; gap: 4mm; padding: 1.2mm 2mm; }
-.tf-row:nth-child(even) { background: #f2f2f2; }
-.tf-row .tf-statement { flex: 1; }
-.tf-box { display: inline-flex; align-items: center; gap: 1.5mm; font-size: 10pt; }
+.matching-columns .list-component { flex: 1; }
+/* Разметка ListComponent (уровень 2, components/list.py) — единый визуальный
+   язык для choice/true_false/ranking/classify/matching и обычных списков, см.
+   "Уровень 2: чистые компоненты" в task-schema.md. */
+.list-component { margin-top: 2mm; }
+.list-row { display: flex; align-items: baseline; gap: 2mm; padding: 1.2mm 2mm; }
+.list-marker { font-weight: bold; flex: 0 0 auto; }
+.list-content { flex: 1 1 auto; min-width: 0; }
+/* Зебра — только для одиночной колонки (single); строится по всем видам
+   list-контента одинаково, а не только для true_false/ranking, как раньше. */
+.list-component.cols-single .list-row:nth-child(even) { background: #f2f2f2; }
+.list-component.cols-two { display: block; column-count: 2; column-gap: 8mm; }
+.list-component.cols-two .list-row { display: block; margin-bottom: 1.5mm; break-inside: avoid-column; }
+.list-component.cols-inline { display: block; }
+.list-component.cols-inline .list-row { display: inline-block; margin-right: 6mm; }
+/* Внутренняя разбивка строки на "утверждение слева / отметка справа" —
+   переиспользуется true_false.py/ranking.py/classify.py внутри их item-строк
+   (ListComponent сам об этом не знает — это содержимое `list-content`). */
+.tf-line { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 4mm; }
+.tf-statement { flex: 1; }
+.tf-box { display: inline-flex; align-items: center; gap: 1.5mm; font-size: 10pt; white-space: nowrap; }
 .tf-square {
     display: inline-block; width: 4.5mm; height: 4.5mm; border: 1.3px solid #000;
     text-align: center; line-height: 4.2mm; font-weight: bold; font-size: 9pt;
 }
-.rank-row { display: flex; align-items: center; justify-content: space-between; gap: 4mm; padding: 1.2mm 2mm; }
-.rank-row:nth-child(even) { background: #f2f2f2; }
-.rank-statement { flex: 1; }
 .rank-square {
     display: inline-block; flex: 0 0 auto; width: 4.5mm; height: 4.5mm; border: 1.3px solid #000;
     text-align: center; line-height: 4.2mm; font-weight: bold; font-size: 9pt;
 }
-.fill-table { border-collapse: collapse; width: 100%; margin-top: 2mm; }
-.fill-table th, .fill-table td {
+.mc-marker { display: inline-block; width: 4mm; text-align: center; font-weight: bold; }
+.mc-correct { font-weight: bold; }
+.table-component { border-collapse: collapse; width: 100%; margin-top: 2mm; }
+.table-component th, .table-component td {
     border: 1px solid #000; padding: 1.5mm 2.5mm; text-align: center; font-size: 11pt;
 }
-.fill-table th { background: #eee; }
+.table-component th { background: #eee; }
 .fill-blank { display: inline-block; min-width: 18mm; border-bottom: 1px solid #000; margin: 0 1mm; text-align: center; }
 .fill-blank.answered { border-bottom: none; font-weight: bold; text-decoration: underline; }
 .subtask-label { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
@@ -124,18 +139,8 @@ body {
 .task-col { min-width: 0; }
 .task-col svg.visual-svg { display: block; width: 100%; height: auto; }
 .task-component-lettered { margin: 3mm 0 3mm 6mm; }
-.task-component > ul, .task-component > ol { margin: 2mm 0 0 0; padding-left: 6mm; }
 .chart-wrap { margin-top: 2mm; }
 .chart-legend { display: flex; gap: 4mm; font-size: 8pt; margin-top: 1mm; flex-wrap: wrap; }
-.illustration-wrap { margin-top: 2mm; }
-.illustration-blank { min-height: 30mm; border: 1px dashed #999; margin-top: 2mm; }
-.mc-options { margin-top: 2mm; display: flex; flex-direction: column; gap: 1.5mm; }
-.mc-options.mc-layout-two-column { display: block; column-count: 2; column-gap: 8mm; }
-.mc-options.mc-layout-two-column .mc-option { display: block; margin-bottom: 1.5mm; break-inside: avoid-column; }
-.mc-options.mc-layout-inline { display: block; }
-.mc-options.mc-layout-inline .mc-option { display: inline-block; margin-right: 6mm; }
-.mc-marker { display: inline-block; width: 4mm; text-align: center; font-weight: bold; }
-.mc-correct { font-weight: bold; }
 body.page-view { background: #ddd; width: auto; padding: 10mm 0; }
 .a4-page {
     /* Полный лист A4 (210mm x 297mm) с настоящими полями, совпадающими с

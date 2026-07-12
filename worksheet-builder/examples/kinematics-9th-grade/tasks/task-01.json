@@ -1,15 +1,10 @@
 {
   "id": "task-01",
   "points": 2,
-  "components": [
-    {
-      "type": "prompt_response",
-      "answerable": true,
+  "items": [
+    { "type": "open",
       "prompt": "Автомобиль движется равномерно со скоростью υ = 72 км/ч. Какой путь он пройдёт за t = 15 мин?",
-      "settings": {
-        "response": "lines:4",
-        "answer": "υ = 20 м/с, t = 900 с, s = υt = 20 * 900 = 18000 м = 18 км"
-      }
-    }
+      "response": "lines:4",
+      "answer": "υ = 20 м/с, t = 900 с, s = υt = 20 * 900 = 18000 м = 18 км" }
   ]
 }

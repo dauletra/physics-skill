@@ -1,19 +1,14 @@
 {
   "id": "task-04",
   "points": 2,
-  "components": [
-    {
-      "type": "list",
-      "answerable": true,
+  "items": [
+    { "type": "true_false",
       "prompt": "Отметьте, верны ли утверждения.",
-      "settings": {
-        "item_style": "statement_bool",
-        "items": [
-          {"text": "Скорость — векторная величина.", "correct": true},
-          {"text": "При равноускоренном движении ускорение равно нулю.", "correct": false},
-          {"text": "1 Н = 1 кг·м/с².", "correct": true}
-        ]
-      }
-    }
+      "statements": [
+        "Скорость — векторная величина.",
+        "При равноускоренном движении ускорение равно нулю.",
+        "1 Н = 1 кг·м/с²."
+      ],
+      "correct": {"0": true, "1": false, "2": true} }
   ]
 }

@@ -9,6 +9,7 @@ STRINGS = {
         "full_name": "Фамилия Имя:",
         "grade_suffix": "класс",
         "answer_label": "Ответ:",
+        "bank_label": "Слова/категории для выбора:",
         "true_label": "Верно",
         "false_label": "Неверно",
         "points_suffix": "б.",

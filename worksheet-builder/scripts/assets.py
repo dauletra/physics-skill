@@ -138,11 +138,10 @@ body {
 .task-block svg.visual-svg { display: block; width: 100%; max-width: 88mm; height: auto; }
 /* Подзадание (`part`) — с небольшим отступом от общего условия задания. */
 .task-part { margin: 3mm 0 3mm 6mm; }
-/* Layout-контейнер `row` — дети стоят в одну строку (см. task-schema.md).
-   Ширина колонки приходит инлайновым flex-basis из document.py (render_row):
-   calc(N% - доля gap), чтобы ширины в сумме 100% не переполняли строку с
-   учётом gap. Сам gap здесь должен совпадать с ROW_GAP_MM в document.py. */
-.task-row { display: flex; gap: 6mm; align-items: flex-start; margin-bottom: 2mm; }
+/* Layout-контейнер `row` — дети стоят в одну строку и делят её поровну
+   (см. task-schema.md). Грид с равными колонками сам учитывает gap —
+   никаких инлайновых ширин из Python. */
+.task-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6mm; align-items: start; margin-bottom: 2mm; }
 .task-row:last-child { margin-bottom: 0; }
 .task-col { min-width: 0; }
 .task-col .task-part { margin-left: 0; }

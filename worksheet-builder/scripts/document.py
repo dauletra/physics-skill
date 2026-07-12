@@ -6,8 +6,6 @@ from render_helpers import esc, LOWER_LETTERS
 from strings import STRINGS, t
 from task import iter_flat, Part, Row, Task
 
-ROW_GAP_MM = 6.0  # должен совпадать с `gap` у .task-row в BASE_CSS
-
 
 def render_header(meta):
     lang = meta.get("language", "ru")
@@ -72,24 +70,13 @@ def render_part(part: Part, mode, lang):
 
 
 def render_row(row: Row, mode, lang):
-    # Ширины: либо инлайновые `width` у всех детей (парсер гарантирует
-    # все-или-никто, сумма <= 100 — остаток строки остаётся пустым), либо
-    # равное деление. flex-basis считается через calc с вычетом
-    # пропорциональной доли межколоночного gap, чтобы 50+50 не переполняли
-    # строку.
-    n = len(row.blocks)
-    widths = [b.width for b in row.blocks]
-    if widths[0] is None:
-        widths = [100.0 / n] * n
-    cols = []
-    for block, width in zip(row.blocks, widths):
-        gap_share = ROW_GAP_MM * (n - 1) * width / 100.0
-        basis = f"calc({width:.2f}% - {gap_share:.2f}mm)" if n > 1 else f"{width:.2f}%"
-        cols.append(
-            f'<div class="task-col" style="flex:0 1 {basis};max-width:{basis};">'
-            f"{render_block(block, mode, lang)}</div>"
-        )
-    return f'<div class="task-row">{"".join(cols)}</div>'
+    # Дети всегда делят строку поровну — грид с равными колонками
+    # (grid-auto-columns: 1fr в BASE_CSS) сам корректно учитывает gap,
+    # никакой инлайновой арифметики ширин здесь нет.
+    cols = "".join(
+        f'<div class="task-col">{render_block(block, mode, lang)}</div>' for block in row.blocks
+    )
+    return f'<div class="task-row">{cols}</div>'
 
 
 def render_block(block, mode, lang):

@@ -36,20 +36,11 @@ def _leaf_from_dict(data: dict):
     raise ValueError(f"unknown block type {block_type!r}")
 
 
-def _attach_width(block, data: dict, context: str, in_row: bool):
-    """`width` (проценты, int 1..100) валиден только на прямом ребёнке `row`.
-    Атрибут проставляется каждому распарсенному блоку (None вне row)."""
-    width = data.get("width")
-    if width is not None:
-        if not in_row:
-            raise ValueError(f"{context}: 'width' is only valid on a direct child of a 'row'")
-        if not isinstance(width, int) or isinstance(width, bool) or not (1 <= width <= 100):
-            raise ValueError(f"{context}: 'width' must be an integer 1..100, got {width!r}")
-    block.width = width
-    return block
-
-
 def _block_from_dict(data: dict, context: str, *, in_row: bool, allow_part: bool):
+    if "width" in data:
+        # Явное отклонение, а не молчаливое игнорирование: мёртвое поле в
+        # данных — ловушка для автора (дети `row` всегда делят строку поровну).
+        raise ValueError(f"{context}: 'width' is not supported - children of a 'row' share the line equally")
     block_type = data.get("type")
     if block_type == "row":
         if in_row:
@@ -58,12 +49,11 @@ def _block_from_dict(data: dict, context: str, *, in_row: bool, allow_part: bool
     if block_type == "part":
         if not allow_part:
             raise ValueError(f"{context}: nested parts are not supported")
-        return _attach_width(Part.from_dict(data, context), data, context, in_row)
+        return Part.from_dict(data, context)
     try:
-        block = _leaf_from_dict(data)
+        return _leaf_from_dict(data)
     except ValueError as e:
         raise ValueError(f"{context}: {e}") from None
-    return _attach_width(block, data, context, in_row)
 
 
 def _validate_siblings(blocks, context: str):
@@ -81,10 +71,9 @@ def _validate_siblings(blocks, context: str):
 
 @dataclass
 class Row:
-    """Layout-контейнер: дочерние блоки стоят в одну строку, ширины — инлайн
-    `width` на детях (все или никто; сумма <= 100, остаток строки пустой).
-    Прозрачен для педагогических инвариантов и букв (см. iter_flat) — влияет
-    только на геометрию."""
+    """Layout-контейнер: дочерние блоки стоят в одну строку и делят её
+    поровну. Прозрачен для педагогических инвариантов и букв (см. iter_flat)
+    — влияет только на геометрию."""
 
     blocks: list
     id: Optional[str] = None
@@ -98,11 +87,6 @@ class Row:
         for i, raw in enumerate(raw_blocks):
             child_context = f"{context} -> {_describe(raw, i)}"
             blocks.append(_block_from_dict(raw, child_context, in_row=True, allow_part=allow_part))
-        given = [b.width for b in blocks if b.width is not None]
-        if given and len(given) != len(blocks):
-            raise ValueError(f"{context}: either every child of a row has 'width' or none does")
-        if sum(given) > 100:
-            raise ValueError(f"{context}: row widths sum to {sum(given)}, must be <= 100")
         return cls(blocks=blocks, id=data.get("id"))
 
 
@@ -115,7 +99,6 @@ class Part:
     label: Optional[str] = None
     points: Optional[int] = None
     id: Optional[str] = None
-    width: Optional[int] = None
 
     @classmethod
     def from_dict(cls, data: dict, context: str) -> "Part":

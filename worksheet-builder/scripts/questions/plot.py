@@ -1,5 +1,6 @@
 from components.graph import GraphComponent
 from questions.base import Question, envelope
+from visuals import CHART_TYPES
 
 
 class PlotQuestion(Question):
@@ -22,6 +23,10 @@ class PlotQuestion(Question):
     def validate(self) -> None:
         if not self.answer:
             raise ValueError("plot: answer series must be non-empty")
+        if self.chart_type not in CHART_TYPES:
+            raise ValueError(f"plot: chart_type must be one of {CHART_TYPES}, got {self.chart_type!r}")
+        if self.chart_type == "bar" and (len(self.answer) > 1 or len(self.given or []) > 1):
+            raise ValueError("plot: chart_type 'bar' supports a single series in 'given' and in 'answer'")
 
     def render_body(self, mode, lang) -> str:
         series = self.answer if mode == "teacher" else (self.given or [])

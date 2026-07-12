@@ -6,8 +6,23 @@
 
 from render_helpers import esc
 
+CHART_TYPES = ("line", "bar", "scatter")
 DASH_PATTERNS = {"solid": None, "dashed": "8,4", "dotted": "1,3"}
 MARKER_SHAPES = ["circle", "cross", "triangle"]
+
+
+def _marker_svg(shape, cx, cy):
+    """Один маркер точки данных — используется и на самом графике (scatter),
+    и как образец в легенде, чтобы легенда показывала реальный отличительный
+    признак серии, а не линию, которой на scatter-графике нет."""
+    if shape == "circle":
+        return f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="3" fill="#000"/>'
+    if shape == "cross":
+        return (
+            f'<line x1="{cx-3:.1f}" y1="{cy-3:.1f}" x2="{cx+3:.1f}" y2="{cy+3:.1f}" stroke="#000" stroke-width="1.3"/>'
+            f'<line x1="{cx-3:.1f}" y1="{cy+3:.1f}" x2="{cx+3:.1f}" y2="{cy-3:.1f}" stroke="#000" stroke-width="1.3"/>'
+        )
+    return f'<polygon points="{cx:.1f},{cy-4:.1f} {cx-4:.1f},{cy+3:.1f} {cx+4:.1f},{cy+3:.1f}" fill="#000"/>'
 
 
 def _linspace(a, b, n):
@@ -108,18 +123,7 @@ def build_chart_svg(spec):
         elif chart_type == "scatter":
             shape = MARKER_SHAPES[i % len(MARKER_SHAPES)]
             for (x, y) in points:
-                px, py = sx(x), sy(y)
-                if shape == "circle":
-                    parts.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="3" fill="#000"/>')
-                elif shape == "cross":
-                    parts.append(
-                        f'<line x1="{px-3:.1f}" y1="{py-3:.1f}" x2="{px+3:.1f}" y2="{py+3:.1f}" stroke="#000" stroke-width="1.3"/>'
-                        f'<line x1="{px-3:.1f}" y1="{py+3:.1f}" x2="{px+3:.1f}" y2="{py-3:.1f}" stroke="#000" stroke-width="1.3"/>'
-                    )
-                else:
-                    parts.append(
-                        f'<polygon points="{px:.1f},{py-4:.1f} {px-4:.1f},{py+3:.1f} {px+4:.1f},{py+3:.1f}" fill="#000"/>'
-                    )
+                parts.append(_marker_svg(shape, sx(x), sy(y)))
         else:  # линия
             path = " ".join(
                 f'{"M" if idx == 0 else "L"}{sx(x):.1f},{sy(y):.1f}'
@@ -136,13 +140,24 @@ def build_chart_svg(spec):
     if legend_items:
         chips = []
         for label, style, i in legend_items:
-            dash = DASH_PATTERNS.get(style)
-            sample = (
-                f'<svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" '
-                f'stroke="#000" stroke-width="2"'
-                + (f' stroke-dasharray="{dash}"' if dash else "")
-                + "/></svg>"
-            )
+            if chart_type == "scatter":
+                # Серии scatter различаются формой маркера, а не линией —
+                # образец в легенде показывает именно маркер.
+                shape = MARKER_SHAPES[i % len(MARKER_SHAPES)]
+                sample = f'<svg width="20" height="10">{_marker_svg(shape, 10, 5)}</svg>'
+            elif chart_type == "bar":
+                sample = (
+                    '<svg width="20" height="10"><rect x="6" y="1" width="8" height="8" '
+                    'fill="#fff" stroke="#000" stroke-width="1.3"/></svg>'
+                )
+            else:
+                dash = DASH_PATTERNS.get(style)
+                sample = (
+                    f'<svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" '
+                    f'stroke="#000" stroke-width="2"'
+                    + (f' stroke-dasharray="{dash}"' if dash else "")
+                    + "/></svg>"
+                )
             chips.append(f'<span>{sample} {esc(label)}</span>')
         legend_html = f'<div class="chart-legend">{"".join(chips)}</div>'
 

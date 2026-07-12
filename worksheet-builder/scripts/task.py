@@ -1,7 +1,7 @@
-"""`Task` — корневой блок задания: дерево `blocks` из компонентов, вопросов и
-контейнеров-`part` (см. references/task-schema.md). Буквы подзаданий и строки
-заголовков вычисляются в document.py, не здесь — этот модуль отвечает только
-за парсинг JSON в объекты и инварианты состава."""
+"""`Task` — корневой блок задания: дерево `blocks` из компонентов, вопросов,
+контейнеров-`part` и layout-контейнеров-`row` (см. references/task-schema.md).
+Буквы подзаданий и строки заголовков вычисляются в document.py, не здесь —
+этот модуль отвечает только за парсинг JSON в объекты и инварианты состава."""
 
 from dataclasses import dataclass
 from typing import Optional
@@ -16,6 +16,17 @@ def _describe(data: dict, index: int) -> str:
     return f"blocks[{index}]" + (f" (id={block_id})" if block_id else "")
 
 
+def iter_flat(blocks):
+    """Сплющенный обход списка блоков: `row` прозрачен — его дети считаются
+    сиблингами на уровне родителя. Инварианты состава и раздача букв всегда
+    работают по этому обходу: раскладка не может изменить смысл/нумерацию."""
+    for block in blocks:
+        if isinstance(block, Row):
+            yield from block.blocks
+        else:
+            yield block
+
+
 def _leaf_from_dict(data: dict):
     block_type = data.get("type")
     if block_type in COMPONENT_TYPES:
@@ -25,15 +36,74 @@ def _leaf_from_dict(data: dict):
     raise ValueError(f"unknown block type {block_type!r}")
 
 
+def _attach_width(block, data: dict, context: str, in_row: bool):
+    """`width` (проценты, int 1..100) валиден только на прямом ребёнке `row`.
+    Атрибут проставляется каждому распарсенному блоку (None вне row)."""
+    width = data.get("width")
+    if width is not None:
+        if not in_row:
+            raise ValueError(f"{context}: 'width' is only valid on a direct child of a 'row'")
+        if not isinstance(width, int) or isinstance(width, bool) or not (1 <= width <= 100):
+            raise ValueError(f"{context}: 'width' must be an integer 1..100, got {width!r}")
+    block.width = width
+    return block
+
+
+def _block_from_dict(data: dict, context: str, *, in_row: bool, allow_part: bool):
+    block_type = data.get("type")
+    if block_type == "row":
+        if in_row:
+            raise ValueError(f"{context}: nested rows are not supported")
+        return Row.from_dict(data, context, allow_part=allow_part)
+    if block_type == "part":
+        if not allow_part:
+            raise ValueError(f"{context}: nested parts are not supported")
+        return _attach_width(Part.from_dict(data, context), data, context, in_row)
+    try:
+        block = _leaf_from_dict(data)
+    except ValueError as e:
+        raise ValueError(f"{context}: {e}") from None
+    return _attach_width(block, data, context, in_row)
+
+
 def _validate_siblings(blocks, context: str):
-    """Инвариант состава уровня списка: `part` и голый вопрос не бывают
-    соседями; вопрос без `part` — не более одного (см. task-schema.md)."""
-    parts = [b for b in blocks if isinstance(b, Part)]
-    questions = [b for b in blocks if isinstance(b, Question)]
+    """Инвариант состава уровня списка (по сплющенному обходу — `row`
+    прозрачен): `part` и голый вопрос не бывают соседями; вопрос без `part`
+    — не более одного (см. task-schema.md)."""
+    flat = list(iter_flat(blocks))
+    parts = [b for b in flat if isinstance(b, Part)]
+    questions = [b for b in flat if isinstance(b, Question)]
     if parts and questions:
         raise ValueError(f"{context}: 'part' and a bare question cannot be siblings - wrap every question in a part")
     if not parts and len(questions) > 1:
         raise ValueError(f"{context}: more than one bare question - wrap each question in its own 'part'")
+
+
+@dataclass
+class Row:
+    """Layout-контейнер: дочерние блоки стоят в одну строку, ширины — инлайн
+    `width` на детях (все или никто; сумма <= 100, остаток строки пустой).
+    Прозрачен для педагогических инвариантов и букв (см. iter_flat) — влияет
+    только на геометрию."""
+
+    blocks: list
+    id: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: dict, context: str, *, allow_part: bool) -> "Row":
+        raw_blocks = data.get("blocks", [])
+        if not raw_blocks:
+            raise ValueError(f"{context}: row has no blocks")
+        blocks = []
+        for i, raw in enumerate(raw_blocks):
+            child_context = f"{context} -> {_describe(raw, i)}"
+            blocks.append(_block_from_dict(raw, child_context, in_row=True, allow_part=allow_part))
+        given = [b.width for b in blocks if b.width is not None]
+        if given and len(given) != len(blocks):
+            raise ValueError(f"{context}: either every child of a row has 'width' or none does")
+        if sum(given) > 100:
+            raise ValueError(f"{context}: row widths sum to {sum(given)}, must be <= 100")
+        return cls(blocks=blocks, id=data.get("id"))
 
 
 @dataclass
@@ -45,6 +115,7 @@ class Part:
     label: Optional[str] = None
     points: Optional[int] = None
     id: Optional[str] = None
+    width: Optional[int] = None
 
     @classmethod
     def from_dict(cls, data: dict, context: str) -> "Part":
@@ -53,13 +124,9 @@ class Part:
             raise ValueError(f"{context}: part has no blocks")
         blocks = []
         for i, raw in enumerate(raw_blocks):
-            if raw.get("type") == "part":
-                raise ValueError(f"{context} -> {_describe(raw, i)}: nested parts are not supported")
-            try:
-                blocks.append(_leaf_from_dict(raw))
-            except ValueError as e:
-                raise ValueError(f"{context} -> {_describe(raw, i)}: {e}") from None
-        questions = [b for b in blocks if isinstance(b, Question)]
+            child_context = f"{context} -> {_describe(raw, i)}"
+            blocks.append(_block_from_dict(raw, child_context, in_row=False, allow_part=False))
+        questions = [b for b in iter_flat(blocks) if isinstance(b, Question)]
         if len(questions) != 1:
             raise ValueError(f"{context}: part must contain exactly one question, got {len(questions)}")
         return cls(
@@ -85,13 +152,7 @@ class Task:
         blocks = []
         for i, raw in enumerate(raw_blocks):
             context = f"{task_id} -> {_describe(raw, i)}"
-            if raw.get("type") == "part":
-                blocks.append(Part.from_dict(raw, context))
-            else:
-                try:
-                    blocks.append(_leaf_from_dict(raw))
-                except ValueError as e:
-                    raise ValueError(f"{context}: {e}") from None
+            blocks.append(_block_from_dict(raw, context, in_row=False, allow_part=True))
         _validate_siblings(blocks, task_id)
         return cls(
             id=data["id"],

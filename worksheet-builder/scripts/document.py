@@ -4,7 +4,9 @@ from assets import build_base_css, KATEX_HEAD, LAYOUT_JS
 from questions.base import Question
 from render_helpers import esc, LOWER_LETTERS
 from strings import STRINGS, t
-from task import Part, Task
+from task import iter_flat, Part, Row, Task
+
+ROW_GAP_MM = 6.0  # должен совпадать с `gap` у .task-row в BASE_CSS
 
 
 def render_header(meta):
@@ -65,23 +67,51 @@ def render_leaf(block, mode, lang):
 
 def render_part(part: Part, mode, lang):
     header_html = render_label_line(part.label, part.points, lang)
-    inner = "".join(render_leaf(block, mode, lang) for block in part.blocks)
+    inner = "".join(render_block(block, mode, lang) for block in part.blocks)
     return f'<div class="task-part">{header_html}{inner}</div>'
+
+
+def render_row(row: Row, mode, lang):
+    # Ширины: либо инлайновые `width` у всех детей (парсер гарантирует
+    # все-или-никто, сумма <= 100 — остаток строки остаётся пустым), либо
+    # равное деление. flex-basis считается через calc с вычетом
+    # пропорциональной доли межколоночного gap, чтобы 50+50 не переполняли
+    # строку.
+    n = len(row.blocks)
+    widths = [b.width for b in row.blocks]
+    if widths[0] is None:
+        widths = [100.0 / n] * n
+    cols = []
+    for block, width in zip(row.blocks, widths):
+        gap_share = ROW_GAP_MM * (n - 1) * width / 100.0
+        basis = f"calc({width:.2f}% - {gap_share:.2f}mm)" if n > 1 else f"{width:.2f}%"
+        cols.append(
+            f'<div class="task-col" style="flex:0 1 {basis};max-width:{basis};">'
+            f"{render_block(block, mode, lang)}</div>"
+        )
+    return f'<div class="task-row">{"".join(cols)}</div>'
+
+
+def render_block(block, mode, lang):
+    if isinstance(block, Row):
+        return render_row(block, mode, lang)
+    if isinstance(block, Part):
+        return render_part(block, mode, lang)
+    return render_leaf(block, mode, lang)
 
 
 def render_task(index, task: Task, is_teacher, lang):
     mode = "teacher" if is_teacher else "student"
 
-    assign_part_labels([b for b in task.blocks if isinstance(b, Part)])
+    # Буквы — по сплющенному обходу: part внутри row получает букву так же,
+    # как получал бы, стоя на уровне задания (row прозрачен, см. task.py).
+    assign_part_labels([b for b in iter_flat(task.blocks) if isinstance(b, Part)])
 
     # Номер задания — всегда своя отдельная строка сверху (см.
     # render_task_number_line).
     block_htmls = [render_task_number_line(index, task.points, lang)]
     for block in task.blocks:
-        if isinstance(block, Part):
-            block_htmls.append(render_part(block, mode, lang))
-        else:
-            block_htmls.append(render_leaf(block, mode, lang))
+        block_htmls.append(render_block(block, mode, lang))
 
     return f'<div class="task"><div class="task-blocks">{"".join(block_htmls)}</div></div>'
 

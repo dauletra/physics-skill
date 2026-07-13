@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Собирает распространяемый zip-бандл скилла для Settings → Skills.
 
-Кладёт в архив только то, что нужно в рантайме облачного sandbox: SKILL.md,
-пакет рендерера, references, scripts/render.py и examples (как few-shot).
-Исключает dev-обвязку (tests, .venv, кэши, uv.lock, pyproject, egg-info) и
-любые сгенерированные артефакты в примерах (output/, *.preview.html).
+Состав бандла определяется структурой репозитория, а не списком в этом
+скрипте: в архив уходит **вся** папка `worksheet-builder/` (она и есть
+бандл — dev-обвязка живёт в корне репо), минус генерируемый мусор
+(__pycache__, output/ рендеров примеров, *.preview.html, *.pyc).
+
+Дополнительно скрипт сверяет SKILL.md с содержимым архива: каждый путь
+вида `references/...`, `scripts/...`, `examples/...`, `worksheet_builder/...`,
+упомянутый в SKILL.md, обязан существовать в бандле — рассинхрон
+(«SKILL.md обещает файл, которого нет у пользователя») роняет сборку.
 
 Корень архива — папка `worksheet-builder/` со SKILL.md внутри, то есть zip
 готов к загрузке в Settings → Capabilities → Skills как есть.
@@ -12,10 +17,9 @@
 Запуск (из корня репо):
     python build_bundle.py
     python build_bundle.py --out dist/skill.zip
-
-См. SANDBOX-MIGRATION.md — состав бандла и зачем он такой.
 """
 import argparse
+import re
 import zipfile
 from pathlib import Path
 
@@ -23,41 +27,49 @@ REPO_ROOT = Path(__file__).resolve().parent
 SKILL_DIR = REPO_ROOT / "worksheet-builder"
 BUNDLE_ROOT = "worksheet-builder"  # имя папки-корня внутри архива
 
-# Что кладём (пути относительно worksheet-builder/). Только это и попадёт в zip.
-INCLUDE = ["SKILL.md", "worksheet_builder", "references", "scripts", "examples"]
-
-# Имена сегментов пути, при встрече которых файл/папка отбрасывается целиком.
-EXCLUDE_PARTS = {
-    ".venv", "tests", "__pycache__",
-    ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    "output",  # сгенерированный рендер внутри examples/*/
-}
+# Генерируемый мусор: сегменты пути и суффиксы, которые в бандл не идут.
+# Скрытые папки (.venv, кэши инструментов) и *.egg-info могут появляться
+# внутри папки скилла как побочный эффект локального dev — тоже мусор.
+JUNK_DIRS = {"__pycache__", "output"}
+JUNK_SUFFIXES = (".pyc", ".preview.html")
 
 
-def _excluded(rel: Path) -> bool:
-    parts = set(rel.parts)
-    if parts & EXCLUDE_PARTS:
-        return True
-    if any(p.endswith(".egg-info") for p in rel.parts):
-        return True
-    if rel.suffix == ".pyc" or rel.name.endswith(".preview.html"):
-        return True
-    return False
+def _is_junk_part(part: str) -> bool:
+    return part in JUNK_DIRS or part.startswith(".") or part.endswith(".egg-info")
+
+# Пути этих видов, упомянутые в SKILL.md, обязаны существовать в бандле.
+SKILL_MD_PATH_RE = re.compile(
+    r"\b((?:references|scripts|examples|worksheet_builder)/[\w./-]+\w)"
+)
+
+
+def _is_junk(rel: Path) -> bool:
+    return any(_is_junk_part(p) for p in rel.parts) or rel.name.endswith(JUNK_SUFFIXES)
 
 
 def _iter_files() -> list[Path]:
-    files: list[Path] = []
-    for entry in INCLUDE:
-        src = SKILL_DIR / entry
-        if not src.exists():
-            raise SystemExit(f"Ожидался {src}, но его нет — состав бандла разошёлся с репо")
-        if src.is_file():
-            files.append(src)
-        else:
-            files.extend(p for p in src.rglob("*") if p.is_file())
-    # Отфильтровать исключения и отсортировать для детерминированного архива.
-    kept = [p for p in files if not _excluded(p.relative_to(SKILL_DIR))]
-    return sorted(kept)
+    if not (SKILL_DIR / "SKILL.md").is_file():
+        raise SystemExit(f"Не найден {SKILL_DIR / 'SKILL.md'} — запускай из корня репо")
+    return sorted(
+        p for p in SKILL_DIR.rglob("*")
+        if p.is_file() and not _is_junk(p.relative_to(SKILL_DIR))
+    )
+
+
+def _check_skill_md_paths(bundled: set[str]) -> None:
+    """SKILL.md не должен ссылаться на файлы, которых в бандле нет."""
+    text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    mentioned = set(SKILL_MD_PATH_RE.findall(text))
+    bundled_dirs = {str(Path(f).parent.as_posix()) for f in bundled}
+    missing = [
+        m for m in mentioned
+        if m not in bundled and m.rstrip("/") not in bundled_dirs
+    ]
+    if missing:
+        raise SystemExit(
+            "SKILL.md упоминает пути, которых нет в бандле:\n  "
+            + "\n  ".join(sorted(missing))
+        )
 
 
 def main() -> None:
@@ -66,10 +78,12 @@ def main() -> None:
                         help="Путь к выходному zip (по умолчанию dist/worksheet-builder-skill.zip)")
     args = parser.parse_args()
 
+    files = _iter_files()
+    rel_paths = {p.relative_to(SKILL_DIR).as_posix() for p in files}
+    _check_skill_md_paths(rel_paths)
+
     out = (REPO_ROOT / args.out).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
-
-    files = _iter_files()
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for path in files:
             rel = path.relative_to(SKILL_DIR)

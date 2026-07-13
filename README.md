@@ -7,28 +7,30 @@ Claude skill для создания рабочих листов (worksheets) с
 
 Что получается на выходе: два HTML-файла (для ученика и для учителя с
 ответами) — сплошной читаемый документ в центрированной колонке, открывается
-в любом браузере.
+в любом браузере. В учительский файл встроен исходный черновик (JSON), так
+что одного этого файла достаточно, чтобы позже продолжить правки в новой
+сессии.
 
 ## Где что лежит
 
 ```
-worksheet-builder/            — сам skill
-├── SKILL.md                  — точка входа: когда триггерить, как работает workflow
-├── pyproject.toml            — пакет рендерера (зависимость: pydantic)
+worksheet-builder/            — сам skill (= ровно состав дистрибутива)
+├── SKILL.md                  — точка входа: когда триггерить, workflow
+├── scripts/render.py         — запуск в sandbox Settings → Skills
+│                                (сам доустанавливает pydantic)
 ├── references/
 │   ├── task-schema.md        — JSON-схема meta.json и всех типов заданий
-│   ├── task.schema.json      — машиночитаемая копия схемы (генерируется)
-│   ├── design-system.md      — оболочка листа/шрифты/шапка/нумерация/layout
+│   ├── design-system.md      — оболочка листа/шрифты/шапка/нумерация
 │   ├── charts-and-graphs.md  — формат графиков
 │   ├── artifacts/            — глубокие справочники по SVG-артефактам
-│   └── symbols.md            — готовые Unicode-символы (операторы, греческий
-│                                алфавит) и когда переходить на sup/sub или LaTeX
-├── worksheet_builder/        — пакет рендерера: JSON-черновик → готовый HTML
-├── tests/                    — golden-снапшоты рендера + негативная валидация
+│   └── symbols.md            — Unicode-символы и когда sup/sub или LaTeX
+├── worksheet_builder/        — пакет рендерера: JSON-черновик → HTML
 └── examples/kinematics-9th-grade/ — рабочий пример со всеми типами заданий
 
-preview-worksheet/            — сгенерированный пример для просмотра
-                                 (НЕ часть skill'а, просто демо-вывод)
+Корень репо — dev-обвязка (в дистрибутив не входит):
+pyproject.toml + uv.lock, tests/ (golden-снапшоты + валидация),
+docs/ (принципы схемы, генерируемая JSON Schema), build_bundle.py
+(сборка dist/worksheet-builder-skill.zip), .github/workflows/ci.yml.
 ```
 
 ## Как это устроено
@@ -40,10 +42,10 @@ preview-worksheet/            — сгенерированный пример д
    вся работа в диалоге с Claude: обсуждение темы, формулировка задач, правки.
    Правка одного задания = правка одного маленького файла, без перечитывания
    всего документа.
-2. **Сборка** — `python -m worksheet_builder` детерминированно превращает
-   черновик в HTML. Визуальную консистентность (шрифты, нумерация, стиль
-   графиков) гарантирует код рендерера, а не память о том, что
-   использовалось в прошлом сообщении.
+2. **Сборка** — детерминированный рендерер превращает черновик в HTML.
+   Визуальную консистентность (шрифты, нумерация, стиль графиков)
+   гарантирует код рендерера, а не память о том, что использовалось в
+   прошлом сообщении.
 
 Черновик проверяется при сборке (pydantic): опечатка в имени поля,
 неизвестное значение, битая ссылка — ошибка с точным путём до блока, все
@@ -63,46 +65,48 @@ preview-worksheet/            — сгенерированный пример д
 скорость в этом проекте обозначается `υ`, а не `v`, потому что `v` неотличима
 от `ν`, которой обозначается частота).
 
-## Требования
+## Использование как Claude skill (основной сценарий)
 
-- **Только [uv](https://docs.astral.sh/uv/)** — Python на машине не нужен:
-  uv сам скачает управляемый CPython и зависимость pydantic при первом
-  запуске (дальше — мгновенно из кэша; версии зафиксированы в `uv.lock`).
-  Установка uv на Windows:
-  `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
-  (или `winget install --id=astral-sh.uv -e`).
-- Формулы рендерятся через KaTeX, подключаемый с CDN (jsdelivr) — при
-  просмотре листа нужен интернет.
-
-Фолбэк без uv: если Python 3.10+ уже установлен —
-`pip install -e worksheet-builder` даёт те же команды напрямую
-(`python -m worksheet_builder …`).
-
-Для разработки: `pip install -e "worksheet-builder[dev]"` (pytest, mypy,
-ruff; конфиги — в `pyproject.toml`). CI (GitHub Actions) гоняет линт, типы,
-тесты и сверку сгенерированной JSON-схемы с моделями.
-
-## Быстрый запуск
+Соберите дистрибутив и загрузите его в Claude Desktop / claude.ai:
 
 ```bash
-# собрать пример целиком (uv сам поднимет Python и зависимости)
-uv run --project worksheet-builder render-worksheet worksheet-builder/examples/kinematics-9th-grade
-
-# превью одного задания без полной пересборки (по умолчанию с ответами)
-uv run --project worksheet-builder render-worksheet worksheet-builder/examples/kinematics-9th-grade --task task-07
-
-# тесты (нужен dev-инсталл: pip install -e "worksheet-builder[dev]")
-python -m pytest worksheet-builder/tests -q
+python build_bundle.py   # → dist/worksheet-builder-skill.zip
 ```
 
-Результат появится в `<папка>/output/worksheet-student.html` и
-`worksheet-teacher.html` — открыть в браузере.
+Zip загружается в Settings → Capabilities → Skills. Дальше просто просите в
+диалоге: «сделай рабочий лист по теме X», «добавь задание на график»,
+«убери третье задание» — Claude заведёт черновик, отредактирует нужные JSON
+и соберёт лист. Ставить ничего не нужно: рендерер запускается вложенным
+`scripts/render.py`, который сам доустанавливает pydantic в контейнере.
 
-## Использование как Claude skill
+Формулы рендерятся через KaTeX с CDN (jsdelivr) — при просмотре готового
+листа нужен интернет.
 
-Положите `worksheet-builder/` в директорию skills, которую использует ваша
-среда (Claude Code / Claude Desktop), и поставьте uv (одна команда выше) —
-больше ничего: ни Python, ни pip. Дальше просто просите в диалоге:
-«сделай рабочий лист по теме X», «добавь задание на график», «убери третье
-задание» и т.д. — Claude сам заведёт черновик, отредактирует нужные JSON и
-запустит сборку через uv по команде «собери лист».
+## Локальная разработка
+
+Вариант с [uv](https://docs.astral.sh/uv/) (Python на машине не нужен —
+uv сам скачает управляемый CPython; версии зафиксированы в `uv.lock`):
+
+```bash
+# собрать пример целиком
+uv run render-worksheet worksheet-builder/examples/kinematics-9th-grade
+
+# превью одного задания (по умолчанию с ответами)
+uv run render-worksheet worksheet-builder/examples/kinematics-9th-grade --task task-07
+```
+
+Результат — `<папка>/output/worksheet-student.html` и
+`worksheet-teacher.html`, открыть в браузере.
+
+Вариант с готовым Python 3.10+: `pip install -e ".[dev]"` из корня репо
+даёт те же команды напрямую (`python -m worksheet_builder …`) плюс
+dev-инструменты:
+
+```bash
+python -m pytest tests -q            # golden-снапшоты + валидация
+python -m ruff check . && python -m mypy
+python build_bundle.py               # сборка и проверка дистрибутива
+```
+
+CI (GitHub Actions) гоняет то же самое: линт, типы, тесты, сверку
+`uv.lock` и сгенерированной JSON-схемы, сборку бандла.

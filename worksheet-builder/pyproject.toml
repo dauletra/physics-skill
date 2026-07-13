@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "worksheet-builder"
+version = "0.1.0"
+description = "Детерминированный рендерер рабочих листов: JSON-черновик -> читаемый HTML"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "mypy>=1.10",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+render-worksheet = "worksheet_builder.cli:main"
+
+[tool.setuptools]
+packages = [
+    "worksheet_builder",
+]
+
+[tool.mypy]
+files = ["worksheet_builder"]
+python_version = "3.10"
+disallow_untyped_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+# Базовые pyflakes/pycodestyle + сортировка импортов.
+select = ["E4", "E7", "E9", "F", "I"]

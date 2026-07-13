@@ -6,9 +6,11 @@
     python -m worksheet_builder --emit-schema docs/task.schema.json
 
 Первая форма пишет <workspace_dir>/output/worksheet-student.html и
-worksheet-teacher.html. Вторая — <workspace_dir>/task-03.preview.html только
-с этим одним заданием, для дешёвой визуальной проверки. Третья — JSON Schema
-для автокомплита/проверки JSON в редакторе.
+worksheet-teacher.html; в тичер-вариант встраивается исходный черновик
+(`<script id="worksheet-source">`) — одного этого файла достаточно, чтобы
+продолжить правки в новой сессии. Вторая — <workspace_dir>/task-03.preview.html
+только с этим одним заданием, для дешёвой визуальной проверки. Третья —
+JSON Schema для автокомплита/проверки JSON в редакторе.
 
 Ошибки валидации собираются по всем заданиям и печатаются одним списком
 (каждая — с путём до блока), чтобы чинить всё за один прогон, а не по одной.
@@ -40,13 +42,20 @@ def _load_json(path: Path) -> Any:
         sys.exit(f"{path}: невалидный JSON - {e}")
 
 
-def load_workspace(workspace: str | Path) -> tuple[MetaModel, list[Any]]:
+def load_workspace(workspace: str | Path) -> tuple[MetaModel, Any, list[Any]]:
+    """Возвращает (meta-модель, сырой meta, сырые задания в порядке order).
+
+    Сырые dict'ы нужны единственному потребителю — встраиванию черновика в
+    тичер-HTML (см. document.render_source_script): туда должен попасть
+    авторский JSON как есть, без нормализации моделью. Рендер по-прежнему
+    работает только с моделями."""
     workspace = Path(workspace)
     meta_path = workspace / "meta.json"
     if not meta_path.exists():
         sys.exit(f"meta.json not found in {workspace}")
+    raw_meta = _load_json(meta_path)
     try:
-        meta = parse_meta(_load_json(meta_path))
+        meta = parse_meta(raw_meta)
     except ValueError as e:
         sys.exit(str(e))
     tasks_dir = workspace / "tasks"
@@ -76,7 +85,7 @@ def load_workspace(workspace: str | Path) -> tuple[MetaModel, list[Any]]:
         raw_tasks.append(raw)
     if errors:
         sys.exit("\n".join(errors))
-    return meta, raw_tasks
+    return meta, raw_meta, raw_tasks
 
 
 def parse_tasks(raw_tasks: list[Any]) -> list[TaskModel]:
@@ -114,7 +123,7 @@ def main() -> None:
         parser.error("workspace is required (unless --emit-schema is used)")
 
     workspace = Path(args.workspace)
-    meta, raw_tasks = load_workspace(workspace)
+    meta, raw_meta, raw_tasks = load_workspace(workspace)
     tasks = parse_tasks(raw_tasks)
 
     if args.task:
@@ -130,7 +139,11 @@ def main() -> None:
     output_dir = workspace / "output"
     output_dir.mkdir(exist_ok=True)
     student_html = build_document(meta, tasks, is_teacher=False)
-    teacher_html = build_document(meta, tasks, is_teacher=True)
+    # Тичер-вариант несёт встроенный черновик: этого файла достаточно, чтобы
+    # вернуться к правкам в новой сессии (у ученической версии черновика нет —
+    # в нём ответы).
+    source = {"meta": raw_meta, "tasks": raw_tasks}
+    teacher_html = build_document(meta, tasks, is_teacher=True, source=source)
     (output_dir / "worksheet-student.html").write_text(student_html, encoding="utf-8")
     (output_dir / "worksheet-teacher.html").write_text(teacher_html, encoding="utf-8")
     print(f"Wrote {output_dir / 'worksheet-student.html'}")

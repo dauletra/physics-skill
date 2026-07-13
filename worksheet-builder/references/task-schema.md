@@ -41,6 +41,11 @@ Block = Component   // text | table | graph | list — чистый контен
 (`worksheet_builder/models.py`) при загрузке: **неизвестное поле — ошибка**
 (опечатка не игнорируется молча), неизвестное значение перечисления — ошибка.
 
+Собранный `worksheet-teacher.html` несёт встроенную копию черновика:
+`<script type="application/json" id="worksheet-source">` с
+`{"meta": …, "tasks": […]}` в конце файла — из одного этого файла черновик
+восстанавливается целиком (`meta.json` + `tasks/<id>.json` по `id` заданий).
+
 ## Задание (корневой блок)
 
 ```json

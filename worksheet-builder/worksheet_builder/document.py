@@ -2,7 +2,8 @@
 `MetaModel` + список `TaskModel`. Контейнеры (`part`/`row`) рендерятся
 здесь; листья уходят в render_component/render_question."""
 
-from typing import Union
+import json
+from typing import Any, Union
 
 from worksheet_builder.assets import BASE_CSS, KATEX_HEAD
 from worksheet_builder.components import render_component
@@ -130,13 +131,31 @@ def render_task(index: int, task: TaskModel, is_teacher: bool) -> str:
     return f'<div class="task"><div class="task-blocks">{"".join(block_htmls)}</div></div>'
 
 
-def build_document(meta: MetaModel, tasks: list[TaskModel], is_teacher: bool) -> str:
+def render_source_script(source: dict[str, Any]) -> str:
+    """Черновик (сырые авторские meta + tasks), встроенный в HTML: файл
+    учителя и есть черновик — в новой сессии его достаточно загрузить
+    обратно. `<` экранируется как `\\u003c` (валидный JSON-эскейп), чтобы
+    никакой авторский текст не мог закрыть тег `</script>` досрочно."""
+    payload = json.dumps(source, ensure_ascii=False).replace("<", "\\u003c")
+    return f'<script type="application/json" id="worksheet-source">{payload}</script>'
+
+
+def build_document(
+    meta: MetaModel,
+    tasks: list[TaskModel],
+    is_teacher: bool,
+    source: dict[str, Any] | None = None,
+) -> str:
     """`tasks` — уже распарсенные модели (см. cli.parse_tasks): парсинг и
-    валидация происходят один раз, а не на каждый вариант листа."""
+    валидация происходят один раз, а не на каждый вариант листа. `source` —
+    сырой черновик для встраивания в документ; передаётся только для
+    тичер-варианта (в нём и так есть все ответы) полного листа, превью
+    отдельных заданий живут без него."""
     body = [render_header(meta)]
     for i, task in enumerate(tasks, start=1):
         body.append(render_task(i, task, is_teacher))
     variant = t("teacher_variant") if is_teacher else t("student_variant")
+    source_html = f"\n{render_source_script(source)}" if source is not None else ""
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -146,6 +165,6 @@ def build_document(meta: MetaModel, tasks: list[TaskModel], is_teacher: bool) ->
 <style>{BASE_CSS}</style>
 </head>
 <body>
-{''.join(body)}
+{''.join(body)}{source_html}
 </body>
 </html>"""

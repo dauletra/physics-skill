@@ -66,8 +66,9 @@ def test_valid_workspace_loads(tmp_path):
         "task-01": minimal("task-01"),
         "task-02": minimal("task-02"),
     })
-    meta, raw_tasks = load_workspace(ws)
+    meta, raw_meta, raw_tasks = load_workspace(ws)
     assert [t["id"] for t in raw_tasks] == ["task-01", "task-02"]
+    assert raw_meta["title"] == "T"
 
 
 def test_no_order_takes_all_files_sorted(tmp_path):
@@ -75,5 +76,5 @@ def test_no_order_takes_all_files_sorted(tmp_path):
         "task-02": minimal("task-02"),
         "task-01": minimal("task-01"),
     })
-    meta, raw_tasks = load_workspace(ws)
+    meta, raw_meta, raw_tasks = load_workspace(ws)
     assert [t["id"] for t in raw_tasks] == ["task-01", "task-02"]

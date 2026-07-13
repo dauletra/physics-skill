@@ -18,7 +18,7 @@ EXAMPLE_DIR = (
 
 
 def load_example_tasks():
-    meta, raw_tasks = load_workspace(EXAMPLE_DIR)
+    meta, _raw_meta, raw_tasks = load_workspace(EXAMPLE_DIR)
     return meta, [parse_task(raw) for raw in raw_tasks]
 
 

@@ -97,16 +97,28 @@ CSS. Иллюстрации/схемы намеренно вне scope, см. «
 
 - `worksheet-builder/pyproject.toml` — пакет `worksheet-builder` (зависимость
   pydantic; dev-extra pytest/mypy/ruff и их конфиги `[tool.mypy]`/
-  `[tool.ruff]`; entry `render-worksheet`). **Контракт запуска для
-  пользователя скилла — uv, без установки Python/пакета**:
-  `uv run --project <путь-к-skill> render-worksheet <workspace>` (uv сам
-  скачивает managed CPython и зависимости; версии зафиксированы в
-  `uv.lock` — коммитится, перегенерация `uv lock` при изменении
-  зависимостей). Dev-workflow на этой машине — по-прежнему
-  `pip install -e "worksheet-builder[dev]"` и прямые `python -m …`-команды;
-  не «упрощай» SKILL.md обратно к pip — пользователи скилла на Windows без
-  Python.
-- `worksheet-builder/SKILL.md` — рабочий процесс скилла.
+  `[tool.ruff]`; entry `render-worksheet`). **Два контракта запуска для двух
+  сред** (одно ядро `worksheet_builder/`, разные обёртки — план миграции в
+  корневом `SANDBOX-MIGRATION.md`):
+  - **Sandbox (Settings → Skills), основной таргет распространения** — среда,
+    где скилл живёт у пользователей *без Claude Code*: `python
+    <путь-к-skill>/scripts/render.py <workspace>`. Ни `uv`, ни установки
+    пакета; `scripts/render.py` сам доустанавливает pydantic в рантайме, если
+    его нет (см. ниже). **Именно на эту среду ориентирован `SKILL.md`** — не
+    «упрощай» его обратно к `uv run`/`pip install -e`: у sandbox-пользователя
+    нет ни uv, ни локального Python-окружения.
+  - **Локальный dev (эта машина)** — `uv run --project <путь-к-skill>
+    render-worksheet <workspace>` (uv скачивает managed CPython и
+    зависимости; версии в `uv.lock` — коммитится, `uv lock` при смене
+    зависимостей), либо `pip install -e "worksheet-builder[dev]"` и прямые
+    `python -m …`-команды. Тесты/линт/типы гоняются здесь.
+- `worksheet-builder/SKILL.md` — рабочий процесс скилла (ориентирован на
+  sandbox — команды через `scripts/render.py`, файловая модель эфемерная).
+- `worksheet-builder/scripts/render.py` — точка входа для sandbox: bootstrap
+  pydantic (ставит только если отсутствует; пин `>=2,<3`; идемпотентно —
+  один раз на жизнь контейнера) + проброс argv в `cli.main()`. Локальному dev
+  не нужен (там `uv`/`python -m`). Вне `worksheet_builder/`, поэтому mypy
+  (`files=["worksheet_builder"]`) его не проверяет; ruff — проверяет.
 - `worksheet-builder/references/task-schema.md` — человеческая схема JSON;
   `task.schema.json` — генерируемая машиночитаемая копия (не редактируй
   руками).
@@ -163,6 +175,15 @@ CSS. Иллюстрации/схемы намеренно вне scope, см. «
   `plot`).
 - `preview-worksheet/` — сгенерированная копия примера в корне проекта, чтобы
   человек мог открыть HTML. **Не часть скилла**, можно перегенерировать.
+- `SANDBOX-MIGRATION.md` (корень) — рабочий документ переноса скилла в
+  Settings → Skills: цель, среда исполнения, ограничения, механизм
+  runtime-установки pydantic, состав бандла, follow-ups. Dev-док, **в бандл
+  не входит**.
+- `build_bundle.py` (корень) — собирает `dist/worksheet-builder-skill.zip`
+  (корень архива — папка `worksheet-builder/` со `SKILL.md`) из подмножества
+  скилла для загрузки в Settings → Skills. Список `INCLUDE`/`EXCLUDE_PARTS`
+  — единственный источник состава бандла; держи в синхроне при добавлении
+  новых рантайм-файлов скилла. `dist/` в `.gitignore`.
 
 ## Как проверять изменения
 

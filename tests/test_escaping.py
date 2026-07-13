@@ -5,8 +5,8 @@
 тест, а не доживает до готового листа. Новый вид покрывается автоматически,
 как только его минимальное задание добавлено в MINIMAL_TASKS."""
 import pytest
-from conftest import MINIMAL_TASKS
 
+from conftest import MINIMAL_TASKS
 from worksheet_builder.document import render_task
 from worksheet_builder.models import parse_task
 

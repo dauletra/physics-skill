@@ -139,4 +139,4 @@ payload использует **те же имена и структуру пол
    пример в проработанный workspace-пример, golden-тест (оба режима, через
    `MINIMAL_TASKS` — тогда фузз эскейпинга покроет вид автоматически) и
    негативные случаи в `tests/`; перегенерируй
-   `references/task.schema.json` (`--emit-schema`).
+   `docs/task.schema.json` (`--emit-schema`).

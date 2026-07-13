@@ -3,7 +3,7 @@
 Использование:
     python -m worksheet_builder <workspace_dir>
     python -m worksheet_builder <workspace_dir> --task task-03
-    python -m worksheet_builder --emit-schema references/task.schema.json
+    python -m worksheet_builder --emit-schema docs/task.schema.json
 
 Первая форма пишет <workspace_dir>/output/worksheet-student.html и
 worksheet-teacher.html. Вторая — <workspace_dir>/task-03.preview.html только

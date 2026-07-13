@@ -6,13 +6,15 @@
 from pathlib import Path
 
 import pytest
-from conftest import MINIMAL_TASKS
 
+from conftest import MINIMAL_TASKS
 from worksheet_builder.cli import load_workspace
 from worksheet_builder.document import build_document, render_task
 from worksheet_builder.models import parse_task
 
-EXAMPLE_DIR = Path(__file__).parent.parent / "examples" / "kinematics-9th-grade"
+EXAMPLE_DIR = (
+    Path(__file__).parent.parent / "worksheet-builder" / "examples" / "kinematics-9th-grade"
+)
 
 
 def load_example_tasks():

@@ -1,25 +1,30 @@
 # worksheet-builder
 
-Claude skill для создания печатных рабочих листов (worksheets) с заданиями для
+Claude skill для создания рабочих листов (worksheets) с заданиями для
 учеников. Делался под физику, но не завязан на конкретный предмет — подходит
 для любой дисциплины, где нужны единый визуальный стиль и типовые форматы
 заданий.
 
 Что получается на выходе: два HTML-файла (для ученика и для учителя с
-ответами), готовые к печати на чёрно-белом принтере через Ctrl+P в браузере.
+ответами) — сплошной читаемый документ в центрированной колонке, открывается
+в любом браузере.
 
 ## Где что лежит
 
 ```
 worksheet-builder/            — сам skill
 ├── SKILL.md                  — точка входа: когда триггерить, как работает workflow
+├── pyproject.toml            — пакет рендерера (зависимость: pydantic)
 ├── references/
 │   ├── task-schema.md        — JSON-схема meta.json и всех типов заданий
-│   ├── design-system.md      — шрифты/поля/шапка/нумерация/layout
-│   ├── charts-and-graphs.md  — формат графиков и правила для иллюстраций
+│   ├── task.schema.json      — машиночитаемая копия схемы (генерируется)
+│   ├── design-system.md      — оболочка листа/шрифты/шапка/нумерация/layout
+│   ├── charts-and-graphs.md  — формат графиков
+│   ├── artifacts/            — глубокие справочники по SVG-артефактам
 │   └── symbols.md            — готовые Unicode-символы (операторы, греческий
 │                                алфавит) и когда переходить на sup/sub или LaTeX
-├── scripts/render_worksheet.py — рендерер: JSON-черновик → готовый HTML
+├── worksheet_builder/        — пакет рендерера: JSON-черновик → готовый HTML
+├── tests/                    — golden-снапшоты рендера + негативная валидация
 └── examples/kinematics-9th-grade/ — рабочий пример со всеми типами заданий
 
 preview-worksheet/            — сгенерированный пример для просмотра
@@ -35,10 +40,14 @@ preview-worksheet/            — сгенерированный пример д
    вся работа в диалоге с Claude: обсуждение темы, формулировка задач, правки.
    Правка одного задания = правка одного маленького файла, без перечитывания
    всего документа.
-2. **Сборка** — `scripts/render_worksheet.py` детерминированно превращает
-   черновик в HTML. Визуальную консистентность (шрифты, поля, нумерация,
-   стиль графиков) гарантирует код рендерера, а не память о том, что
+2. **Сборка** — `python -m worksheet_builder` детерминированно превращает
+   черновик в HTML. Визуальную консистентность (шрифты, нумерация, стиль
+   графиков) гарантирует код рендерера, а не память о том, что
    использовалось в прошлом сообщении.
+
+Черновик проверяется при сборке (pydantic): опечатка в имени поля,
+неизвестное значение, битая ссылка — ошибка с точным путём до блока, все
+нарушения перечисляются одним списком.
 
 Подробности workflow — в [worksheet-builder/SKILL.md](worksheet-builder/SKILL.md).
 
@@ -50,34 +59,50 @@ preview-worksheet/            — сгенерированный пример д
 простое уравнение вроде `F = ma` пишутся обычным текстом. Полная таблица
 готовых символов и греческого алфавита — в
 [references/symbols.md](worksheet-builder/references/symbols.md); там же —
-предупреждение о буквах, которые на печати неотличимы от латиницы (например,
+предупреждение о буквах, которые неотличимы от латиницы (например,
 скорость в этом проекте обозначается `υ`, а не `v`, потому что `v` неотличима
 от `ν`, которой обозначается частота).
 
 ## Требования
 
-- Python 3 (стандартная библиотека, без внешних зависимостей — `pip install`
-  не нужен)
+- **Только [uv](https://docs.astral.sh/uv/)** — Python на машине не нужен:
+  uv сам скачает управляемый CPython и зависимость pydantic при первом
+  запуске (дальше — мгновенно из кэша; версии зафиксированы в `uv.lock`).
+  Установка uv на Windows:
+  `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+  (или `winget install --id=astral-sh.uv -e`).
 - Формулы рендерятся через KaTeX, подключаемый с CDN (jsdelivr) — при
-  просмотре/печати нужен интернет
+  просмотре листа нужен интернет.
+
+Фолбэк без uv: если Python 3.10+ уже установлен —
+`pip install -e worksheet-builder` даёт те же команды напрямую
+(`python -m worksheet_builder …`).
+
+Для разработки: `pip install -e "worksheet-builder[dev]"` (pytest, mypy,
+ruff; конфиги — в `pyproject.toml`). CI (GitHub Actions) гоняет линт, типы,
+тесты и сверку сгенерированной JSON-схемы с моделями.
 
 ## Быстрый запуск
 
 ```bash
-# собрать пример целиком
-python worksheet-builder/scripts/render_worksheet.py worksheet-builder/examples/kinematics-9th-grade
+# собрать пример целиком (uv сам поднимет Python и зависимости)
+uv run --project worksheet-builder render-worksheet worksheet-builder/examples/kinematics-9th-grade
 
-# превью одного задания без полной пересборки
-python worksheet-builder/scripts/render_worksheet.py worksheet-builder/examples/kinematics-9th-grade --task task-07
+# превью одного задания без полной пересборки (по умолчанию с ответами)
+uv run --project worksheet-builder render-worksheet worksheet-builder/examples/kinematics-9th-grade --task task-07
+
+# тесты (нужен dev-инсталл: pip install -e "worksheet-builder[dev]")
+python -m pytest worksheet-builder/tests -q
 ```
 
 Результат появится в `<папка>/output/worksheet-student.html` и
-`worksheet-teacher.html` — открыть в браузере и печатать.
+`worksheet-teacher.html` — открыть в браузере.
 
 ## Использование как Claude skill
 
 Положите `worksheet-builder/` в директорию skills, которую использует ваша
-среда (Claude Code / Claude Desktop). Дальше просто просите в диалоге:
+среда (Claude Code / Claude Desktop), и поставьте uv (одна команда выше) —
+больше ничего: ни Python, ни pip. Дальше просто просите в диалоге:
 «сделай рабочий лист по теме X», «добавь задание на график», «убери третье
 задание» и т.д. — Claude сам заведёт черновик, отредактирует нужные JSON и
-запустит сборку по команде «собери лист».
+запустит сборку через uv по команде «собери лист».

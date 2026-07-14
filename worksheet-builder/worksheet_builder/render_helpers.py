@@ -3,7 +3,9 @@
 `esc()` эскейпит сырой авторский текст в точке интерполяции; `lines`/
 `blank`/`blank_cell`/`answer_block`/`bank_list` сами строят готовую, уже
 HTML-безопасную разметку ("место под ответ") и не знают ничего о конкретном
-вопросе."""
+вопросе. `fmt_num`/`svg_label` — общие хелперы SVG-генераторов
+(visuals.py, instruments.py): единый формат чисел и подписей на всех
+артефактах листа (см. references/artifacts/README.md)."""
 import html
 
 from worksheet_builder.strings import t
@@ -20,6 +22,26 @@ def esc(text: object) -> str:
     for tag in SUPSUB_TAGS:
         escaped = escaped.replace(f"&lt;{tag}&gt;", f"<{tag}>")
         escaped = escaped.replace(f"&lt;/{tag}&gt;", f"</{tag}>")
+    return escaped
+
+
+def fmt_num(n: float) -> str:
+    """Единый формат чисел на шкалах/осях всех SVG-артефактов: целые без
+    `.0`, дроби без хвостовых нулей и без float-шума (0.30000000000000004)."""
+    if abs(n - round(n)) < 1e-9:
+        return str(int(round(n)))
+    return f"{n:.2f}".rstrip("0").rstrip(".")
+
+
+def svg_label(raw: str) -> str:
+    """Текст подписи для SVG-контекста: `esc()` пропускает буквальные
+    `<sup>`/`<sub>`, но внутри SVG `<text>` HTML-теги невалидны и молча
+    ломают отрисовку — конвертируем их в `<tspan>` со сдвигом базовой
+    линии."""
+    escaped = esc(raw)
+    escaped = escaped.replace("<sup>", '<tspan baseline-shift="super" font-size="7">')
+    escaped = escaped.replace("<sub>", '<tspan baseline-shift="sub" font-size="7">')
+    escaped = escaped.replace("</sup>", "</tspan>").replace("</sub>", "</tspan>")
     return escaped
 
 

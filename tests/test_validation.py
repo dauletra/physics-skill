@@ -113,6 +113,50 @@ def test_unknown_chart_type():
     assert "chart_type" in msg
 
 
+def _instrument(**overrides):
+    base = {"type": "instrument", "kind": "ammeter", "unit": "А",
+            "min": 0, "max": 3, "step": 0.1, "value": 1.35}
+    base.update(overrides)
+    return base
+
+
+def test_instrument_unknown_kind():
+    msg = load_error(make_task(_instrument(kind="barometer2000")))
+    assert "kind" in msg
+
+
+def test_instrument_degenerate_range():
+    msg = load_error(make_task(_instrument(min=3, max=3)))
+    assert "min < max" in msg
+
+
+def test_instrument_step_must_divide_range():
+    msg = load_error(make_task(_instrument(step=0.7)))
+    assert "divide" in msg
+
+
+def test_instrument_too_many_divisions():
+    # 300 делений на дуге циферблата нечитаемы; лимит зависит от семейства.
+    msg = load_error(make_task(_instrument(step=0.01)))
+    assert "divisions" in msg
+    # Та же плотность у линейки легальна (лимит семейства strip выше).
+    parse_task(make_task(_instrument(kind="ruler", unit="см", max=10, step=0.1)))
+
+
+def test_instrument_value_outside_scale():
+    msg = load_error(make_task(_instrument(value=3.5)))
+    assert "outside the scale" in msg
+
+
+def test_instrument_value_between_marks_is_legal():
+    # Показание между штрихами — суть задач на погрешность, не ошибка.
+    parse_task(make_task(_instrument(value=1.234)))
+
+
+def test_instrument_empty_scale_is_legal():
+    parse_task(make_task(_instrument(value=None)))
+
+
 # --- Обязательные поля, закрытые словари, опечатки, дубли ---
 
 

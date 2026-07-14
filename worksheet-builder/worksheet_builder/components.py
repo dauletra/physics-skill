@@ -1,5 +1,6 @@
-"""Рендер чистых компонентов (`text`/`table`/`graph`/`list`) — только
-отрисовка, никакого знания об ответе/правильности/режиме ученик-учитель.
+"""Рендер чистых компонентов (`text`/`table`/`graph`/`list`/`instrument`) —
+только отрисовка, никакого знания об ответе/правильности/режиме
+ученик-учитель.
 Работают напрямую с pydantic-моделями (models.py) — параллельного слоя
 данных нет.
 
@@ -11,9 +12,11 @@
 
 from typing import Callable
 
+from worksheet_builder.instruments import build_instrument_svg
 from worksheet_builder.models import (
     ComponentModel,
     GraphModel,
+    InstrumentModel,
     ListModel,
     TableModel,
     TextModel,
@@ -82,11 +85,16 @@ def render_list(model: ListModel) -> str:
     return list_html([esc(item) for item in model.items], model.marker, model.columns)
 
 
+def render_instrument(model: InstrumentModel) -> str:
+    return build_instrument_svg(model)
+
+
 COMPONENT_RENDERERS: dict[type, Callable[..., str]] = {
     TextModel: render_text,
     TableModel: render_table,
     GraphModel: render_graph,
     ListModel: render_list,
+    InstrumentModel: render_instrument,
 }
 
 

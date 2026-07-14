@@ -141,6 +141,47 @@ MINIMAL_TASKS = {
             ]},
         ],
     },
+    # Приборы, семейства strip + column: линейка с бруском, мензурка и
+    # термометр в row, динамометр с пустой шкалой (value не задан).
+    "instruments_scales": {
+        "id": "t-instr-scales",
+        "blocks": [
+            {"type": "text", "body": "Определите цену деления и показания приборов."},
+            {"type": "instrument", "kind": "ruler", "unit": "см",
+             "min": 0, "max": 10, "step": 0.1, "value": 6.4, "caption": "Линейка"},
+            {"type": "row", "blocks": [
+                {"type": "instrument", "kind": "cylinder", "unit": "мл",
+                 "min": 0, "max": 250, "step": 10, "value": 175, "caption": "Мензурка"},
+                {"type": "instrument", "kind": "thermometer", "unit": "°C",
+                 "min": -10, "max": 50, "step": 1, "value": 21.5, "caption": "Термометр"},
+                {"type": "instrument", "kind": "dynamometer", "unit": "Н",
+                 "min": 0, "max": 4, "step": 0.1, "caption": "Динамометр"},
+            ]},
+            {"type": "open", "response": "lines:3", "answer": "V = 175 ± 5 мл"},
+        ],
+    },
+    # Приборы, семейство dial: все пять стрелочных видов, с показанием
+    # между штрихами и с пустой шкалой.
+    "instruments_dials": {
+        "id": "t-instr-dials",
+        "blocks": [
+            {"type": "row", "blocks": [
+                {"type": "instrument", "kind": "ammeter", "unit": "А",
+                 "min": 0, "max": 3, "step": 0.1, "value": 1.35, "caption": "Амперметр"},
+                {"type": "instrument", "kind": "voltmeter", "unit": "В",
+                 "min": 0, "max": 6, "step": 0.2, "value": 4.5, "caption": "Вольтметр"},
+            ]},
+            {"type": "row", "blocks": [
+                {"type": "instrument", "kind": "manometer", "unit": "кПа",
+                 "min": 0, "max": 400, "step": 10, "value": 260},
+                {"type": "instrument", "kind": "scale_dial", "unit": "г",
+                 "min": 0, "max": 1000, "step": 25, "value": 640},
+                {"type": "instrument", "kind": "speedometer", "unit": "км/ч",
+                 "min": 0, "max": 180, "step": 5},
+            ]},
+            {"type": "open", "response": "blank", "answer": "I = 1,35 ± 0,05 А"},
+        ],
+    },
     # row из двух part + чистые компоненты table и list.
     "row_and_components": {
         "id": "t-row",

@@ -135,6 +135,69 @@ class ListModel(StrictModel):
         return self
 
 
+InstrumentKind = Literal[
+    "ruler", "cylinder", "thermometer", "dynamometer",
+    "ammeter", "voltmeter", "manometer", "scale_dial", "speedometer",
+]
+
+# Вид прибора -> семейство геометрии шкалы. Семейство выбирает и генератор
+# SVG (instruments.py), и лимит числа делений ниже; новый прибор с уже
+# существующей геометрией — это строка здесь + ветка оформления в своём
+# семействе, без новой модели.
+INSTRUMENT_FAMILIES: dict[str, Literal["strip", "column", "dial"]] = {
+    "ruler": "strip",
+    "cylinder": "column",
+    "thermometer": "column",
+    "dynamometer": "column",
+    "ammeter": "dial",
+    "voltmeter": "dial",
+    "manometer": "dial",
+    "scale_dial": "dial",
+    "speedometer": "dial",
+}
+
+# Читаемость: слишком плотные штрихи сливаются после масштабирования под
+# целевую ширину семейства. Линейка терпит миллиметровую плотность,
+# столбик и дуга — нет.
+_MAX_DIVISIONS = {"strip": 150, "column": 60, "dial": 60}
+
+
+class InstrumentModel(StrictModel):
+    type: Literal["instrument"]
+    id: Optional[str] = None
+    kind: InstrumentKind
+    unit: str = Field(min_length=1)
+    min: Number
+    max: Number
+    # Цена деления — всегда явная: это педагогическое данное задачи,
+    # а не производная представления.
+    step: Number = Field(gt=0)
+    value: Optional[Number] = None
+    caption: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _scale_valid(self) -> "InstrumentModel":
+        if not self.min < self.max:
+            raise ValueError(f"min/max must satisfy min < max, got [{self.min}, {self.max}]")
+        divisions = (self.max - self.min) / self.step
+        if abs(divisions - round(divisions)) > 1e-6 * max(divisions, 1):
+            raise ValueError(
+                f"step {self.step} must divide the scale range exactly, "
+                f"got (max - min) / step = {divisions}"
+            )
+        limit = _MAX_DIVISIONS[INSTRUMENT_FAMILIES[self.kind]]
+        if not 2 <= round(divisions) <= limit:
+            raise ValueError(
+                f"scale needs 2..{limit} divisions for kind {self.kind!r}, "
+                f"got {round(divisions)}"
+            )
+        # Кратность value цене деления НЕ проверяется намеренно: показание
+        # между штрихами — суть задач на погрешность отсчёта.
+        if self.value is not None and not (self.min <= self.value <= self.max):
+            raise ValueError(f"value {self.value} is outside the scale [{self.min}, {self.max}]")
+        return self
+
+
 # --- Вопросы (конверт: type + опциональные id/explanation) ---
 
 class QuestionEnvelope(StrictModel):
@@ -329,7 +392,7 @@ class ClassifyModel(QuestionEnvelope):
 
 # --- Контейнеры ---
 
-ComponentModel = Union[TextModel, TableModel, GraphModel, ListModel]
+ComponentModel = Union[TextModel, TableModel, GraphModel, ListModel, InstrumentModel]
 QuestionModel = Union[
     OpenModel, ChoiceModel, MatchModel, FillTextModel, FillTableModel,
     PlotModel, TrueFalseModel, RankModel, ClassifyModel,

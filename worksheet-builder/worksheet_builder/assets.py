@@ -124,4 +124,14 @@ body {
 .task-col .task-part { margin-left: 0; }
 .chart-wrap { margin-top: 8px; }
 .chart-legend { display: flex; gap: 15px; font-size: 8pt; margin-top: 4px; flex-wrap: wrap; }
+/* Приборы (компонент `instrument`): ширина висит на обёртке семейства, SVG
+   заполняет её (правило svg.visual-svg выше). Масштаб всех семейств ~1.5px
+   на единицу viewBox — как у графиков (220 -> 330px), чтобы шрифты всех SVG
+   листа были одного экранного размера; при смене ширины перепроверь
+   калибровку рендером (см. instruments.py). */
+.instrument-wrap { margin-top: 8px; }
+.instrument-wrap.instrument-strip { max-width: 330px; }
+.instrument-wrap.instrument-column { max-width: 105px; }
+.instrument-wrap.instrument-dial { max-width: 240px; }
+.instrument-caption { font-size: 9pt; text-align: center; margin-top: 3px; }
 """.strip()

@@ -486,6 +486,119 @@
         "title": "GraphModel",
         "type": "object"
       },
+      "InstrumentModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "instrument",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "kind": {
+            "enum": [
+              "ruler",
+              "cylinder",
+              "thermometer",
+              "dynamometer",
+              "ammeter",
+              "voltmeter",
+              "manometer",
+              "scale_dial",
+              "speedometer"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "unit": {
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Max"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "gt": 0,
+            "title": "Step"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value"
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Caption"
+          }
+        },
+        "required": [
+          "type",
+          "kind",
+          "unit",
+          "min",
+          "max",
+          "step"
+        ],
+        "title": "InstrumentModel",
+        "type": "object"
+      },
       "ListModel": {
         "additionalProperties": false,
         "properties": {
@@ -755,6 +868,7 @@
                   "fill_table": "#/$defs/FillTableModel",
                   "fill_text": "#/$defs/FillTextModel",
                   "graph": "#/$defs/GraphModel",
+                  "instrument": "#/$defs/InstrumentModel",
                   "list": "#/$defs/ListModel",
                   "match": "#/$defs/MatchModel",
                   "open": "#/$defs/OpenModel",
@@ -780,6 +894,9 @@
                 },
                 {
                   "$ref": "#/$defs/ListModel"
+                },
+                {
+                  "$ref": "#/$defs/InstrumentModel"
                 },
                 {
                   "$ref": "#/$defs/OpenModel"
@@ -1065,6 +1182,7 @@
                   "fill_table": "#/$defs/FillTableModel",
                   "fill_text": "#/$defs/FillTextModel",
                   "graph": "#/$defs/GraphModel",
+                  "instrument": "#/$defs/InstrumentModel",
                   "list": "#/$defs/ListModel",
                   "match": "#/$defs/MatchModel",
                   "open": "#/$defs/OpenModel",
@@ -1090,6 +1208,9 @@
                 },
                 {
                   "$ref": "#/$defs/ListModel"
+                },
+                {
+                  "$ref": "#/$defs/InstrumentModel"
                 },
                 {
                   "$ref": "#/$defs/OpenModel"
@@ -1385,6 +1506,7 @@
               "fill_table": "#/$defs/FillTableModel",
               "fill_text": "#/$defs/FillTextModel",
               "graph": "#/$defs/GraphModel",
+              "instrument": "#/$defs/InstrumentModel",
               "list": "#/$defs/ListModel",
               "match": "#/$defs/MatchModel",
               "open": "#/$defs/OpenModel",
@@ -1410,6 +1532,9 @@
             },
             {
               "$ref": "#/$defs/ListModel"
+            },
+            {
+              "$ref": "#/$defs/InstrumentModel"
             },
             {
               "$ref": "#/$defs/OpenModel"

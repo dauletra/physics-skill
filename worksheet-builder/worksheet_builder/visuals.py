@@ -8,22 +8,10 @@ import math
 from collections.abc import Sequence
 
 from worksheet_builder.models import SeriesModel
-from worksheet_builder.render_helpers import esc
+from worksheet_builder.render_helpers import esc, fmt_num, svg_label
 
 DASH_PATTERNS = {"solid": None, "dashed": "8,4", "dotted": "1,3"}
 MARKER_SHAPES = ["circle", "cross", "triangle"]
-
-
-def _svg_label(raw: str) -> str:
-    """Текст подписи для SVG-контекста: `esc()` пропускает буквальные
-    `<sup>`/`<sub>` (см. render_helpers), но внутри SVG `<text>` HTML-теги
-    невалидны и молча ломают отрисовку — конвертируем их в `<tspan>` со
-    сдвигом базовой линии."""
-    escaped = esc(raw)
-    escaped = escaped.replace("<sup>", '<tspan baseline-shift="super" font-size="7">')
-    escaped = escaped.replace("<sub>", '<tspan baseline-shift="sub" font-size="7">')
-    escaped = escaped.replace("</sup>", "</tspan>").replace("</sub>", "</tspan>")
-    return escaped
 
 
 def _marker_svg(shape: str, cx: float, cy: float) -> str:
@@ -55,12 +43,6 @@ def _tick_positions(lo: float, hi: float, max_ticks: int = 9) -> list[float]:
             if 2 <= n1 - n0 + 1 <= max_ticks:
                 return [n * step for n in range(n0, n1 + 1)]
     return [lo, hi]
-
-
-def _fmt_num(n: float) -> str:
-    if abs(n - round(n)) < 1e-9:
-        return str(int(round(n)))
-    return f"{n:.2f}".rstrip("0").rstrip(".")
 
 
 def build_chart_svg(
@@ -106,7 +88,7 @@ def build_chart_svg(
         )
         parts.append(
             f'<text x="{px:.1f}" y="{margin["top"] + plot_h + 12}" font-size="9" '
-            f'text-anchor="middle">{_fmt_num(gx)}</text>'
+            f'text-anchor="middle">{fmt_num(gx)}</text>'
         )
     for gy in _tick_positions(y0, y1):
         py = sy(gy)
@@ -116,7 +98,7 @@ def build_chart_svg(
         )
         parts.append(
             f'<text x="{margin["left"] - 6}" y="{py + 3:.1f}" font-size="9" '
-            f'text-anchor="end">{_fmt_num(gy)}</text>'
+            f'text-anchor="end">{fmt_num(gy)}</text>'
         )
 
     # Оси
@@ -131,11 +113,11 @@ def build_chart_svg(
     )
     parts.append(
         f'<text x="{margin["left"] + plot_w}" y="{margin["top"] + plot_h - 6}" '
-        f'font-size="10" text-anchor="end">{_svg_label(x_label)}</text>'
+        f'font-size="10" text-anchor="end">{svg_label(x_label)}</text>'
     )
     parts.append(
         f'<text x="{margin["left"] + 4}" y="{margin["top"] + 10}" '
-        f'font-size="10" text-anchor="start">{_svg_label(y_label)}</text>'
+        f'font-size="10" text-anchor="start">{svg_label(y_label)}</text>'
     )
 
     legend_items = []

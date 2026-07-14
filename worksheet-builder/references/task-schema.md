@@ -8,7 +8,7 @@
 не входит: новые виды блоков добавляет разработчик, не сессия).
 
 ```
-Block = Component   // text | table | graph | list — чистый контент
+Block = Component   // text | table | graph | list | instrument — чистый контент
       | Question    // open | choice | match | ...  — несёт ответ
       | Part        // контейнер подзадания: { blocks: Block[] }
       | Row         // layout-контейнер: { blocks: Block[] } в одну строку
@@ -151,6 +151,10 @@ Layout-контейнер: его дети рендерятся колонкам
 ```json
 { "type": "list", "items": ["Не изменяется", "Увеличивается"], "marker": "letter", "columns": "single" }
 ```
+```json
+{ "type": "instrument", "kind": "ammeter", "unit": "А",
+  "min": 0, "max": 3, "step": 0.1, "value": 1.35, "caption": "Амперметр" }
+```
 
 - `text.body` — строка; поддерживает `<sup>`/`<sub>` и LaTeX (`$…$`,
   `$$…$$`) как текстовую разметку (см. `references/symbols.md`).
@@ -170,6 +174,17 @@ Layout-контейнер: его дети рендерятся колонкам
 - `list.marker` — `"none"` / `"number"` / `"letter"` — визуальный префикс
   пункта; `columns` — `"single"` / `"two"` / `"inline"` — раскладка.
   Одноколоночные списки чередуют фон строк (зебра).
+- `instrument` — измерительный прибор со шкалой (задачи на цену деления,
+  показания, погрешности). `kind` — закрытый словарь из 9 видов: `ruler`,
+  `cylinder`, `thermometer`, `dynamometer`, `ammeter`, `voltmeter`,
+  `manometer`, `scale_dial`, `speedometer`; `min`/`max` — пределы шкалы,
+  `step` — цена деления (обязана делить диапазон нацело; число делений
+  ограничено читаемостью), `value` — опциональное показание (у линейки —
+  правый край измеряемого бруска; может лежать **между** штрихами — это
+  валидно и даёт задачи на погрешность отсчёта), `caption` — подпись под
+  прибором. Показание-ответ для учителя живёт не здесь, а в вопросе рядом
+  (`instrument` — чистый компонент). Подробности и типичные шкалы —
+  `references/artifacts/instruments.md`.
 
 **Правило экранирования.** Модель хранит **сырой** авторский текст —
 экранирует функция рендера в точке интерполяции, вызывая `esc()`
@@ -381,15 +396,15 @@ pydantic-модель вида в `worksheet_builder/models.py` (выполня�
 ```python
 # components.py                      # questions.py
 COMPONENT_RENDERERS = {              QUESTION_RENDERERS = {
-    TextModel:  render_text,             OpenModel:      render_open,
-    TableModel: render_table,            ChoiceModel:    render_choice,
-    GraphModel: render_graph,            MatchModel:     render_match,
-    ListModel:  render_list,             FillTextModel:  render_fill_text,
-}                                        FillTableModel: render_fill_table,
-                                         PlotModel:      render_plot,
-# + контейнеры PartModel и RowModel      TrueFalseModel: render_true_false,
-#   (рендерятся в document.py)           RankModel:      render_rank,
-                                         ClassifyModel:  render_classify }
+    TextModel:       render_text,        OpenModel:      render_open,
+    TableModel:      render_table,       ChoiceModel:    render_choice,
+    GraphModel:      render_graph,       MatchModel:     render_match,
+    ListModel:       render_list,        FillTextModel:  render_fill_text,
+    InstrumentModel: render_instrument,  FillTableModel: render_fill_table,
+}                                        PlotModel:      render_plot,
+                                         TrueFalseModel: render_true_false,
+# + контейнеры PartModel и RowModel      RankModel:      render_rank,
+#   (рендерятся в document.py)           ClassifyModel:  render_classify }
 ```
 
 Один плоский `type`-дискриминатор, имена не пересекаются. Новый компонент
@@ -465,9 +480,11 @@ COMPONENT_RENDERERS = {              QUESTION_RENDERERS = {
 
 ## Явно вне scope
 
-- Иллюстрации/схемы/фото (компонент помимо `graph`) — не спроектированы.
-  Виды «дополнить схему»/«подписать части рисунка» пока не выразимы;
-  добавляются одним новым компонентом + одним новым классом вопроса, не
-  трогая остальное.
+- Иллюстрации/схемы/фото (компоненты помимо `graph` и `instrument`) — не
+  спроектированы. Виды «дополнить схему»/«подписать части рисунка» пока не
+  выразимы; из приборов не поддержаны секундомер, рычажные весы с гирями и
+  штангенциркуль (см. индекс `references/artifacts/README.md`). Добавляются
+  одним новым компонентом + при необходимости одним новым классом вопроса,
+  не трогая остальное.
 - Вложенные `part` (нумерация глубже `1. → a)`) и вложенные `row` —
   структурно допустимы, рендером не поддержаны, валидация отклоняет.

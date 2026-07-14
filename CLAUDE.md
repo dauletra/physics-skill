@@ -67,14 +67,17 @@ JSON, а не клик в браузере. `worksheet-teacher.html` несёт 
 **Задание — дерево блоков** (схема —
 `worksheet-builder/references/task-schema.md`, принципы —
 `docs/schema-design-principles.md`): чистые компоненты
-(`text`/`table`/`graph`/`list`, `components.py`) не знают об ответе/режиме;
-вопросы (9 видов, `questions.py`) несут ответ инлайн и сами решают, что
-показать в `student`/`teacher`; `part` — компоненты + ровно один вопрос,
-буква и `points` на нём; `row` — дети поровну в одну строку, прозрачен для
-инвариантов/букв (`iter_flat`), вложенный `row` запрещён. Смысловая связь —
-вложенностью, не соседством. Иллюстрации/схемы вне scope; `graph`/`plot` —
-единственный визуальный элемент (одиночный график ограничен
-`max-width: 330px` в CSS, в `row` не заворачивается).
+(`text`/`table`/`graph`/`list`/`instrument`, `components.py`) не знают об
+ответе/режиме; вопросы (9 видов, `questions.py`) несут ответ инлайн и сами
+решают, что показать в `student`/`teacher`; `part` — компоненты + ровно
+один вопрос, буква и `points` на нём; `row` — дети поровну в одну строку,
+прозрачен для инвариантов/букв (`iter_flat`), вложенный `row` запрещён.
+Смысловая связь — вложенностью, не соседством. Иллюстрации/схемы вне scope;
+визуальные элементы — только `graph`/`plot` (одиночный график ограничен
+`max-width: 330px` в CSS, в `row` не заворачивается) и приборы со шкалой
+`instrument` (9 видов, 3 семейства геометрии — `INSTRUMENT_FAMILIES` в
+`models.py`; ширина висит на обёртке `.instrument-wrap.instrument-<семейство>`,
+масштаб всех SVG листа единый — ~1.5px на единицу viewBox).
 
 ## Где что лежит
 
@@ -97,7 +100,9 @@ JSON, а не клик в браузере. `worksheet-teacher.html` несёт 
     `charts-and-graphs.md` (данные графиков), `design-system.md` (оболочка/
     шрифты/зебра — держи в синхроне с `BASE_CSS` в `assets.py`),
     `artifacts/` (`README.md` — индекс/конвенции SVG-артефактов, держи в
-    синхроне при новом генераторе визуала; `graphs.md` — per-type разбор).
+    синхроне при новом генераторе визуала; `graphs.md` — per-type разбор;
+    `instruments.md` — приборы со шкалой: виды, типичные шкалы, задачи на
+    погрешности).
   - `worksheet_builder/` — пакет: `cli.py` (`load_workspace` +
     workspace-инварианты, `--task`/`--mode`, `--emit-schema`), `models.py`
     (вся валидация; `iter_flat_models()` — row прозрачен), `assets.py`
@@ -106,15 +111,19 @@ JSON, а не клик в браузере. `worksheet-teacher.html` несёт 
     заменяй голым `html.escape()`; модель хранит сырой текст, эскейпит
     рендер в точке интерполяции, забытый `esc()` ловит фузз-тест),
     `visuals.py` (`build_chart_svg`, viewBox 220×124, калиброван под 330px;
-    круглые деления — `_tick_positions`), `components.py` (+ хелперы
+    круглые деления — `_tick_positions`; общие `fmt_num`/`svg_label` — в
+    `render_helpers.py`), `instruments.py` (`build_instrument_svg` — приборы
+    со шкалой, 3 семейства геометрии со своими viewBox; прореживание
+    подписей штрихов — `_ticks`), `components.py` (+ хелперы
     `list_html`/`table_html`, принимают готовую безопасную разметку),
     `questions.py` (рендер 9 видов; общий конверт с `explanation` — в
     `render_question`), `document.py` (сборка; `compute_part_labels` —
     чистая функция; `render_source_script` — встраивание черновика;
     `build_document` принимает уже распарсенные модели).
-  - `examples/kinematics-9th-grade/` — проработанный пример: 14 заданий,
+  - `examples/kinematics-9th-grade/` — проработанный пример: 15 заданий,
     все виды вопросов (task-09 — иерархия символов, task-10 — два `part`
-    вокруг общего графика, task-13 — `row` из двух `part` с `plot`). Его
+    вокруг общего графика, task-13 — `row` из двух `part` с `plot`,
+    task-15 — приборы `instrument` с погрешностями). Его
     `output/` — человеческое превью (гитигнорится, перегенерируется).
 - `tests/` — golden-снапшоты (9 видов × 2 режима + составные + пример),
   негативная таблица валидации, workspace-ошибки, фузз эскейпинга (новый

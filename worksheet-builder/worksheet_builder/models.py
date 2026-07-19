@@ -201,9 +201,10 @@ class InstrumentModel(StrictModel):
     # Метрология (учебник погрешностей): класс точности печатается на шкале;
     # двухпредельный прибор (`ranges`, ровно два предела) несёт двойную
     # шкалу на одной дуге — min/max/step описывают внешнюю шкалу большего
-    # предела (и value в её единицах), внутренняя получается умножением на
-    # отношение пределов; клеммы «−» и по одной на предел, без выделения
-    # «включённой» (куда воткнут провод — текст условия, не рисунок).
+    # предела (и value в её единицах; min <= 0, отрицательный min — заход
+    # шкалы в минус), внутренняя получается умножением на отношение
+    # пределов; клеммы «−» и по одной на предел, без выделения «включённой»
+    # (куда воткнут провод — текст условия, не рисунок).
     accuracy_class: Optional[Number] = None
     ranges: Optional[list[Number]] = Field(default=None, min_length=2, max_length=2)
     # Штангенциркуль: число делений нониуса (точность отсчёта = step /
@@ -265,8 +266,13 @@ class InstrumentModel(StrictModel):
             if sorted(set(self.ranges)) != list(self.ranges):
                 raise ValueError(f"ranges must be strictly increasing, got {self.ranges}")
             # Физическая корректность двойной шкалы: обе шкалы — одна дуга.
-            if self.min != 0:
-                raise ValueError(f"a dual-scale instrument must start at 0, got min {self.min}")
+            # Отрицательный min — заход шкалы в минус (как −1/−0.2 у J0407);
+            # подписи обеих шкал продолжаются влево от нуля тем же правилом.
+            if self.min > 0:
+                raise ValueError(
+                    f"a dual-scale instrument must start at 0 or below "
+                    f"(negative overrun), got min {self.min}"
+                )
             if abs(self.max - self.ranges[-1]) > 1e-9:
                 raise ValueError(
                     f"max must equal the larger range {self.ranges[-1]} "

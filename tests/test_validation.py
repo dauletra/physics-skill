@@ -190,9 +190,12 @@ def test_exactly_two_ranges():
     assert "2" in msg
 
 
-def test_dual_scale_must_start_at_zero():
+def test_dual_scale_must_start_at_zero_or_below():
     msg = load_error(make_task(_instrument(min=1, max=3, ranges=[0.6, 3], value=None)))
     assert "start at 0" in msg
+    # Заход в минус легален (−1…3 А, как у J0407), показание может быть
+    # отрицательным (стрелка левее нуля при обратной полярности).
+    parse_task(make_task(_instrument(min=-1, max=3, ranges=[0.6, 3], value=-0.4)))
 
 
 def test_dual_scale_max_is_larger_range():

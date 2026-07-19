@@ -99,6 +99,17 @@ def test_dual_scale_labels_share_ticks_and_are_round():
     assert "0.6А" in svg and "3А" in svg
 
 
+def test_dual_scale_negative_overrun():
+    # Заход в минус: подписи обеих шкал продолжаются влево от нуля тем же
+    # правилом (−1 внешняя ↔ −0.2 внутренняя, как на J0407).
+    model = make(min=-1, max=3, step=0.1, ranges=[0.6, 3])
+    assert labeled_values(model) == [-1, 0, 1, 2, 3]
+    svg = build_instrument_svg(model)
+    labels = re.findall(r'font-size="7"[^>]*>([^<]+)</text>', svg)
+    for expected in ("-1", "-0.2", "0.6"):
+        assert expected in labels, (expected, labels)
+
+
 def test_unit_and_caption_are_escaped():
     svg = build_instrument_svg(make(unit="a<b&", caption='c<d&"', value=1))
     assert "a<b" not in svg and "c<d" not in svg

@@ -17,6 +17,7 @@
 явными линиями."""
 
 import math
+from decimal import Decimal
 from typing import Callable
 
 from worksheet_builder.models import INSTRUMENT_FAMILIES, InstrumentModel
@@ -459,6 +460,79 @@ def _build_stopwatch(model: InstrumentModel) -> str:
     return "".join(parts) + "</svg>"
 
 
+# --- balance: рычажные весы с гирями ---
+
+def _build_balance(model: InstrumentModel) -> str:
+    """Рычажные весы: стойка на основании, горизонтальное коромысло на
+    опоре, две чашки на нитях; слева — заштрихованное тело (`value` — его
+    масса), справа — гири (`weights`, рисуются по убыванию с подписями
+    масс, повторы разрешены). Весы всегда **в равновесии** (стрелка на
+    контрольной риске): рисунок — постановка задачи, а не симуляция, и
+    согласованность масс — дело условия, а не рендера. Чашки комбинируются
+    свободно: тело + гири, тело + пустая чаша («какие гири положить?»),
+    только гири, пустые весы. Предел взвешивания — мелкой строкой у
+    основания."""
+    w, h = 170, 86
+    cx, beam_y = 85.0, 28.0
+    lx, rx = cx - 58.0, cx + 58.0
+    pan_y = beam_y + 30.0
+    parts = [SVG_OPEN.format(w=w, h=h)]
+
+    # Основание, стойка, контрольная риска и предел взвешивания.
+    parts.append(
+        f'<rect x="{cx - 26:.1f}" y="74" width="52" height="5" '
+        'fill="#fff" stroke="#000" stroke-width="1"/>'
+    )
+    parts.append(_line(cx, 74.0, cx, beam_y, 1.5))
+    parts.append(_line(cx - 4, 52.0, cx + 4, 52.0, 0.5))
+    parts.append(
+        _text(6, 83.5,
+              f"{fmt_num(model.min)}&#8230;{fmt_num(model.max)} {svg_label(model.unit)}",
+              6, anchor="start")
+    )
+
+    # Коромысло, стрелка на риске, опора.
+    parts.append(_line(lx, beam_y, rx, beam_y, 1.8))
+    parts.append(_line(cx, beam_y, cx, 50.0, 1))
+    parts.append(f'<circle cx="{cx}" cy="{beam_y}" r="2.5" fill="#000"/>')
+
+    # Чашки: две нити от конца коромысла к краям тарелки.
+    for ex in (lx, rx):
+        parts.append(_line(ex, beam_y, ex - 20, pan_y, 0.7))
+        parts.append(_line(ex, beam_y, ex + 20, pan_y, 0.7))
+        parts.append(_line(ex - 20, pan_y, ex + 20, pan_y, 1.2))
+
+    # Тело на левой чашке.
+    if model.value is not None:
+        parts.append(
+            f'<rect x="{lx - 11:.1f}" y="{pan_y - 13:.1f}" width="22" height="13" '
+            'fill="#fff" stroke="#000" stroke-width="1"/>'
+        )
+        parts.extend(_hatch_rect(lx - 11, pan_y - 13, lx + 11, pan_y))
+
+    # Гири на правой чашке: по убыванию, высота пропорциональна массе,
+    # маленькая головка сверху, подпись массы над гирей.
+    if model.weights:
+        ordered = sorted(model.weights, reverse=True)
+        biggest = ordered[0]
+        gw, gap = 8.0, 2.0
+        x = rx - (len(ordered) * gw + (len(ordered) - 1) * gap) / 2
+        for wt in ordered:
+            gh = 6.0 + 8.0 * wt / biggest
+            top = pan_y - gh
+            parts.append(
+                f'<rect x="{x:.1f}" y="{top:.1f}" width="{gw}" height="{gh:.1f}" '
+                'fill="#fff" stroke="#000" stroke-width="1"/>'
+            )
+            parts.append(
+                f'<rect x="{x + gw / 2 - 1.5:.1f}" y="{top - 2:.1f}" width="3" height="2" '
+                'fill="#000"/>'
+            )
+            parts.append(_text(x + gw / 2, top - 4, fmt_num(wt), 6))
+            x += gw + gap
+    return "".join(parts) + "</svg>"
+
+
 # --- digital: приборы с цифровым табло ---
 
 def _build_digital(model: InstrumentModel) -> str:
@@ -477,8 +551,11 @@ def _build_digital(model: InstrumentModel) -> str:
         '<rect x="10" y="10" width="130" height="28" '
         'fill="#fff" stroke="#000" stroke-width="1"/>'
     )
-    step_str = fmt_num(model.step)
-    decimals = len(step_str.split(".")[1]) if "." in step_str else 0
+    # Точное десятичное представление, не fmt_num: тот обрезает всё мельче
+    # сотых, и step 0.001 давал бы 0 знаков. normalize() гасит хвост «.0» у
+    # целых step; step валидирован конечным, так что exponent всегда int.
+    exponent = Decimal(str(model.step)).normalize().as_tuple().exponent
+    decimals = max(0, -int(exponent))
     value = model.value if model.value is not None else 0
     parts.append(
         f'<text x="116" y="31.5" font-size="15" text-anchor="end" '
@@ -487,7 +564,7 @@ def _build_digital(model: InstrumentModel) -> str:
     parts.append(_text(136, 31.5, svg_label(model.unit), 8))
     parts.append(
         _text(10, 55,
-              f"{fmt_num(model.min)}&#8211;{fmt_num(model.max)} {svg_label(model.unit)}",
+              f"{fmt_num(model.min)}…{fmt_num(model.max)} {svg_label(model.unit)}",
               7, anchor="start")
     )
     return "".join(parts) + "</svg>"
@@ -505,6 +582,7 @@ _FAMILY_BUILDERS: dict[str, Callable[[InstrumentModel], str]] = {
     "speedometer": _build_dial,
     "stopwatch": _build_stopwatch,
     "caliper": _build_caliper,
+    "balance": _build_balance,
     "multimeter": _build_digital,
     "digital_scale": _build_digital,
     "digital_stopwatch": _build_digital,

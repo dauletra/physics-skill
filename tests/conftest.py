@@ -241,6 +241,12 @@ MINIMAL_VISUALS = {
         "type": "instrument", "kind": "voltmeter", "unit": "В",
         "min": 0, "max": 6, "step": 0.2, "value": 4.5,
     },
+    # Рычажные весы (всегда в равновесии): тело + гири с повтором (50+10+10).
+    "instrument-balance": {
+        "type": "instrument", "kind": "balance", "unit": "г",
+        "min": 0, "max": 200, "step": 1, "value": 70, "weights": [50, 10, 10],
+        "caption": "Рычажные весы",
+    },
     # Нониус: value = 27 + 4·0,1 — совпадает 4-й штрих нониуса.
     "instrument-caliper": {
         "type": "instrument", "kind": "caliper", "unit": "мм",
@@ -259,6 +265,14 @@ MINIMAL_VISUALS = {
         "type": "instrument", "kind": "multimeter", "unit": "В",
         "min": 0, "max": 20, "step": 0.01, "value": 12.47,
         "caption": "Цифровой вольтметр",
+    },
+    # Регресс табло: step мельче сотых (0.001 → три знака показания;
+    # fmt_num его обрезал до целого) и отрицательный min (разделитель
+    # диапазона «…», чтобы минус не сливался с тире).
+    "instrument-digital-fine": {
+        "type": "instrument", "kind": "multimeter", "unit": "В",
+        "min": -2, "max": 2, "step": 0.001, "value": 1.234,
+        "caption": "Милливольтовый режим",
     },
     # Двухпредельный прибор (шаблон школьного J0407): двойная шкала на
     # одной дуге (внешняя −1…3, внутренняя −0.2…0.6 — заход в минус),

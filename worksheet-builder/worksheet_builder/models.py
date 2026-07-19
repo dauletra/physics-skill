@@ -139,7 +139,8 @@ class ListModel(StrictModel):
 InstrumentKind = Literal[
     "ruler", "cylinder", "thermometer", "dynamometer",
     "ammeter", "voltmeter", "manometer", "scale_dial", "speedometer",
-    "stopwatch", "caliper", "multimeter", "digital_scale", "digital_stopwatch",
+    "stopwatch", "caliper", "balance",
+    "multimeter", "digital_scale", "digital_stopwatch",
 ]
 
 # Вид прибора -> семейство геометрии шкалы. Семейство выбирает и генератор
@@ -147,7 +148,7 @@ InstrumentKind = Literal[
 # существующей геометрией — это строка здесь + ветка оформления в своём
 # семействе, без новой модели.
 INSTRUMENT_FAMILIES: dict[
-    str, Literal["strip", "column", "dial", "clock", "vernier", "digital"]
+    str, Literal["strip", "column", "dial", "clock", "vernier", "balance", "digital"]
 ] = {
     "ruler": "strip",
     "cylinder": "column",
@@ -160,6 +161,7 @@ INSTRUMENT_FAMILIES: dict[
     "speedometer": "dial",
     "stopwatch": "clock",
     "caliper": "vernier",
+    "balance": "balance",
     "multimeter": "digital",
     "digital_scale": "digital",
     "digital_stopwatch": "digital",
@@ -171,10 +173,12 @@ INSTRUMENT_FAMILIES: dict[
 # дуги в 120°. У цифрового табло штрихов нет — лимит только технический
 # (step здесь — дискретность, а не расстояние между штрихами).
 # У штангенциркуля лимит держит читаемость нониуса: шкала — фрагмент
-# штанги (обычно 0–40 мм), иначе штрихи нониуса сольются.
+# штанги (обычно 0–40 мм), иначе штрихи нониуса сольются. У весов и табло
+# штрихов нет — лимит только технический (step там — наименьшая гиря и
+# дискретность соответственно).
 _MAX_DIVISIONS = {
     "strip": 150, "column": 60, "dial": 60, "clock": 150,
-    "vernier": 40, "digital": 10**6,
+    "vernier": 40, "balance": 10**6, "digital": 10**6,
 }
 
 # Классы точности по ГОСТ 8.401 — закрытый ряд; произвольное число — ошибка,
@@ -210,6 +214,12 @@ class InstrumentModel(StrictModel):
     # Штангенциркуль: число делений нониуса (точность отсчёта = step /
     # vernier: 10 -> 0,1 мм; 20 -> 0,05 мм). Не задан у caliper — считается 10.
     vernier: Optional[Literal[10, 20]] = None
+    # Рычажные весы (balance): гири на правой чашке (повторы разрешены);
+    # value — масса тела на левой; step — наименьшая гиря набора
+    # (погрешность весов), max — предел взвешивания. Весы рисуются всегда
+    # в равновесии: рисунок — постановка задачи, согласованность масс —
+    # дело условия, а не валидатора.
+    weights: Optional[list[Number]] = Field(default=None, min_length=1, max_length=4)
 
     @model_validator(mode="after")
     def _scale_valid(self) -> "InstrumentModel":
@@ -305,6 +315,28 @@ class InstrumentModel(StrictModel):
                     )
         elif self.vernier is not None:
             raise ValueError(f"vernier is only supported for caliper, not {self.kind!r}")
+        if self.kind == "balance":
+            if self.min != 0:
+                raise ValueError(f"balance scale must start at 0, got min {self.min}")
+            if self.weights is not None:
+                for i, wt in enumerate(self.weights):
+                    if wt <= 0:
+                        raise ValueError(f"weights[{i}] must be positive, got {wt}")
+                    ratio = wt / self.step
+                    # step — наименьшая гиря набора: любая гиря ей кратна,
+                    # иначе step не является единицей разновеса.
+                    if abs(ratio - round(ratio)) > 1e-6 or wt < self.step - 1e-9:
+                        raise ValueError(
+                            f"weights[{i}] = {wt} must be a multiple of step {self.step} "
+                            "(step is the smallest weight of the set)"
+                        )
+                total = sum(self.weights)
+                if total > self.max + 1e-9:
+                    raise ValueError(
+                        f"weights sum {total} exceeds the weighing limit max = {self.max}"
+                    )
+        elif self.weights is not None:
+            raise ValueError(f"weights are only supported for balance, not {self.kind!r}")
 
 
 # --- Вопросы (конверт: type + опциональные id/explanation) ---

@@ -519,6 +519,7 @@
               "speedometer",
               "stopwatch",
               "caliper",
+              "balance",
               "multimeter",
               "digital_scale",
               "digital_stopwatch"
@@ -646,6 +647,30 @@
             ],
             "default": null,
             "title": "Vernier"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "maxItems": 4,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Weights"
           }
         },
         "required": [
@@ -1890,6 +1915,7 @@
               "speedometer",
               "stopwatch",
               "caliper",
+              "balance",
               "multimeter",
               "digital_scale",
               "digital_stopwatch"
@@ -2017,6 +2043,30 @@
             ],
             "default": null,
             "title": "Vernier"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "maxItems": 4,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Weights"
           }
         },
         "required": [

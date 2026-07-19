@@ -251,6 +251,51 @@ def test_caliper_vernier_must_fit_on_bar():
     assert "fit" in msg
 
 
+# --- Рычажные весы ---
+
+
+def _balance(**overrides):
+    base = _instrument(kind="balance", unit="г", min=0, max=200, step=1,
+                       value=75, weights=[50, 20, 5])
+    base.update(overrides)
+    return base
+
+
+def test_weights_only_on_balance():
+    msg = load_error(make_task(_instrument(weights=[50, 20])))
+    assert "balance" in msg
+
+
+def test_balance_weight_multiple_of_smallest():
+    # step — наименьшая гиря набора: гиря 2.5 при step 1 не из разновеса.
+    msg = load_error(make_task(_balance(weights=[50, 2.5])))
+    assert "multiple of step" in msg
+
+
+def test_balance_weights_within_limit():
+    msg = load_error(make_task(_balance(weights=[100, 100, 50], value=200)))
+    assert "weighing limit" in msg
+
+
+def test_balance_at_most_four_weights():
+    msg = load_error(make_task(_balance(weights=[50, 20, 10, 5, 2], value=87)))
+    assert "4" in msg
+
+
+def test_balance_min_is_zero():
+    msg = load_error(make_task(_balance(min=5)))
+    assert "start at 0" in msg
+
+
+def test_balance_pan_combinations_are_legal():
+    # Чашки комбинируются свободно под тип задачи: тело + пустая чаша
+    # («какие гири положить?»), только гири, пустые весы, гири с повторами.
+    parse_task(make_task(_balance(value=80, weights=None)))
+    parse_task(make_task(_balance(value=None, weights=[100])))
+    parse_task(make_task(_balance(value=None, weights=None)))
+    parse_task(make_task(_balance(value=70, weights=[50, 10, 10])))
+
+
 # --- Обязательные поля, закрытые словари, опечатки, дубли ---
 
 

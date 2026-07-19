@@ -110,6 +110,52 @@ def test_dual_scale_negative_overrun():
         assert expected in labels, (expected, labels)
 
 
+def test_digital_decimals_follow_step_exactly():
+    # Число знаков табло — из точного десятичного представления step:
+    # fmt_num здесь не годится (режет всё мельче сотых — 0.001 давал «1»).
+    svg = build_instrument_svg(make(kind="multimeter", unit="В",
+                                    min=0, max=2, step=0.001, value=1.234))
+    assert ">1.234<" in svg
+    assert ">1<" not in svg
+    # Целая дискретность — без дробной части, «12», а не «12.0».
+    svg = build_instrument_svg(make(kind="multimeter", unit="В",
+                                    max=20, step=1, value=12))
+    assert ">12<" in svg
+
+
+def test_digital_range_separator_survives_negative_min():
+    # «-200–200» сливает минус с тире — разделитель диапазона всегда «…».
+    svg = build_instrument_svg(make(kind="multimeter", unit="мА",
+                                    min=-200, max=200, step=1, value=150))
+    assert "-200…200 мА" in svg
+    assert "&#8211;" not in svg
+
+
+def test_balance_is_always_level_and_weights_sorted():
+    # Весы — постановка задачи: коромысло горизонтально при любых чашках,
+    # никакой «симуляции» сравнением масс.
+    def beam(svg):
+        m = re.search(
+            r'<line x1="27.0" y1="([\d.]+)" x2="143.0" y2="([\d.]+)" '
+            r'stroke="#000" stroke-width="1.8"/>', svg)
+        assert m, svg
+        return m.groups()
+
+    combos = [dict(value=70, weights=[50, 10, 10]),  # тело + гири с повтором
+              dict(value=82),                        # тело + пустая чаша
+              dict(weights=[100]),                   # только гири
+              dict()]                                # пустые весы
+    for extra in combos:
+        svg = build_instrument_svg(
+            make(kind="balance", unit="г", min=0, max=200, step=1, **extra))
+        assert beam(svg) == ("28.0", "28.0"), extra
+    # Гири рисуются по убыванию, повторы рядом, каждая подписана.
+    svg = build_instrument_svg(
+        make(kind="balance", unit="г", min=0, max=200, step=1, weights=[10, 50, 10]))
+    labels = re.findall(r'font-size="6" text-anchor="middle">([^<]+)<', svg)
+    assert labels == ["50", "10", "10"]
+
+
 def test_unit_and_caption_are_escaped():
     svg = build_instrument_svg(make(unit="a<b&", caption='c<d&"', value=1))
     assert "a<b" not in svg and "c<d" not in svg

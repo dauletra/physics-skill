@@ -194,6 +194,19 @@ def test_selected_range_must_be_listed():
     assert "must be one of ranges" in msg
 
 
+def test_digital_value_must_match_discreteness():
+    # У табло нет «между штрихами»: показание кратно дискретности.
+    msg = load_error(make_task(_instrument(kind="multimeter", unit="В",
+                                           max=20, step=0.01, value=12.472)))
+    assert "multiple of step" in msg
+
+
+def test_digital_dense_scale_is_legal():
+    # 2000 «делений» дискретности — норма для табло (лимит штрихов не про него).
+    parse_task(make_task(_instrument(kind="multimeter", unit="В",
+                                     max=20, step=0.01, value=12.47)))
+
+
 # --- Обязательные поля, закрытые словари, опечатки, дубли ---
 
 

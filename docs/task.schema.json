@@ -516,7 +516,11 @@
               "voltmeter",
               "manometer",
               "scale_dial",
-              "speedometer"
+              "speedometer",
+              "stopwatch",
+              "multimeter",
+              "digital_scale",
+              "digital_stopwatch"
             ],
             "title": "Kind",
             "type": "string"
@@ -1881,7 +1885,11 @@
               "voltmeter",
               "manometer",
               "scale_dial",
-              "speedometer"
+              "speedometer",
+              "stopwatch",
+              "multimeter",
+              "digital_scale",
+              "digital_stopwatch"
             ],
             "title": "Kind",
             "type": "string"

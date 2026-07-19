@@ -139,13 +139,14 @@ class ListModel(StrictModel):
 InstrumentKind = Literal[
     "ruler", "cylinder", "thermometer", "dynamometer",
     "ammeter", "voltmeter", "manometer", "scale_dial", "speedometer",
+    "stopwatch", "multimeter", "digital_scale", "digital_stopwatch",
 ]
 
 # Вид прибора -> семейство геометрии шкалы. Семейство выбирает и генератор
 # SVG (instruments.py), и лимит числа делений ниже; новый прибор с уже
 # существующей геометрией — это строка здесь + ветка оформления в своём
 # семействе, без новой модели.
-INSTRUMENT_FAMILIES: dict[str, Literal["strip", "column", "dial"]] = {
+INSTRUMENT_FAMILIES: dict[str, Literal["strip", "column", "dial", "clock", "digital"]] = {
     "ruler": "strip",
     "cylinder": "column",
     "thermometer": "column",
@@ -155,12 +156,18 @@ INSTRUMENT_FAMILIES: dict[str, Literal["strip", "column", "dial"]] = {
     "manometer": "dial",
     "scale_dial": "dial",
     "speedometer": "dial",
+    "stopwatch": "clock",
+    "multimeter": "digital",
+    "digital_scale": "digital",
+    "digital_stopwatch": "digital",
 }
 
 # Читаемость: слишком плотные штрихи сливаются после масштабирования под
 # целевую ширину семейства. Линейка терпит миллиметровую плотность,
-# столбик и дуга — нет.
-_MAX_DIVISIONS = {"strip": 150, "column": 60, "dial": 60}
+# столбик и дуга — нет; полный круг секундомера (clock) вмещает больше
+# дуги в 120°. У цифрового табло штрихов нет — лимит только технический
+# (step здесь — дискретность, а не расстояние между штрихами).
+_MAX_DIVISIONS = {"strip": 150, "column": 60, "dial": 60, "clock": 150, "digital": 10**6}
 
 # Классы точности по ГОСТ 8.401 — закрытый ряд; произвольное число — ошибка,
 # а не «какой-то класс». Рисуются на шкале стрелочного прибора; задачи на
@@ -216,6 +223,16 @@ class InstrumentModel(StrictModel):
         return self
 
     def _metrology_valid(self) -> None:
+        # Цифровое табло не показывает «между штрихами»: показание всегда
+        # кратно дискретности (step). У аналоговых шкал — наоборот, см.
+        # комментарий про кратность в _scale_valid.
+        if INSTRUMENT_FAMILIES[self.kind] == "digital" and self.value is not None:
+            offset = (self.value - self.min) / self.step
+            if abs(offset - round(offset)) > 1e-6:
+                raise ValueError(
+                    f"digital display value must be a multiple of step {self.step}, "
+                    f"got {self.value}"
+                )
         if self.accuracy_class is not None:
             if INSTRUMENT_FAMILIES[self.kind] != "dial":
                 raise ValueError(

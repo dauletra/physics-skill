@@ -241,6 +241,19 @@ MINIMAL_VISUALS = {
         "type": "instrument", "kind": "voltmeter", "unit": "В",
         "min": 0, "max": 6, "step": 0.2, "value": 4.5,
     },
+    # Полная круговая шкала: нуль и предел совпадают наверху, подписан предел.
+    "instrument-stopwatch": {
+        "type": "instrument", "kind": "stopwatch", "unit": "с",
+        "min": 0, "max": 30, "step": 0.2, "value": 16.4,
+        "caption": "Секундомер",
+    },
+    # Цифровое табло: step = дискретность, показание печатается с её числом
+    # десятичных знаков.
+    "instrument-digital": {
+        "type": "instrument", "kind": "multimeter", "unit": "В",
+        "min": 0, "max": 20, "step": 0.01, "value": 12.47,
+        "caption": "Цифровой вольтметр",
+    },
     # Метрология: шкала в делениях, класс точности, клеммы пределов
     # (включённый предел — закрашенная клемма).
     "instrument-multirange": {

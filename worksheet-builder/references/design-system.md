@@ -121,7 +121,9 @@ gap: 23px`) — колонки всегда равные, gap грид учит�
 целевая ширина, и висит она на обёртке, а не на SVG:
 `.instrument-wrap.instrument-strip` (линейка) — 330px,
 `.instrument-wrap.instrument-column` (мензурка/термометр/динамометр) —
-105px, `.instrument-wrap.instrument-dial` (стрелочные) — 240px. SVG внутри
+105px, `.instrument-wrap.instrument-dial` (стрелочные) — 240px,
+`.instrument-wrap.instrument-clock` (секундомер) — 180px,
+`.instrument-wrap.instrument-digital` (цифровое табло) — 225px. SVG внутри
 заполняет обёртку по правилу `svg.visual-svg`. Масштаб всех семейств —
 ~1.5px на единицу viewBox, тот же, что у графиков (220 → 330px), поэтому
 шрифты всех SVG листа одного экранного размера. Подпись `caption`

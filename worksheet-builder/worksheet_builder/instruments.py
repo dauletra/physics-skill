@@ -30,9 +30,11 @@ SVG_OPEN = (
 
 # Прореживание подписей: подписывается каждый k-й штрих от min. Лимиты —
 # per-семейство: линейка традиционно несёт больше чисел (каждый сантиметр),
-# чем дуга или столбик.
-_LABEL_EVERY = (1, 2, 5, 10, 20, 50)
-_MAX_LABELS = {"strip": 16, "column": 8, "dial": 8}
+# чем дуга или столбик; полный круг секундомера — до 12 (как часовой
+# циферблат). 25 в ряду — ради круглых подписей секундомера (0–30 с × 0,2:
+# подпись каждые 5 с).
+_LABEL_EVERY = (1, 2, 5, 10, 20, 25, 50)
+_MAX_LABELS = {"strip": 16, "column": 8, "dial": 8, "clock": 12}
 
 
 def _ticks(model: InstrumentModel) -> list[tuple[float, float, bool]]:
@@ -342,6 +344,81 @@ def _build_dial(model: InstrumentModel) -> str:
     return "".join(parts) + "</svg>"
 
 
+# --- clock: секундомер (полная круговая шкала) ---
+
+def _clock_point(cx: float, cy: float, r: float, frac: float) -> tuple[float, float]:
+    # Нуль сверху, ход по часовой стрелке, полный оборот.
+    theta = math.radians(90.0 - frac * 360.0)
+    return cx + r * math.cos(theta), cy - r * math.sin(theta)
+
+
+def _build_stopwatch(model: InstrumentModel) -> str:
+    """Механический секундомер: полная круговая шкала, нуль сверху, ход по
+    часовой стрелке. Точки min и max совпадают наверху — штрих нуля не
+    рисуется, в верхней точке подписан предел (как «30»/«60» на настоящем
+    секундомере). Сверху — кнопка-заводная головка."""
+    w, h = 120, 132
+    cx, cy = 60.0, 74.0
+    r_body, r_arc, r_needle, r_label = 54.0, 47.0, 38.0, 33.0
+    parts = [SVG_OPEN.format(w=w, h=h)]
+    parts.append(
+        '<rect x="55" y="6" width="10" height="9" rx="1.5" '
+        'fill="#fff" stroke="#000" stroke-width="1"/>'
+    )
+    parts.append(_line(60.0, 15.0, 60.0, 20.0, 1.2))
+    parts.append(
+        f'<circle cx="{cx}" cy="{cy}" r="{r_body}" fill="#fff" stroke="#000" stroke-width="1.2"/>'
+    )
+    for i, (value, frac, labeled) in enumerate(_ticks(model)):
+        if i == 0:
+            continue  # совпадает с точкой max наверху
+        x0, y0 = _clock_point(cx, cy, r_arc, frac)
+        x1, y1 = _clock_point(cx, cy, r_arc - (7.0 if labeled else 4.0), frac)
+        parts.append(_line(x0, y0, x1, y1, 0.9 if labeled else 0.5))
+        if labeled:
+            lx, ly = _clock_point(cx, cy, r_label, frac)
+            parts.append(_text(lx, ly + 2.4, fmt_num(value), 7))
+    parts.append(_text(cx, cy + 21, svg_label(model.unit), 7))
+    nx, ny = _clock_point(cx, cy, r_needle, _value_frac(model))
+    parts.append(_line(cx, cy, nx, ny, 1.3))
+    parts.append(f'<circle cx="{cx}" cy="{cy}" r="3" fill="#000"/>')
+    return "".join(parts) + "</svg>"
+
+
+# --- digital: приборы с цифровым табло ---
+
+def _build_digital(model: InstrumentModel) -> str:
+    """Цифровой прибор (мультиметр, электронные весы, электронный
+    секундомер): корпус с табло. Показание печатается с числом десятичных
+    знаков цены деления — `step` здесь означает **дискретность** (единицу
+    младшего разряда): 12.47 при step 0.01; пустой прибор показывает нули.
+    Диапазон измерения — мелкой строкой под табло."""
+    w, h = 150, 64
+    parts = [SVG_OPEN.format(w=w, h=h)]
+    parts.append(
+        '<rect x="1.5" y="1.5" width="147" height="61" rx="5" '
+        'fill="#fff" stroke="#000" stroke-width="1.2"/>'
+    )
+    parts.append(
+        '<rect x="10" y="10" width="130" height="28" '
+        'fill="#fff" stroke="#000" stroke-width="1"/>'
+    )
+    step_str = fmt_num(model.step)
+    decimals = len(step_str.split(".")[1]) if "." in step_str else 0
+    value = model.value if model.value is not None else 0
+    parts.append(
+        f'<text x="116" y="31.5" font-size="15" text-anchor="end" '
+        f'font-weight="bold" letter-spacing="1">{value:.{decimals}f}</text>'
+    )
+    parts.append(_text(136, 31.5, svg_label(model.unit), 8))
+    parts.append(
+        _text(10, 55,
+              f"{fmt_num(model.min)}&#8211;{fmt_num(model.max)} {svg_label(model.unit)}",
+              7, anchor="start")
+    )
+    return "".join(parts) + "</svg>"
+
+
 _FAMILY_BUILDERS: dict[str, Callable[[InstrumentModel], str]] = {
     "ruler": _build_strip,
     "cylinder": _build_cylinder,
@@ -352,6 +429,10 @@ _FAMILY_BUILDERS: dict[str, Callable[[InstrumentModel], str]] = {
     "manometer": _build_dial,
     "scale_dial": _build_dial,
     "speedometer": _build_dial,
+    "stopwatch": _build_stopwatch,
+    "multimeter": _build_digital,
+    "digital_scale": _build_digital,
+    "digital_stopwatch": _build_digital,
 }
 
 

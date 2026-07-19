@@ -180,18 +180,40 @@ def test_ranges_only_on_electric():
 
 
 def test_ranges_must_increase():
-    msg = load_error(make_task(_instrument(ranges=[5, 1, 0.2])))
+    msg = load_error(make_task(_instrument(max=5, ranges=[5, 1])))
     assert "increasing" in msg
 
 
-def test_selected_range_needs_ranges():
-    msg = load_error(make_task(_instrument(selected_range=1)))
-    assert "requires ranges" in msg
+def test_exactly_two_ranges():
+    # Двойная шкала — ровно два предела; три ряда чисел на дуге нечитаемы.
+    msg = load_error(make_task(_instrument(max=5, ranges=[0.2, 1, 5])))
+    assert "2" in msg
 
 
-def test_selected_range_must_be_listed():
-    msg = load_error(make_task(_instrument(ranges=[0.2, 1, 5], selected_range=3)))
-    assert "must be one of ranges" in msg
+def test_dual_scale_must_start_at_zero():
+    msg = load_error(make_task(_instrument(min=1, max=3, ranges=[0.6, 3], value=None)))
+    assert "start at 0" in msg
+
+
+def test_dual_scale_max_is_larger_range():
+    msg = load_error(make_task(_instrument(max=3, ranges=[0.6, 6])))
+    assert "larger range" in msg
+
+
+def test_dual_scale_must_be_round():
+    # Пары 3/0.7: внутренняя цена деления 0.1 x 0.7/3 - некруглая.
+    msg = load_error(make_task(_instrument(max=3, ranges=[0.7, 3])))
+    assert "non-round" in msg
+    # Реальные школьные пары легальны: 3/0.6 А и 6/3 В.
+    parse_task(make_task(_instrument(max=3, ranges=[0.6, 3])))
+    parse_task(make_task(_instrument(kind="voltmeter", unit="В",
+                                     max=6, step=0.2, ranges=[3, 6], value=2.5)))
+
+
+def test_selected_range_is_gone():
+    # Поле убрано при переходе на двойную шкалу — теперь это опечатка.
+    msg = load_error(make_task(_instrument(max=3, ranges=[0.6, 3], selected_range=3)))
+    assert "selected_range" in msg
 
 
 def test_digital_value_must_match_discreteness():

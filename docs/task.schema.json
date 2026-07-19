@@ -620,7 +620,7 @@
                     }
                   ]
                 },
-                "maxItems": 4,
+                "maxItems": 2,
                 "minItems": 2,
                 "type": "array"
               },
@@ -630,21 +630,6 @@
             ],
             "default": null,
             "title": "Ranges"
-          },
-          "selected_range": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Selected Range"
           },
           "vernier": {
             "anyOf": [
@@ -2006,7 +1991,7 @@
                     }
                   ]
                 },
-                "maxItems": 4,
+                "maxItems": 2,
                 "minItems": 2,
                 "type": "array"
               },
@@ -2016,21 +2001,6 @@
             ],
             "default": null,
             "title": "Ranges"
-          },
-          "selected_range": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Selected Range"
           },
           "vernier": {
             "anyOf": [

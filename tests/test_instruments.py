@@ -80,6 +80,25 @@ def test_cylinder_level_tracks_value():
     assert meniscus_y(250) < meniscus_y(100) < meniscus_y(0)
 
 
+def test_dual_scale_labels_share_ticks_and_are_round():
+    # Шаблон школьного J0407: внешняя шкала 0-3 А, внутренняя 0-0.6 А.
+    model = make(max=3, step=0.1, ranges=[0.6, 3], value=1.85)
+    # Двойная шкала прореживается сильнее: подписи 0,1,2,3 — как на приборе.
+    assert labeled_values(model) == [0, 1, 2, 3]
+    svg = build_instrument_svg(model)
+    labels = re.findall(r'<text x="([\d.]+)" y="([\d.]+)" font-size="7"[^>]*>([^<]+)</text>', svg)
+    by_text = {text: (float(x), float(y)) for x, y, text in labels}
+    # Каждая пара подписей (внешняя, внутренняя) стоит на одном штрихе:
+    # позиции — ровно на радиусах 72 и 47 того же угла (+2.5 базлайн).
+    for frac, outer, inner in [(1 / 3, "1", "0.2"), (2 / 3, "2", "0.4"), (1.0, "3", "0.6")]:
+        ox, oy = _dial_point(80, 88, 72, frac)
+        ix, iy = _dial_point(80, 88, 47, frac)
+        assert by_text[outer] == (round(ox, 1), round(oy + 2.5, 1)), outer
+        assert by_text[inner] == (round(ix, 1), round(iy + 2.5, 1)), inner
+    # Клеммы: общий «−» и по одной на предел с подписью «0.6А»/«3А».
+    assert "0.6А" in svg and "3А" in svg
+
+
 def test_unit_and_caption_are_escaped():
     svg = build_instrument_svg(make(unit="a<b&", caption='c<d&"', value=1))
     assert "a<b" not in svg and "c<d" not in svg

@@ -199,13 +199,13 @@ class InstrumentModel(StrictModel):
     value: Optional[Number] = None
     caption: Optional[str] = None
     # Метрология (учебник погрешностей): класс точности печатается на шкале;
-    # многопредельный прибор несёт клеммы пределов (`ranges`), включённый
-    # предел (`selected_range`) рисуется закрашенной клеммой. Шкалу
-    # многопредельного прибора градуируй в делениях (`unit: "дел."`) — цену
-    # деления ученик вычисляет из предела сам.
+    # двухпредельный прибор (`ranges`, ровно два предела) несёт двойную
+    # шкалу на одной дуге — min/max/step описывают внешнюю шкалу большего
+    # предела (и value в её единицах), внутренняя получается умножением на
+    # отношение пределов; клеммы «−» и по одной на предел, без выделения
+    # «включённой» (куда воткнут провод — текст условия, не рисунок).
     accuracy_class: Optional[Number] = None
-    ranges: Optional[list[Number]] = Field(default=None, min_length=2, max_length=4)
-    selected_range: Optional[Number] = None
+    ranges: Optional[list[Number]] = Field(default=None, min_length=2, max_length=2)
     # Штангенциркуль: число делений нониуса (точность отсчёта = step /
     # vernier: 10 -> 0,1 мм; 20 -> 0,05 мм). Не задан у caliper — считается 10.
     vernier: Optional[Literal[10, 20]] = None
@@ -257,19 +257,27 @@ class InstrumentModel(StrictModel):
         if self.ranges is not None:
             if self.kind not in _ELECTRIC_KINDS:
                 raise ValueError(
-                    "ranges (multi-range terminals) are only supported for "
+                    "ranges (a dual-scale instrument) are only supported for "
                     f"{'/'.join(_ELECTRIC_KINDS)}, not {self.kind!r}"
                 )
             if any(r <= 0 for r in self.ranges):
                 raise ValueError(f"ranges must be positive, got {self.ranges}")
             if sorted(set(self.ranges)) != list(self.ranges):
                 raise ValueError(f"ranges must be strictly increasing, got {self.ranges}")
-        if self.selected_range is not None:
-            if self.ranges is None:
-                raise ValueError("selected_range requires ranges")
-            if not any(abs(self.selected_range - r) < 1e-9 for r in self.ranges):
+            # Физическая корректность двойной шкалы: обе шкалы — одна дуга.
+            if self.min != 0:
+                raise ValueError(f"a dual-scale instrument must start at 0, got min {self.min}")
+            if abs(self.max - self.ranges[-1]) > 1e-9:
                 raise ValueError(
-                    f"selected_range {self.selected_range} must be one of ranges {self.ranges}"
+                    f"max must equal the larger range {self.ranges[-1]} "
+                    f"(min/max/step describe the outer scale), got max {self.max}"
+                )
+            inner_step = self.step * self.ranges[0] / self.ranges[-1]
+            if abs(inner_step * 100 - round(inner_step * 100)) > 1e-6:
+                raise ValueError(
+                    f"ranges {self.ranges} give a non-round inner scale: its step would be "
+                    f"{inner_step} (outer step {self.step} x {self.ranges[0]}/{self.ranges[-1]}); "
+                    "labels are readable up to 2 decimal places"
                 )
         if self.kind == "caliper":
             v = self.vernier or 10

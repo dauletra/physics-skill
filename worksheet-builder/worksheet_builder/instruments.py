@@ -49,6 +49,10 @@ def _ticks(model: InstrumentModel) -> list[tuple[float, float, bool]]:
     слипнутся."""
     n = round((model.max - model.min) / model.step)
     max_labels = _MAX_LABELS[INSTRUMENT_FAMILIES[model.kind]]
+    # Двойная шкала несёт два ряда чисел на каждый подписанный штрих —
+    # прореживаем сильнее, как на реальном приборе (0-3 А: подписи 0,1,2,3).
+    if model.ranges:
+        max_labels = 5
     fitting = [k for k in _LABEL_EVERY if n // k + 1 <= max_labels]
     if not fitting:
         fitting = [_LABEL_EVERY[-1]]
@@ -275,8 +279,10 @@ def _build_dial(model: InstrumentModel) -> str:
     показанию. У электроизмерительных (амперметр/вольтметр) — единица в
     кружке и клеммы «+»/«−», у остальных — единица текстом. Метрология:
     класс точности печатается числом в левом нижнем углу (как на настоящей
-    шкале), многопредельный прибор несёт общую клемму «+» и клемму на
-    каждый предел; включённый предел — закрашенная клемма."""
+    шкале); двухпредельный прибор (`ranges`) несёт двойную шкалу — штрихи
+    общие, над дугой подписи большего предела (внешняя шкала), под дугой —
+    меньшего (значение × отношение пределов), и три клеммы: «−» и по одной
+    на предел с подписью."""
     w, h = 160, 110
     cx, cy = 80.0, 88.0
     r_arc, r_needle, r_label = 58.0, 52.0, 72.0
@@ -292,6 +298,10 @@ def _build_dial(model: InstrumentModel) -> str:
         f'<path d="M{ax0:.1f},{ay0:.1f} A{r_arc},{r_arc} 0 0 1 {ax1:.1f},{ay1:.1f}" '
         'fill="none" stroke="#000" stroke-width="1"/>'
     )
+    # Внутренняя шкала двухпредельного прибора: то же значение × отношение
+    # пределов, подпись под дугой на том же штрихе.
+    inner_ratio = model.ranges[0] / model.ranges[-1] if model.ranges else None
+    r_inner = 47.0
     for value, frac, labeled in _ticks(model):
         tx0, ty0 = _dial_point(cx, cy, r_arc, frac)
         tx1, ty1 = _dial_point(cx, cy, r_arc + (7.5 if labeled else 4.5), frac)
@@ -299,6 +309,9 @@ def _build_dial(model: InstrumentModel) -> str:
         if labeled:
             lx, ly = _dial_point(cx, cy, r_label, frac)
             parts.append(_text(lx, ly + 2.5, fmt_num(value), 7))
+            if inner_ratio is not None:
+                ix, iy = _dial_point(cx, cy, r_inner, frac)
+                parts.append(_text(ix, iy + 2.5, fmt_num(value * inner_ratio), 7))
     # Единица измерения. Кружок (как на школьных электроизмерительных
     # приборах) — только для коротких единиц («А», «В»); длинная («дел.»
     # у многопредельной шкалы) в кружок не помещается — печатается текстом.
@@ -317,21 +330,16 @@ def _build_dial(model: InstrumentModel) -> str:
         parts.append(_text(10, 103, fmt_num(model.accuracy_class), 7, anchor="start"))
     if electric:
         if model.ranges:
-            # Общая клемма «+» + клемма на каждый предел; включённый предел
-            # закрашен. Подпись предела — над клеммой.
-            n = len(model.ranges)
-            for i, (tx, label) in enumerate(
-                (36 + j * 88 / n, lbl)
-                for j, lbl in enumerate(["+"] + [fmt_num(r) for r in model.ranges])
-            ):
-                selected = (
-                    i > 0
-                    and model.selected_range is not None
-                    and abs(model.selected_range - model.ranges[i - 1]) < 1e-9
-                )
-                fill = "#000" if selected else "#fff"
+            # Как на реальном приборе: общая клемма «−» и по клемме на
+            # предел с подписью «0.6А»/«3А». Куда «включён» провод, рисунок
+            # не знает — это текст условия задачи.
+            labels = ["&#8722;"] + [
+                f"{fmt_num(r)}{svg_label(model.unit)}" for r in model.ranges
+            ]
+            for j, label in enumerate(labels):
+                tx = 36 + j * 88 / (len(labels) - 1)
                 parts.append(
-                    f'<circle cx="{tx:.1f}" cy="99" r="3" fill="{fill}" '
+                    f'<circle cx="{tx:.1f}" cy="99" r="3" fill="#fff" '
                     'stroke="#000" stroke-width="1"/>'
                 )
                 parts.append(_text(tx, 93, label, 6))

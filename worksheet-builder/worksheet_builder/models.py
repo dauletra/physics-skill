@@ -162,6 +162,14 @@ INSTRUMENT_FAMILIES: dict[str, Literal["strip", "column", "dial"]] = {
 # столбик и дуга — нет.
 _MAX_DIVISIONS = {"strip": 150, "column": 60, "dial": 60}
 
+# Классы точности по ГОСТ 8.401 — закрытый ряд; произвольное число — ошибка,
+# а не «какой-то класс». Рисуются на шкале стрелочного прибора; задачи на
+# приведённую погрешность (Δ = класс × предел / 100) — instruments.md.
+ACCURACY_CLASSES = (0.05, 0.1, 0.2, 0.5, 1.0, 1.5, 2.5, 4.0)
+
+# Виды с клеммами: только у них осмысленны многопредельные `ranges`.
+_ELECTRIC_KINDS = ("ammeter", "voltmeter")
+
 
 class InstrumentModel(StrictModel):
     type: Literal["instrument"]
@@ -175,6 +183,14 @@ class InstrumentModel(StrictModel):
     step: Number = Field(gt=0)
     value: Optional[Number] = None
     caption: Optional[str] = None
+    # Метрология (учебник погрешностей): класс точности печатается на шкале;
+    # многопредельный прибор несёт клеммы пределов (`ranges`), включённый
+    # предел (`selected_range`) рисуется закрашенной клеммой. Шкалу
+    # многопредельного прибора градуируй в делениях (`unit: "дел."`) — цену
+    # деления ученик вычисляет из предела сам.
+    accuracy_class: Optional[Number] = None
+    ranges: Optional[list[Number]] = Field(default=None, min_length=2, max_length=4)
+    selected_range: Optional[Number] = None
 
     @model_validator(mode="after")
     def _scale_valid(self) -> "InstrumentModel":
@@ -196,7 +212,37 @@ class InstrumentModel(StrictModel):
         # между штрихами — суть задач на погрешность отсчёта.
         if self.value is not None and not (self.min <= self.value <= self.max):
             raise ValueError(f"value {self.value} is outside the scale [{self.min}, {self.max}]")
+        self._metrology_valid()
         return self
+
+    def _metrology_valid(self) -> None:
+        if self.accuracy_class is not None:
+            if INSTRUMENT_FAMILIES[self.kind] != "dial":
+                raise ValueError(
+                    f"accuracy_class is only drawn on dial instruments, not on {self.kind!r}"
+                )
+            if not any(abs(self.accuracy_class - c) < 1e-9 for c in ACCURACY_CLASSES):
+                raise ValueError(
+                    f"accuracy_class must be one of {list(ACCURACY_CLASSES)}, "
+                    f"got {self.accuracy_class}"
+                )
+        if self.ranges is not None:
+            if self.kind not in _ELECTRIC_KINDS:
+                raise ValueError(
+                    "ranges (multi-range terminals) are only supported for "
+                    f"{'/'.join(_ELECTRIC_KINDS)}, not {self.kind!r}"
+                )
+            if any(r <= 0 for r in self.ranges):
+                raise ValueError(f"ranges must be positive, got {self.ranges}")
+            if sorted(set(self.ranges)) != list(self.ranges):
+                raise ValueError(f"ranges must be strictly increasing, got {self.ranges}")
+        if self.selected_range is not None:
+            if self.ranges is None:
+                raise ValueError("selected_range requires ranges")
+            if not any(abs(self.selected_range - r) < 1e-9 for r in self.ranges):
+                raise ValueError(
+                    f"selected_range {self.selected_range} must be one of ranges {self.ranges}"
+                )
 
 
 # --- Вопросы (конверт: type + опциональные id/explanation) ---

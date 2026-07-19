@@ -157,6 +157,43 @@ def test_instrument_empty_scale_is_legal():
     parse_task(make_task(_instrument(value=None)))
 
 
+# --- Метрология: класс точности и многопредельность ---
+
+
+def test_accuracy_class_only_on_dials():
+    msg = load_error(make_task(_instrument(kind="ruler", unit="см",
+                                           max=10, value=None, accuracy_class=0.5)))
+    assert "dial" in msg
+
+
+def test_accuracy_class_closed_set():
+    # 0.3 — не класс точности по ГОСТ 8.401; произвольное число — ошибка.
+    msg = load_error(make_task(_instrument(accuracy_class=0.3)))
+    assert "accuracy_class" in msg
+    parse_task(make_task(_instrument(accuracy_class=1)))  # 1 == 1.0 легален
+
+
+def test_ranges_only_on_electric():
+    msg = load_error(make_task(_instrument(kind="manometer", unit="кПа",
+                                           ranges=[100, 400])))
+    assert "ammeter/voltmeter" in msg
+
+
+def test_ranges_must_increase():
+    msg = load_error(make_task(_instrument(ranges=[5, 1, 0.2])))
+    assert "increasing" in msg
+
+
+def test_selected_range_needs_ranges():
+    msg = load_error(make_task(_instrument(selected_range=1)))
+    assert "requires ranges" in msg
+
+
+def test_selected_range_must_be_listed():
+    msg = load_error(make_task(_instrument(ranges=[0.2, 1, 5], selected_range=3)))
+    assert "must be one of ranges" in msg
+
+
 # --- Обязательные поля, закрытые словари, опечатки, дубли ---
 
 

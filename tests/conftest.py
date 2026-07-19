@@ -241,4 +241,12 @@ MINIMAL_VISUALS = {
         "type": "instrument", "kind": "voltmeter", "unit": "В",
         "min": 0, "max": 6, "step": 0.2, "value": 4.5,
     },
+    # Метрология: шкала в делениях, класс точности, клеммы пределов
+    # (включённый предел — закрашенная клемма).
+    "instrument-multirange": {
+        "type": "instrument", "kind": "ammeter", "unit": "дел.",
+        "min": 0, "max": 50, "step": 1, "value": 32.5,
+        "ranges": [0.2, 1, 5], "selected_range": 1, "accuracy_class": 1.5,
+        "caption": "Многопредельный амперметр",
+    },
 }

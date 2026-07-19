@@ -271,7 +271,10 @@ def _dial_point(cx: float, cy: float, r: float, frac: float) -> tuple[float, flo
 def _build_dial(model: InstrumentModel) -> str:
     """Стрелочный прибор: корпус, дуговая шкала, стрелка от опоры к
     показанию. У электроизмерительных (амперметр/вольтметр) — единица в
-    кружке и клеммы «+»/«−», у остальных — единица текстом."""
+    кружке и клеммы «+»/«−», у остальных — единица текстом. Метрология:
+    класс точности печатается числом в левом нижнем углу (как на настоящей
+    шкале), многопредельный прибор несёт общую клемму «+» и клемму на
+    каждый предел; включённый предел — закрашенная клемма."""
     w, h = 160, 110
     cx, cy = 80.0, 88.0
     r_arc, r_needle, r_label = 58.0, 52.0, 72.0
@@ -294,24 +297,48 @@ def _build_dial(model: InstrumentModel) -> str:
         if labeled:
             lx, ly = _dial_point(cx, cy, r_label, frac)
             parts.append(_text(lx, ly + 2.5, fmt_num(value), 7))
-    # Единица измерения.
-    if electric:
+    # Единица измерения. Кружок (как на школьных электроизмерительных
+    # приборах) — только для коротких единиц («А», «В»); длинная («дел.»
+    # у многопредельной шкалы) в кружок не помещается — печатается текстом.
+    if electric and len(model.unit) <= 2:
         parts.append(
             f'<circle cx="{cx}" cy="66" r="8" fill="#fff" stroke="#000" stroke-width="0.8"/>'
         )
-        parts.append(_text(cx, 68.8, svg_label(model.unit), 8))
-    else:
-        parts.append(_text(cx, 68.8, svg_label(model.unit), 8))
+    parts.append(_text(cx, 68.8, svg_label(model.unit), 8))
     # Стрелка поверх единицы, опора — заливной кружок.
     nx, ny = _dial_point(cx, cy, r_needle, _value_frac(model))
     parts.append(_line(cx, cy, nx, ny, 1.5))
     parts.append(f'<circle cx="{cx}" cy="{cy}" r="3.5" fill="#000"/>')
+    if model.accuracy_class is not None:
+        # Как на настоящей шкале: просто число в углу (расшифровка
+        # обозначения — задача условия, а не рисунка).
+        parts.append(_text(10, 103, fmt_num(model.accuracy_class), 7, anchor="start"))
     if electric:
-        for tx, sign in ((58.0, "+"), (102.0, "&#8722;")):
-            parts.append(
-                f'<circle cx="{tx}" cy="99" r="3" fill="#fff" stroke="#000" stroke-width="1"/>'
-            )
-            parts.append(_text(tx + (-8 if sign == "+" else 8), 102, sign, 8))
+        if model.ranges:
+            # Общая клемма «+» + клемма на каждый предел; включённый предел
+            # закрашен. Подпись предела — над клеммой.
+            n = len(model.ranges)
+            for i, (tx, label) in enumerate(
+                (36 + j * 88 / n, lbl)
+                for j, lbl in enumerate(["+"] + [fmt_num(r) for r in model.ranges])
+            ):
+                selected = (
+                    i > 0
+                    and model.selected_range is not None
+                    and abs(model.selected_range - model.ranges[i - 1]) < 1e-9
+                )
+                fill = "#000" if selected else "#fff"
+                parts.append(
+                    f'<circle cx="{tx:.1f}" cy="99" r="3" fill="{fill}" '
+                    'stroke="#000" stroke-width="1"/>'
+                )
+                parts.append(_text(tx, 93, label, 6))
+        else:
+            for tx, sign in ((58.0, "+"), (102.0, "&#8722;")):
+                parts.append(
+                    f'<circle cx="{tx}" cy="99" r="3" fill="#fff" stroke="#000" stroke-width="1"/>'
+                )
+                parts.append(_text(tx + (-8 if sign == "+" else 8), 102, sign, 8))
     return "".join(parts) + "</svg>"
 
 

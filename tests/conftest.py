@@ -241,6 +241,12 @@ MINIMAL_VISUALS = {
         "type": "instrument", "kind": "voltmeter", "unit": "В",
         "min": 0, "max": 6, "step": 0.2, "value": 4.5,
     },
+    # Нониус: value = 27 + 4·0,1 — совпадает 4-й штрих нониуса.
+    "instrument-caliper": {
+        "type": "instrument", "kind": "caliper", "unit": "мм",
+        "min": 0, "max": 40, "step": 1, "vernier": 10, "value": 27.4,
+        "caption": "Штангенциркуль",
+    },
     # Полная круговая шкала: нуль и предел совпадают наверху, подписан предел.
     "instrument-stopwatch": {
         "type": "instrument", "kind": "stopwatch", "unit": "с",

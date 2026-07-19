@@ -207,6 +207,25 @@ def test_digital_dense_scale_is_legal():
                                      max=20, step=0.01, value=12.47)))
 
 
+def test_vernier_only_on_caliper():
+    msg = load_error(make_task(_instrument(vernier=10)))
+    assert "caliper" in msg
+
+
+def test_caliper_value_must_match_precision():
+    # 27.43 не кратно точности нониуса 0.1 — совпадающий штрих не определён.
+    msg = load_error(make_task(_instrument(kind="caliper", unit="мм",
+                                           max=40, step=1, vernier=10, value=27.43)))
+    assert "precision" in msg
+
+
+def test_caliper_vernier_must_fit_on_bar():
+    # Нониус длиной 9 мм не помещается правее value = 35 на шкале 0-40.
+    msg = load_error(make_task(_instrument(kind="caliper", unit="мм",
+                                           max=40, step=1, vernier=10, value=35)))
+    assert "fit" in msg
+
+
 # --- Обязательные поля, закрытые словари, опечатки, дубли ---
 
 

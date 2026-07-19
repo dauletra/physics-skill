@@ -34,7 +34,7 @@ SVG_OPEN = (
 # циферблат). 25 в ряду — ради круглых подписей секундомера (0–30 с × 0,2:
 # подпись каждые 5 с).
 _LABEL_EVERY = (1, 2, 5, 10, 20, 25, 50)
-_MAX_LABELS = {"strip": 16, "column": 8, "dial": 8, "clock": 12}
+_MAX_LABELS = {"strip": 16, "column": 8, "dial": 8, "clock": 12, "vernier": 6}
 
 
 def _ticks(model: InstrumentModel) -> list[tuple[float, float, bool]]:
@@ -344,6 +344,72 @@ def _build_dial(model: InstrumentModel) -> str:
     return "".join(parts) + "</svg>"
 
 
+# --- vernier: штангенциркуль ---
+
+def _build_caliper(model: InstrumentModel) -> str:
+    """Штангенциркуль: штанга со шкалой (штрихи вверх от нижней кромки),
+    рамка с нониусом под ней, губки вниз, между губками — заштрихованная
+    деталь шириной `value`. Штрих i нониуса стоит на
+    `value + i·step·(v−1)/v`, поэтому при `value = n·step + k·(step/v)`
+    ровно k-й штрих нониуса совпадает со штрихом штанги — классический
+    отсчёт по совпадению. Точность (step/v) на рисунке не печатается —
+    она выводится учеником из числа делений нониуса."""
+    w, h = 220, 84
+    x0, x1 = 14.0, 206.0
+    bar_top, bar_bottom = 16.0, 40.0
+    frame_bottom, jaw_bottom = 58.0, 78.0
+    v = model.vernier or 10
+
+    def sx(val: float) -> float:
+        return x0 + (val - model.min) / (model.max - model.min) * (x1 - x0)
+
+    value = model.value if model.value is not None else model.min
+    xv = sx(value)
+    parts = [SVG_OPEN.format(w=w, h=h)]
+    # Штанга и неподвижная губка (измерительная плоскость — при нуле шкалы).
+    parts.append(
+        f'<rect x="2" y="{bar_top}" width="216" height="{bar_bottom - bar_top}" '
+        'fill="#fff" stroke="#000" stroke-width="1"/>'
+    )
+    parts.append(
+        f'<rect x="{x0 - 6:.1f}" y="{bar_bottom}" width="6" '
+        f'height="{jaw_bottom - bar_bottom}" fill="#fff" stroke="#000" stroke-width="1"/>'
+    )
+    # Шкала штанги: штрихи вверх от нижней кромки — навстречу нониусу.
+    for tick_value, frac, labeled in _ticks(model):
+        x = sx(tick_value)
+        length = 7.0 if labeled else 4.5
+        parts.append(_line(x, bar_bottom, x, bar_bottom - length, 0.9 if labeled else 0.5))
+        if labeled:
+            parts.append(_text(x, bar_bottom - 9.5, fmt_num(tick_value), 7))
+    parts.append(_text(x1, bar_top + 8.5, svg_label(model.unit), 7, anchor="end"))
+    # Рамка с нониусом и подвижная губка (измерительная плоскость — слева).
+    frame_w = sx(value + (v - 1) * model.step) - xv + 8
+    parts.append(
+        f'<rect x="{xv:.1f}" y="{bar_bottom}" width="{frame_w:.1f}" '
+        f'height="{frame_bottom - bar_bottom}" fill="#fff" stroke="#000" stroke-width="1"/>'
+    )
+    parts.append(
+        f'<rect x="{xv:.1f}" y="{bar_bottom}" width="6" '
+        f'height="{jaw_bottom - bar_bottom}" fill="#fff" stroke="#000" stroke-width="1"/>'
+    )
+    for i in range(v + 1):
+        x = sx(value + i * model.step * (v - 1) / v)
+        labeled = i in (0, v // 2, v)
+        parts.append(_line(x, bar_bottom, x, bar_bottom + (6.0 if labeled else 4.0),
+                           0.9 if labeled else 0.5))
+        if labeled:
+            parts.append(_text(x, bar_bottom + 14.5, str(i), 6))
+    # Деталь между губками.
+    if model.value is not None and model.value > model.min:
+        parts.append(
+            f'<rect x="{x0:.1f}" y="60" width="{xv - x0:.1f}" height="14" '
+            'fill="#fff" stroke="#000" stroke-width="1"/>'
+        )
+        parts.extend(_hatch_rect(x0, 60, xv, 74))
+    return "".join(parts) + "</svg>"
+
+
 # --- clock: секундомер (полная круговая шкала) ---
 
 def _clock_point(cx: float, cy: float, r: float, frac: float) -> tuple[float, float]:
@@ -430,6 +496,7 @@ _FAMILY_BUILDERS: dict[str, Callable[[InstrumentModel], str]] = {
     "scale_dial": _build_dial,
     "speedometer": _build_dial,
     "stopwatch": _build_stopwatch,
+    "caliper": _build_caliper,
     "multimeter": _build_digital,
     "digital_scale": _build_digital,
     "digital_stopwatch": _build_digital,

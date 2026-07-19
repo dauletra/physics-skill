@@ -139,14 +139,16 @@ class ListModel(StrictModel):
 InstrumentKind = Literal[
     "ruler", "cylinder", "thermometer", "dynamometer",
     "ammeter", "voltmeter", "manometer", "scale_dial", "speedometer",
-    "stopwatch", "multimeter", "digital_scale", "digital_stopwatch",
+    "stopwatch", "caliper", "multimeter", "digital_scale", "digital_stopwatch",
 ]
 
 # Вид прибора -> семейство геометрии шкалы. Семейство выбирает и генератор
 # SVG (instruments.py), и лимит числа делений ниже; новый прибор с уже
 # существующей геометрией — это строка здесь + ветка оформления в своём
 # семействе, без новой модели.
-INSTRUMENT_FAMILIES: dict[str, Literal["strip", "column", "dial", "clock", "digital"]] = {
+INSTRUMENT_FAMILIES: dict[
+    str, Literal["strip", "column", "dial", "clock", "vernier", "digital"]
+] = {
     "ruler": "strip",
     "cylinder": "column",
     "thermometer": "column",
@@ -157,6 +159,7 @@ INSTRUMENT_FAMILIES: dict[str, Literal["strip", "column", "dial", "clock", "digi
     "scale_dial": "dial",
     "speedometer": "dial",
     "stopwatch": "clock",
+    "caliper": "vernier",
     "multimeter": "digital",
     "digital_scale": "digital",
     "digital_stopwatch": "digital",
@@ -167,7 +170,12 @@ INSTRUMENT_FAMILIES: dict[str, Literal["strip", "column", "dial", "clock", "digi
 # столбик и дуга — нет; полный круг секундомера (clock) вмещает больше
 # дуги в 120°. У цифрового табло штрихов нет — лимит только технический
 # (step здесь — дискретность, а не расстояние между штрихами).
-_MAX_DIVISIONS = {"strip": 150, "column": 60, "dial": 60, "clock": 150, "digital": 10**6}
+# У штангенциркуля лимит держит читаемость нониуса: шкала — фрагмент
+# штанги (обычно 0–40 мм), иначе штрихи нониуса сольются.
+_MAX_DIVISIONS = {
+    "strip": 150, "column": 60, "dial": 60, "clock": 150,
+    "vernier": 40, "digital": 10**6,
+}
 
 # Классы точности по ГОСТ 8.401 — закрытый ряд; произвольное число — ошибка,
 # а не «какой-то класс». Рисуются на шкале стрелочного прибора; задачи на
@@ -198,6 +206,9 @@ class InstrumentModel(StrictModel):
     accuracy_class: Optional[Number] = None
     ranges: Optional[list[Number]] = Field(default=None, min_length=2, max_length=4)
     selected_range: Optional[Number] = None
+    # Штангенциркуль: число делений нониуса (точность отсчёта = step /
+    # vernier: 10 -> 0,1 мм; 20 -> 0,05 мм). Не задан у caliper — считается 10.
+    vernier: Optional[Literal[10, 20]] = None
 
     @model_validator(mode="after")
     def _scale_valid(self) -> "InstrumentModel":
@@ -260,6 +271,26 @@ class InstrumentModel(StrictModel):
                 raise ValueError(
                     f"selected_range {self.selected_range} must be one of ranges {self.ranges}"
                 )
+        if self.kind == "caliper":
+            v = self.vernier or 10
+            precision = self.step / v
+            if self.value is not None:
+                k = (self.value - self.min) / precision
+                # Кратность точности нониуса обязательна: иначе совпадающий
+                # штрих не определён и рисунок неоднозначен.
+                if abs(k - round(k)) > 1e-6:
+                    raise ValueError(
+                        f"caliper value must be a multiple of the vernier precision "
+                        f"{precision} (step {self.step} / {v} divisions), got {self.value}"
+                    )
+                fit_max = self.max - (v - 1) * self.step
+                if self.value > fit_max + 1e-9:
+                    raise ValueError(
+                        f"vernier scale must fit on the bar: value <= {fit_max} "
+                        f"(max - {v - 1}*step), got {self.value}"
+                    )
+        elif self.vernier is not None:
+            raise ValueError(f"vernier is only supported for caliper, not {self.kind!r}")
 
 
 # --- Вопросы (конверт: type + опциональные id/explanation) ---

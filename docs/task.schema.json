@@ -518,6 +518,7 @@
               "scale_dial",
               "speedometer",
               "stopwatch",
+              "caliper",
               "multimeter",
               "digital_scale",
               "digital_stopwatch"
@@ -644,6 +645,22 @@
             ],
             "default": null,
             "title": "Selected Range"
+          },
+          "vernier": {
+            "anyOf": [
+              {
+                "enum": [
+                  10,
+                  20
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Vernier"
           }
         },
         "required": [
@@ -1887,6 +1904,7 @@
               "scale_dial",
               "speedometer",
               "stopwatch",
+              "caliper",
               "multimeter",
               "digital_scale",
               "digital_stopwatch"
@@ -2013,6 +2031,22 @@
             ],
             "default": null,
             "title": "Selected Range"
+          },
+          "vernier": {
+            "anyOf": [
+              {
+                "enum": [
+                  10,
+                  20
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Vernier"
           }
         },
         "required": [

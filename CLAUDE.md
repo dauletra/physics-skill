@@ -10,7 +10,15 @@
 маленьких JSON-файлах (`meta.json` + `tasks/task-NN.json`); пакет
 `worksheet_builder/` детерминированно рендерит их в HTML. **Не возвращай
 рукописный HTML-вывод** — если нужно новое визуальное поведение, меняй
-рендерер/CSS, а не HTML конкретного задания.
+рендерер/CSS, а не HTML конкретного задания. Тот же принцип у двух других
+режимов: `--visual spec.json` рендерит спеку одного визуального блока
+(`graph`/`instrument`, схема та же, что внутри задания) в самодостаточный
+SVG (`standalone.py`) — для показа в диалоге и вставки в презентацию,
+freehand-SVG в проект не входит; `--document doc.json` рендерит документ
+без вопросов (конспект/текст с иллюстрациями: `title` + чистые компоненты
++ `heading`/`row`, `DocumentModel`) в один HTML со встроенным исходником —
+вопросы/part в документе невыразимы структурно, режимов student/teacher
+нет.
 
 Лист — **сплошной экранный HTML-документ**: колонка 800px, белый фон, px.
 Вёрстки под печать/A4 нет вообще (осознанно, не добавляй). Единственный
@@ -104,8 +112,13 @@ JSON, а не клик в браузере. `worksheet-teacher.html` несёт 
     `instruments.md` — приборы со шкалой: виды, типичные шкалы, задачи на
     погрешности).
   - `worksheet_builder/` — пакет: `cli.py` (`load_workspace` +
-    workspace-инварианты, `--task`/`--mode`, `--emit-schema`), `models.py`
-    (вся валидация; `iter_flat_models()` — row прозрачен), `assets.py`
+    workspace-инварианты, `--task`/`--mode`, `--visual`/`--document`/`-o`,
+    `--emit-schema`), `models.py`
+    (вся валидация; `iter_flat_models()` — row прозрачен; `parse_visual` —
+    спека `--visual` тем же union-ом визуальных компонентов;
+    `parse_document`/`DocumentModel` — документ: `heading` и свой
+    row-без-вопросов, блоки листа отбиты before-валидатором с человеческой
+    ошибкой), `assets.py`
     (`KATEX_HEAD`, `BASE_CSS` — константа без параметров), `strings.py`,
     `render_helpers.py` (`esc()` пропускает буквальные `<sup>`/`<sub>` — не
     заменяй голым `html.escape()`; модель хранит сырой текст, эскейпит
@@ -114,12 +127,19 @@ JSON, а не клик в браузере. `worksheet-teacher.html` несёт 
     круглые деления — `_tick_positions`; общие `fmt_num`/`svg_label` — в
     `render_helpers.py`), `instruments.py` (`build_instrument_svg` — приборы
     со шкалой, 3 семейства геометрии со своими viewBox; прореживание
-    подписей штрихов — `_ticks`), `components.py` (+ хелперы
+    подписей штрихов — `_ticks`), `standalone.py` (`build_standalone_svg` —
+    самодостаточный SVG одного визуала для `--visual`: поверх
+    `render_component` извлекает `<svg class="visual-svg">` — контракт всех
+    генераторов, поэтому новый тип подхватывается без правок; width/height
+    по калибровке 1.5px/единицу, font-family, белая подложка; caption/
+    легенда дорисовываются `<text>`-ами внутрь SVG), `components.py` (+ хелперы
     `list_html`/`table_html`, принимают готовую безопасную разметку),
     `questions.py` (рендер 9 видов; общий конверт с `explanation` — в
     `render_question`), `document.py` (сборка; `compute_part_labels` —
     чистая функция; `render_source_script` — встраивание черновика;
-    `build_document` принимает уже распарсенные модели).
+    `build_document` принимает уже распарсенные модели;
+    `build_plain_document` — HTML документа `--document`, исходник
+    встраивается всегда).
   - `examples/kinematics-9th-grade/` — проработанный пример: 15 заданий,
     все виды вопросов (task-09 — иерархия символов, task-10 — два `part`
     вокруг общего графика, task-13 — `row` из двух `part` с `plot`,
@@ -128,7 +148,12 @@ JSON, а не клик в браузере. `worksheet-teacher.html` несёт 
 - `tests/` — golden-снапшоты (9 видов × 2 режима + составные + пример),
   негативная таблица валидации, workspace-ошибки, фузз эскейпинга (новый
   вид вопроса покрывается автоматически через `MINIMAL_TASKS` в conftest),
-  round-trip встроенного черновика (`test_source_embed.py`).
+  round-trip встроенного черновика (`test_source_embed.py`),
+  standalone-SVG `--visual` (`test_standalone.py`: golden +
+  самодостаточность + совпадение с SVG листа + эскейпинг; новый тип
+  визуала покрывается автоматически через `MINIMAL_VISUALS` в conftest),
+  режим `--document` (`test_document_mode.py`: golden конспекта, запрет
+  блоков листа, эскейпинг, round-trip исходника, сквозной CLI).
 
 ## Как проверять изменения
 

@@ -3,14 +3,21 @@
 Использование:
     python -m worksheet_builder <workspace_dir>
     python -m worksheet_builder <workspace_dir> --task task-03
+    python -m worksheet_builder --visual spec.json [-o out.svg]
+    python -m worksheet_builder --document doc.json [-o out.html]
     python -m worksheet_builder --emit-schema docs/task.schema.json
 
 Первая форма пишет <workspace_dir>/output/worksheet-student.html и
 worksheet-teacher.html; в тичер-вариант встраивается исходный черновик
 (`<script id="worksheet-source">`) — одного этого файла достаточно, чтобы
 продолжить правки в новой сессии. Вторая — <workspace_dir>/task-03.preview.html
-только с этим одним заданием, для дешёвой визуальной проверки. Третья —
-JSON Schema для автокомплита/проверки JSON в редакторе.
+только с этим одним заданием, для дешёвой визуальной проверки. Третья рендерит
+спеку одного визуального блока (graph/instrument, та же схема, что внутри
+задания) в самодостаточный .svg — иллюстрация без листа, для показа в диалоге
+и вставки в презентацию (standalone.py). Четвёртая — документ без вопросов
+(конспект/текст с иллюстрациями: title + компоненты + heading/row) в один HTML
+со встроенным исходником (document.build_plain_document). Пятая — JSON Schema
+для автокомплита/проверки JSON в редакторе.
 
 Ошибки валидации собираются по всем заданиям и печатаются одним списком
 (каждая — с путём до блока), чтобы чинить всё за один прогон, а не по одной.
@@ -25,14 +32,17 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from worksheet_builder.document import build_document
+from worksheet_builder.document import build_document, build_plain_document
 from worksheet_builder.models import (
     MetaModel,
     TaskModel,
     emit_json_schema,
+    parse_document,
     parse_meta,
     parse_task,
+    parse_visual,
 )
+from worksheet_builder.standalone import build_standalone_svg
 
 
 def _load_json(path: Path) -> Any:
@@ -109,6 +119,15 @@ def main() -> None:
     parser.add_argument("--task", help="Render only this single task id as a preview HTML")
     parser.add_argument("--mode", choices=["student", "teacher"], default="teacher",
                         help="Variant for --task preview (default: teacher, i.e. with answers)")
+    parser.add_argument("--visual", metavar="SPEC",
+                        help="Render one visual block spec (graph/instrument JSON) "
+                             "to a standalone SVG file")
+    parser.add_argument("--document", metavar="DOC",
+                        help="Render a question-free document (title + component blocks "
+                             "JSON) to a single HTML file")
+    parser.add_argument("-o", "--out", metavar="PATH",
+                        help="Output file for --visual/--document "
+                             "(default: input file with .svg/.html extension)")
     parser.add_argument("--emit-schema", metavar="PATH",
                         help="Write JSON Schema (meta + task) to PATH and exit")
     args = parser.parse_args()
@@ -119,8 +138,50 @@ def main() -> None:
                        encoding="utf-8")
         print(f"Wrote {out}")
         return
+
+    if args.visual and args.document:
+        parser.error("--visual and --document are mutually exclusive")
+
+    if args.visual:
+        if args.workspace or args.task:
+            parser.error("--visual renders a single spec file; do not pass a workspace or --task")
+        spec_path = Path(args.visual)
+        if not spec_path.exists():
+            sys.exit(f"Visual spec not found: {spec_path}")
+        try:
+            model = parse_visual(_load_json(spec_path), spec_path.name)
+        except ValueError as e:
+            sys.exit(str(e))
+        out_path = Path(args.out) if args.out else spec_path.with_suffix(".svg")
+        out_path.write_text(build_standalone_svg(model), encoding="utf-8")
+        print(f"Wrote {out_path}")
+        return
+
+    if args.document:
+        if args.workspace or args.task:
+            parser.error("--document renders a single file; do not pass a workspace or --task")
+        doc_path = Path(args.document)
+        if not doc_path.exists():
+            sys.exit(f"Document file not found: {doc_path}")
+        raw = _load_json(doc_path)
+        try:
+            doc = parse_document(raw, doc_path.name)
+        except ValueError as e:
+            sys.exit(str(e))
+        out_path = Path(args.out) if args.out else doc_path.with_suffix(".html")
+        # Исходник встраивается всегда: у документа нет student-варианта,
+        # прятать нечего, а продолжаемость правок — как у тичер-листа.
+        out_path.write_text(build_plain_document(doc, source={"document": raw}),
+                            encoding="utf-8")
+        print(f"Wrote {out_path}")
+        return
+    if args.out:
+        parser.error("-o/--out is only used with --visual or --document")
+
     if not args.workspace:
-        parser.error("workspace is required (unless --emit-schema is used)")
+        parser.error(
+            "workspace is required (unless --visual, --document or --emit-schema is used)"
+        )
 
     workspace = Path(args.workspace)
     meta, raw_meta, raw_tasks = load_workspace(workspace)

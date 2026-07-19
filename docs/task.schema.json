@@ -1582,5 +1582,590 @@
     ],
     "title": "TaskModel",
     "type": "object"
+  },
+  "document": {
+    "$defs": {
+      "DocumentRowModel": {
+        "additionalProperties": false,
+        "description": "`row` документа: те же равные колонки (CSS `.task-row`), но дети —\nтолько компоненты/заголовки. Отдельная модель, а не RowModel листа,\nчтобы вопросы и part в документе были невыразимы структурно (заодно\nневыразим и вложенный row).",
+        "properties": {
+          "type": {
+            "const": "row",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "graph": "#/$defs/GraphModel",
+                  "heading": "#/$defs/HeadingModel",
+                  "instrument": "#/$defs/InstrumentModel",
+                  "list": "#/$defs/ListModel",
+                  "table": "#/$defs/TableModel",
+                  "text": "#/$defs/TextModel"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TextModel"
+                },
+                {
+                  "$ref": "#/$defs/TableModel"
+                },
+                {
+                  "$ref": "#/$defs/GraphModel"
+                },
+                {
+                  "$ref": "#/$defs/ListModel"
+                },
+                {
+                  "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/HeadingModel"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Blocks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "blocks"
+        ],
+        "title": "DocumentRowModel",
+        "type": "object"
+      },
+      "GraphModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "graph",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "x_label": {
+            "title": "X Label",
+            "type": "string"
+          },
+          "y_label": {
+            "title": "Y Label",
+            "type": "string"
+          },
+          "x_range": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            ],
+            "title": "X Range",
+            "type": "array"
+          },
+          "y_range": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            ],
+            "title": "Y Range",
+            "type": "array"
+          },
+          "chart_type": {
+            "default": "line",
+            "enum": [
+              "line",
+              "bar",
+              "scatter"
+            ],
+            "title": "Chart Type",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/$defs/SeriesModel"
+            },
+            "title": "Series",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "x_label",
+          "y_label",
+          "x_range",
+          "y_range"
+        ],
+        "title": "GraphModel",
+        "type": "object"
+      },
+      "HeadingModel": {
+        "additionalProperties": false,
+        "description": "Подзаголовок раздела — только для документов: в заданиях листа своей\nиерархии заголовков нет (номер и буквы подзаданий рисует рендер).",
+        "properties": {
+          "type": {
+            "const": "heading",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "HeadingModel",
+        "type": "object"
+      },
+      "InstrumentModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "instrument",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "kind": {
+            "enum": [
+              "ruler",
+              "cylinder",
+              "thermometer",
+              "dynamometer",
+              "ammeter",
+              "voltmeter",
+              "manometer",
+              "scale_dial",
+              "speedometer"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "unit": {
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Max"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "gt": 0,
+            "title": "Step"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value"
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Caption"
+          }
+        },
+        "required": [
+          "type",
+          "kind",
+          "unit",
+          "min",
+          "max",
+          "step"
+        ],
+        "title": "InstrumentModel",
+        "type": "object"
+      },
+      "ListModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "list",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          },
+          "marker": {
+            "default": "none",
+            "enum": [
+              "none",
+              "number",
+              "letter"
+            ],
+            "title": "Marker",
+            "type": "string"
+          },
+          "columns": {
+            "default": "single",
+            "enum": [
+              "single",
+              "two",
+              "inline"
+            ],
+            "title": "Columns",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "ListModel",
+        "type": "object"
+      },
+      "SeriesModel": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "points": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            "minItems": 1,
+            "title": "Points",
+            "type": "array"
+          },
+          "style": {
+            "default": "solid",
+            "enum": [
+              "solid",
+              "dashed",
+              "dotted"
+            ],
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "points"
+        ],
+        "title": "SeriesModel",
+        "type": "object"
+      },
+      "TableModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "table",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Headers",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "headers",
+          "rows"
+        ],
+        "title": "TableModel",
+        "type": "object"
+      },
+      "TextModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "text",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "body"
+        ],
+        "title": "TextModel",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "Документ (конспект, теория, текст с иллюстрациями): заголовок + блоки\nиз чистых компонентов. Вопросов нет — нет и режимов student/teacher.",
+    "properties": {
+      "title": {
+        "default": "",
+        "title": "Title",
+        "type": "string"
+      },
+      "blocks": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "graph": "#/$defs/GraphModel",
+              "heading": "#/$defs/HeadingModel",
+              "instrument": "#/$defs/InstrumentModel",
+              "list": "#/$defs/ListModel",
+              "row": "#/$defs/DocumentRowModel",
+              "table": "#/$defs/TableModel",
+              "text": "#/$defs/TextModel"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TextModel"
+            },
+            {
+              "$ref": "#/$defs/TableModel"
+            },
+            {
+              "$ref": "#/$defs/GraphModel"
+            },
+            {
+              "$ref": "#/$defs/ListModel"
+            },
+            {
+              "$ref": "#/$defs/InstrumentModel"
+            },
+            {
+              "$ref": "#/$defs/HeadingModel"
+            },
+            {
+              "$ref": "#/$defs/DocumentRowModel"
+            }
+          ]
+        },
+        "minItems": 1,
+        "title": "Blocks",
+        "type": "array"
+      }
+    },
+    "required": [
+      "blocks"
+    ],
+    "title": "DocumentModel",
+    "type": "object"
   }
 }

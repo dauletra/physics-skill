@@ -11,6 +11,11 @@ from worksheet_builder.models import (
     QUESTION_MODEL_TYPES,
     AnyBlockModel,
     ComponentModel,
+    DocumentBlockModel,
+    DocumentLeafModel,
+    DocumentModel,
+    DocumentRowModel,
+    HeadingModel,
     MetaModel,
     PartModel,
     QuestionModel,
@@ -129,6 +134,49 @@ def render_task(index: int, task: TaskModel, is_teacher: bool) -> str:
         block_htmls.append(render_block(block, mode, part_labels))
 
     return f'<div class="task"><div class="task-blocks">{"".join(block_htmls)}</div></div>'
+
+
+# --- Режим «документ» (--document): произвольный текст + визуалы ---
+
+def _render_document_leaf(block: DocumentLeafModel) -> str:
+    if isinstance(block, HeadingModel):
+        return f'<div class="doc-heading">{esc(block.text)}</div>'
+    return f'<div class="task-block">{render_component(block)}</div>'
+
+
+def _render_document_block(block: DocumentBlockModel) -> str:
+    if isinstance(block, DocumentRowModel):
+        cols = "".join(
+            f'<div class="task-col">{_render_document_leaf(b)}</div>' for b in block.blocks
+        )
+        return f'<div class="task-row">{cols}</div>'
+    return _render_document_leaf(block)
+
+
+def build_plain_document(doc: DocumentModel, source: dict[str, Any] | None = None) -> str:
+    """HTML документа (конспект/теория/текст с иллюстрациями): та же оболочка,
+    что у листа (колонка 800px, BASE_CSS, KaTeX), но без анкеты-шапки,
+    нумерации заданий и режимов student/teacher — документ один. `source` —
+    сырой авторский JSON для встраивания: как у тичер-варианта листа, одного
+    HTML достаточно, чтобы продолжить правки в новой сессии."""
+    header = (
+        f'<div class="sheet-header"><div class="sheet-title">{esc(doc.title)}</div></div>'
+        if doc.title else ""
+    )
+    body = header + "".join(_render_document_block(b) for b in doc.blocks)
+    source_html = f"\n{render_source_script(source)}" if source is not None else ""
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>{esc(doc.title or t("default_document_title"))}</title>
+{KATEX_HEAD}
+<style>{BASE_CSS}</style>
+</head>
+<body>
+{body}{source_html}
+</body>
+</html>"""
 
 
 def render_source_script(source: dict[str, Any]) -> str:

@@ -9,7 +9,11 @@ Claude skill для создания рабочих листов (worksheets) с
 ответами) — сплошной читаемый документ в центрированной колонке, открывается
 в любом браузере. В учительский файл встроен исходный черновик (JSON), так
 что одного этого файла достаточно, чтобы позже продолжить правки в новой
-сессии.
+сессии. Отдельные режимы: `--visual` отдаёт одну SVG-иллюстрацию без листа
+(график или измерительный прибор, самодостаточный файл) — для показа в
+диалоге и вставки в презентацию; `--document` собирает документ без
+вопросов (конспект, теория, произвольный текст с любым числом
+иллюстраций) в один HTML в том же стиле.
 
 ## Где что лежит
 
@@ -93,6 +97,12 @@ uv run render-worksheet worksheet-builder/examples/kinematics-9th-grade
 
 # превью одного задания (по умолчанию с ответами)
 uv run render-worksheet worksheet-builder/examples/kinematics-9th-grade --task task-07
+
+# отдельная иллюстрация: спека одного блока graph/instrument → standalone SVG
+uv run render-worksheet --visual spec.json -o illustration.svg
+
+# документ без вопросов (конспект/текст с иллюстрациями) → один HTML
+uv run render-worksheet --document notes.json
 ```
 
 Результат — `<папка>/output/worksheet-student.html` и

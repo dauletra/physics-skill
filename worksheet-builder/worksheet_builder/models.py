@@ -25,6 +25,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    TypeAdapter,
     ValidationError,
     field_validator,
     model_validator,
@@ -528,6 +529,94 @@ class MetaModel(StrictModel):
         return v
 
 
+# --- Документ (режим --document): произвольный текст + визуалы, без вопросов ---
+
+class HeadingModel(StrictModel):
+    """Подзаголовок раздела — только для документов: в заданиях листа своей
+    иерархии заголовков нет (номер и буквы подзаданий рисует рендер)."""
+    type: Literal["heading"]
+    id: Optional[str] = None
+    text: str
+
+
+DocumentLeafModel = Union[ComponentModel, HeadingModel]
+
+
+class DocumentRowModel(StrictModel):
+    """`row` документа: те же равные колонки (CSS `.task-row`), но дети —
+    только компоненты/заголовки. Отдельная модель, а не RowModel листа,
+    чтобы вопросы и part в документе были невыразимы структурно (заодно
+    невыразим и вложенный row)."""
+    type: Literal["row"]
+    id: Optional[str] = None
+    blocks: list[Annotated[DocumentLeafModel, Field(discriminator="type")]] = Field(min_length=1)
+
+
+DocumentBlockModel = Annotated[
+    Union[DocumentLeafModel, DocumentRowModel],
+    Field(discriminator="type"),
+]
+
+# Типы блоков листа, которым нет места в документе: по ним before-валидатор
+# даёт человеческую ошибку вместо загадочного "unknown block type".
+_DOC_FORBIDDEN_TYPES = frozenset({
+    "part", "open", "choice", "match", "fill_text", "fill_table",
+    "plot", "true_false", "rank", "classify",
+})
+
+
+def _reject_worksheet_block(block: object, path: str) -> None:
+    if not isinstance(block, dict):
+        return
+    btype = block.get("type")
+    if btype in _DOC_FORBIDDEN_TYPES:
+        raise ValueError(
+            f"{path}: block type {btype!r} is not allowed in a document "
+            "(questions and parts belong to worksheet tasks)"
+        )
+    if btype == "row":
+        children = block.get("blocks")
+        for i, child in enumerate(children if isinstance(children, list) else []):
+            _reject_worksheet_block(child, f"{path}.blocks[{i}]")
+
+
+class DocumentModel(StrictModel):
+    """Документ (конспект, теория, текст с иллюстрациями): заголовок + блоки
+    из чистых компонентов. Вопросов нет — нет и режимов student/teacher."""
+    title: str = ""
+    blocks: list[DocumentBlockModel] = Field(min_length=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_worksheet_blocks(cls, data: object) -> object:
+        if isinstance(data, dict):
+            blocks = data.get("blocks")
+            for i, block in enumerate(blocks if isinstance(blocks, list) else []):
+                _reject_worksheet_block(block, f"blocks[{i}]")
+        return data
+
+    @model_validator(mode="after")
+    def _unique_ids(self) -> "DocumentModel":
+        seen: dict[str, str] = {}
+        for i, block in enumerate(self.blocks):
+            flat: list[tuple[str, object]] = [(f"blocks[{i}]", block)]
+            if isinstance(block, DocumentRowModel):
+                flat += [
+                    (f"blocks[{i}].blocks[{j}]", child)
+                    for j, child in enumerate(block.blocks)
+                ]
+            for path, b in flat:
+                block_id = getattr(b, "id", None)
+                if block_id:
+                    if block_id in seen:
+                        raise ValueError(
+                            f"duplicate block id {block_id!r} at {path} "
+                            f"(already used at {seen[block_id]})"
+                        )
+                    seen[block_id] = path
+        return self
+
+
 # --- Адаптер ошибок и публичные точки входа ---
 
 def _format_loc(loc: Sequence[int | str]) -> str:
@@ -582,10 +671,38 @@ def parse_meta(data: object) -> MetaModel:
         raise ValueError(format_validation_error("meta.json", exc)) from None
 
 
+# Спека режима `--visual` (cli.py) — ровно один визуальный блок листа, по той
+# же схеме и с теми же инвариантами, что и внутри задания. Новый визуальный
+# компонент добавляется в этот union — и standalone-рендер его видит.
+VisualModel = Union[GraphModel, InstrumentModel]
+_VISUAL_ADAPTER: TypeAdapter[VisualModel] = TypeAdapter(
+    Annotated[VisualModel, Field(discriminator="type")]
+)
+
+
+def parse_visual(data: object, name: str = "visual") -> VisualModel:
+    """Проверяет сырой dict спеки `--visual` и возвращает модель визуального
+    блока; ValueError — в том же формате с путём до поля, что и parse_task."""
+    try:
+        return _VISUAL_ADAPTER.validate_python(data)
+    except ValidationError as exc:
+        raise ValueError(format_validation_error(name, exc)) from None
+
+
+def parse_document(data: object, name: str = "document") -> DocumentModel:
+    """Проверяет сырой dict документа (`--document`); ValueError перечисляет
+    все нарушения разом, каждое — с путём до блока."""
+    try:
+        return DocumentModel.model_validate(data)
+    except ValidationError as exc:
+        raise ValueError(format_validation_error(name, exc)) from None
+
+
 def emit_json_schema() -> dict:
-    """JSON Schema обеих моделей — для автокомплита в редакторе
+    """JSON Schema всех корневых моделей — для автокомплита в редакторе
     (`python -m worksheet_builder --emit-schema`)."""
     return {
         "meta": MetaModel.model_json_schema(),
         "task": TaskModel.model_json_schema(),
+        "document": DocumentModel.model_json_schema(),
     }

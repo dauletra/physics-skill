@@ -19,19 +19,22 @@ STRUCTURAL_KEYS = {"type", "id", "marker", "columns", "style", "chart_type",
                    "select", "response", "match", "label", "kind"}
 
 
-def poison(node, parent_type=None):
+def poison(node, parent_type=None, structural=STRUCTURAL_KEYS):
     """Дописывает SENTINEL в каждое строковое значение, кроме структурных
     ключей. `categories`/`category` портятся одинаково (одна функция), так
     что ссылка категория→список остаётся валидной; в `template` сентинел
-    дописывается в конец — плейсхолдеры не задеваются."""
+    дописывается в конец — плейсхолдеры не задеваются. `structural`
+    переопределяется, когда набор структурных ключей другой (например,
+    standalone-визуалы: там `label` — свободный текст серии, а не буква
+    part — см. test_standalone.py)."""
     if isinstance(node, dict):
         block_type = node.get("type", parent_type)
         return {
-            key: (value if key in STRUCTURAL_KEYS else poison(value, block_type))
+            key: (value if key in structural else poison(value, block_type, structural))
             for key, value in node.items()
         }
     if isinstance(node, list):
-        return [poison(item, parent_type) for item in node]
+        return [poison(item, parent_type, structural) for item in node]
     if isinstance(node, str):
         return node + SENTINEL
     return node

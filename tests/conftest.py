@@ -13,8 +13,8 @@ GOLDEN_DIR = Path(__file__).parent / "golden"
 
 @pytest.fixture
 def golden():
-    def check(name, actual: str):
-        path = GOLDEN_DIR / f"{name}.html"
+    def check(name, actual: str, ext: str = "html"):
+        path = GOLDEN_DIR / f"{name}.{ext}"
         if os.environ.get("REGEN_GOLDEN"):
             GOLDEN_DIR.mkdir(exist_ok=True)
             path.write_text(actual, encoding="utf-8")
@@ -199,5 +199,46 @@ MINIMAL_TASKS = {
                 ]},
             ]},
         ],
+    },
+}
+
+
+# Минимальная спека standalone-визуала (`--visual`, standalone.py) на каждый
+# подтип/семейство: ключ — суффикс golden-файла. Новый вид генератора
+# добавляется сюда — golden-, структурный и эскейпинг-тесты standalone-SVG
+# (test_standalone.py) подхватят его автоматически.
+MINIMAL_VISUALS = {
+    "graph-line": {
+        "type": "graph", "x_label": "t, с", "y_label": "υ, м/с",
+        "x_range": [0, 6], "y_range": [0, 12],
+        "series": [
+            {"label": "Тело 1", "points": [[0, 0], [5, 10]]},
+            {"label": "Тело 2", "points": [[0, 10], [5, 2]], "style": "dashed"},
+        ],
+    },
+    "graph-bar": {
+        "type": "graph", "x_label": "№ опыта", "y_label": "F, Н",
+        "x_range": [0, 5], "y_range": [0, 8], "chart_type": "bar",
+        "series": [{"label": "Сила трения", "points": [[1, 2], [2, 4], [3, 6], [4, 7]]}],
+    },
+    "graph-scatter": {
+        "type": "graph", "x_label": "m, кг", "y_label": "S, м<sup>2</sup>",
+        "x_range": [0, 10], "y_range": [0, 40], "chart_type": "scatter",
+        "series": [
+            {"label": "Серия 1", "points": [[1, 3], [4, 15], [8, 33]]},
+            {"label": "Серия 2", "points": [[2, 5], [6, 20]]},
+        ],
+    },
+    "instrument-ruler": {
+        "type": "instrument", "kind": "ruler", "unit": "см",
+        "min": 0, "max": 10, "step": 0.1, "value": 6.4, "caption": "Линейка с бруском",
+    },
+    "instrument-cylinder": {
+        "type": "instrument", "kind": "cylinder", "unit": "мл",
+        "min": 0, "max": 250, "step": 10, "value": 175, "caption": "Мензурка",
+    },
+    "instrument-voltmeter": {
+        "type": "instrument", "kind": "voltmeter", "unit": "В",
+        "min": 0, "max": 6, "step": 0.2, "value": 4.5,
     },
 }

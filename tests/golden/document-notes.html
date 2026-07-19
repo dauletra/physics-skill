@@ -1,32 +1,24 @@
-"""Статические шаблонные блобы: сниппет KaTeX для <head> и базовый CSS.
-Логики рендеринга здесь нет — только строки, которые document.py вклеивает в
-сгенерированный HTML. Клиентского JS, кроме KaTeX, в листе нет вообще."""
-
-KATEX_VERSION = "0.16.11"
-KATEX_HEAD = f"""
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@{KATEX_VERSION}/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@{KATEX_VERSION}/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@{KATEX_VERSION}/dist/contrib/auto-render.min.js"></script>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Конспект: равномерное движение</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function () {{
-    if (window.renderMathInElement) {{
-        renderMathInElement(document.body, {{
+document.addEventListener("DOMContentLoaded", function () {
+    if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
             delimiters: [
-                {{left: "$$", right: "$$", display: true}},
-                {{left: "$", right: "$", display: false}}
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false}
             ]
-        }});
-    }}
-}});
+        });
+    }
+});
 </script>
-""".strip()
-
-# Оболочка листа: сплошной поток заданий в центрированной колонке читаемой
-# ширины (см. "Оболочка листа" в references/design-system.md). Никакой
-# вёрстки под печать/A4 здесь нет — ни @page, ни @media print, ни экранной
-# пагинации: лист — обычный документ для чтения с экрана.
-BASE_CSS = """
-:root {
+<style>:root {
     --font-main: "PT Sans", "Segoe UI", Verdana, Arial, sans-serif;
 }
 * { box-sizing: border-box; }
@@ -136,5 +128,9 @@ body {
 .instrument-wrap.instrument-strip { max-width: 330px; }
 .instrument-wrap.instrument-column { max-width: 105px; }
 .instrument-wrap.instrument-dial { max-width: 240px; }
-.instrument-caption { font-size: 9pt; text-align: center; margin-top: 3px; }
-""".strip()
+.instrument-caption { font-size: 9pt; text-align: center; margin-top: 3px; }</style>
+</head>
+<body>
+<div class="sheet-header"><div class="sheet-title">Конспект: равномерное движение</div></div><div class="doc-heading">Основные понятия</div><div class="task-block"><p>Скорость υ показывает быстроту движения; путь s = υt.</p></div><div class="task-block"><div class="list-component cols-single"><div class="list-row"><span class="list-marker">1.</span><span class="list-content">Путь — скаляр.</span></div><div class="list-row"><span class="list-marker">2.</span><span class="list-content">Скорость — вектор.</span></div></div></div><div class="doc-heading">График и приборы</div><div class="task-block"><div class="chart-wrap"><svg class="visual-svg" viewBox="0 0 220 124" xmlns="http://www.w3.org/2000/svg" font-family="PT Sans, Segoe UI, Verdana, Arial, sans-serif"><line x1="36.0" y1="10" x2="36.0" y2="102" stroke="#ccc" stroke-width="0.6"/><text x="36.0" y="114" font-size="9" text-anchor="middle">0</text><line x1="70.8" y1="10" x2="70.8" y2="102" stroke="#ccc" stroke-width="0.6"/><text x="70.8" y="114" font-size="9" text-anchor="middle">1</text><line x1="105.6" y1="10" x2="105.6" y2="102" stroke="#ccc" stroke-width="0.6"/><text x="105.6" y="114" font-size="9" text-anchor="middle">2</text><line x1="140.4" y1="10" x2="140.4" y2="102" stroke="#ccc" stroke-width="0.6"/><text x="140.4" y="114" font-size="9" text-anchor="middle">3</text><line x1="175.2" y1="10" x2="175.2" y2="102" stroke="#ccc" stroke-width="0.6"/><text x="175.2" y="114" font-size="9" text-anchor="middle">4</text><line x1="210.0" y1="10" x2="210.0" y2="102" stroke="#ccc" stroke-width="0.6"/><text x="210.0" y="114" font-size="9" text-anchor="middle">5</text><line x1="36" y1="102.0" x2="210" y2="102.0" stroke="#ccc" stroke-width="0.6"/><text x="30" y="105.0" font-size="9" text-anchor="end">0</text><line x1="36" y1="83.6" x2="210" y2="83.6" stroke="#ccc" stroke-width="0.6"/><text x="30" y="86.6" font-size="9" text-anchor="end">10</text><line x1="36" y1="65.2" x2="210" y2="65.2" stroke="#ccc" stroke-width="0.6"/><text x="30" y="68.2" font-size="9" text-anchor="end">20</text><line x1="36" y1="46.8" x2="210" y2="46.8" stroke="#ccc" stroke-width="0.6"/><text x="30" y="49.8" font-size="9" text-anchor="end">30</text><line x1="36" y1="28.4" x2="210" y2="28.4" stroke="#ccc" stroke-width="0.6"/><text x="30" y="31.4" font-size="9" text-anchor="end">40</text><line x1="36" y1="10.0" x2="210" y2="10.0" stroke="#ccc" stroke-width="0.6"/><text x="30" y="13.0" font-size="9" text-anchor="end">50</text><line x1="36" y1="102" x2="210" y2="102" stroke="#000" stroke-width="1.5"/><line x1="36" y1="10" x2="36" y2="102" stroke="#000" stroke-width="1.5"/><text x="210" y="96" font-size="10" text-anchor="end">t, с</text><text x="40" y="20" font-size="10" text-anchor="start">s, м</text><path d="M36.0,102.0 L210.0,10.0" fill="none" stroke="#000" stroke-width="2"/></svg><div class="chart-legend"><span><svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" stroke="#000" stroke-width="2"/></svg> Тело</span></div></div></div><div class="task-row"><div class="task-col"><div class="task-block"><div class="instrument-wrap instrument-dial"><svg class="visual-svg" viewBox="0 0 160 110" xmlns="http://www.w3.org/2000/svg" font-family="PT Sans, Segoe UI, Verdana, Arial, sans-serif"><rect x="1.5" y="1.5" width="157" height="107" rx="6" fill="#fff" stroke="#000" stroke-width="1.2"/><path d="M29.8,59.0 A58.0,58.0 0 0 1 130.2,59.0" fill="none" stroke="#000" stroke-width="1"/><line x1="29.8" y1="59.0" x2="23.3" y2="55.3" stroke="#000" stroke-width="0.9"/><text x="17.6" y="54.5" font-size="7" text-anchor="middle">0</text><line x1="35.6" y1="50.7" x2="32.1" y2="47.8" stroke="#000" stroke-width="0.5"/><line x1="42.7" y1="43.6" x2="37.9" y2="37.8" stroke="#000" stroke-width="0.9"/><text x="33.7" y="35.3" font-size="7" text-anchor="middle">20</text><line x1="51.0" y1="37.8" x2="48.8" y2="33.9" stroke="#000" stroke-width="0.5"/><line x1="60.2" y1="33.5" x2="57.6" y2="26.5" stroke="#000" stroke-width="0.9"/><text x="55.4" y="22.8" font-size="7" text-anchor="middle">40</text><line x1="69.9" y1="30.9" x2="69.1" y2="26.4" stroke="#000" stroke-width="0.5"/><line x1="80.0" y1="30.0" x2="80.0" y2="22.5" stroke="#000" stroke-width="0.9"/><text x="80.0" y="18.5" font-size="7" text-anchor="middle">60</text><line x1="90.1" y1="30.9" x2="90.9" y2="26.4" stroke="#000" stroke-width="0.5"/><line x1="99.8" y1="33.5" x2="102.4" y2="26.5" stroke="#000" stroke-width="0.9"/><text x="104.6" y="22.8" font-size="7" text-anchor="middle">80</text><line x1="109.0" y1="37.8" x2="111.2" y2="33.9" stroke="#000" stroke-width="0.5"/><line x1="117.3" y1="43.6" x2="122.1" y2="37.8" stroke="#000" stroke-width="0.9"/><text x="126.3" y="35.3" font-size="7" text-anchor="middle">100</text><line x1="124.4" y1="50.7" x2="127.9" y2="47.8" stroke="#000" stroke-width="0.5"/><line x1="130.2" y1="59.0" x2="136.7" y2="55.3" stroke="#000" stroke-width="0.9"/><text x="142.4" y="54.5" font-size="7" text-anchor="middle">120</text><text x="80.0" y="68.8" font-size="8" text-anchor="middle">км/ч</text><line x1="80.0" y1="88.0" x2="80.0" y2="36.0" stroke="#000" stroke-width="1.5"/><circle cx="80.0" cy="88.0" r="3.5" fill="#000"/></svg><div class="instrument-caption">Спидометр</div></div></div></div><div class="task-col"><div class="task-block"><p>Спидометр показывает модуль мгновенной скорости.</p></div></div></div><div class="task-block"><table class="table-component"><thead><tr><th>t, с</th><th>s, м</th></tr></thead><tbody><tr><td>1</td><td>10</td></tr><tr><td>2</td><td>20</td></tr></tbody></table></div>
+</body>
+</html>

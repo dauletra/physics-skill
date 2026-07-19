@@ -485,10 +485,10 @@ def _build_balance(model: InstrumentModel) -> str:
     )
     parts.append(_line(cx, 74.0, cx, beam_y, 1.5))
     parts.append(_line(cx - 4, 52.0, cx + 4, 52.0, 0.5))
+    # Предел взвешивания — как маркировка грузоподъёмности на настоящих
+    # весах: конкретное число с единицей, без «0…» (min всегда 0).
     parts.append(
-        _text(6, 83.5,
-              f"{fmt_num(model.min)}&#8230;{fmt_num(model.max)} {svg_label(model.unit)}",
-              6, anchor="start")
+        _text(6, 83.5, f"{fmt_num(model.max)} {svg_label(model.unit)}", 6, anchor="start")
     )
 
     # Коромысло, стрелка на риске, опора.

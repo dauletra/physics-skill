@@ -125,6 +125,9 @@ def main() -> None:
     parser.add_argument("--document", metavar="DOC",
                         help="Render a question-free document (title + component blocks "
                              "JSON) to a single HTML file")
+    parser.add_argument("--scale", type=float, default=1.0, metavar="K",
+                        help="Size multiplier for --visual output (e.g. 2 doubles "
+                             "the rendered size; fonts scale proportionally)")
     parser.add_argument("-o", "--out", metavar="PATH",
                         help="Output file for --visual/--document "
                              "(default: input file with .svg/.html extension)")
@@ -142,9 +145,14 @@ def main() -> None:
     if args.visual and args.document:
         parser.error("--visual and --document are mutually exclusive")
 
+    if args.scale != 1.0 and not args.visual:
+        parser.error("--scale is only used with --visual")
+
     if args.visual:
         if args.workspace or args.task:
             parser.error("--visual renders a single spec file; do not pass a workspace or --task")
+        if args.scale <= 0:
+            parser.error("--scale must be positive")
         spec_path = Path(args.visual)
         if not spec_path.exists():
             sys.exit(f"Visual spec not found: {spec_path}")
@@ -153,7 +161,7 @@ def main() -> None:
         except ValueError as e:
             sys.exit(str(e))
         out_path = Path(args.out) if args.out else spec_path.with_suffix(".svg")
-        out_path.write_text(build_standalone_svg(model), encoding="utf-8")
+        out_path.write_text(build_standalone_svg(model, zoom=args.scale), encoding="utf-8")
         print(f"Wrote {out_path}")
         return
 

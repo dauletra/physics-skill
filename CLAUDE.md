@@ -113,7 +113,8 @@ JSON, а не клик в браузере. `worksheet-teacher.html` несёт 
     погрешности).
   - `worksheet_builder/` — пакет: `cli.py` (`load_workspace` +
     workspace-инварианты, `--task`/`--mode`, `--visual`/`--document`/`-o`,
-    `--emit-schema`), `models.py`
+    `--scale` — множитель размера standalone-SVG, `--emit-schema`),
+    `models.py`
     (вся валидация; `iter_flat_models()` — row прозрачен; `parse_visual` —
     спека `--visual` тем же union-ом визуальных компонентов;
     `parse_document`/`DocumentModel` — документ: `heading` и свой

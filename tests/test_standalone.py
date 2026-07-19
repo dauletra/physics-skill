@@ -53,6 +53,16 @@ def test_standalone_escapes_authored_text(name):
     assert ESCAPED in svg, f"сентинел вообще не попал в вывод ({name})"
 
 
+def test_zoom_scales_size_but_not_geometry():
+    # --scale множит экранные width/height; viewBox (геометрия и шрифты в
+    # единицах viewBox) не меняется — всё растёт пропорционально.
+    model = parse_visual(MINIMAL_VISUALS["graph-line"])
+    base = build_standalone_svg(model)
+    doubled = build_standalone_svg(model, zoom=2)
+    assert 'width="330"' in base and 'width="660"' in doubled
+    assert base.split(">", 1)[1] == doubled.split(">", 1)[1]  # весь контент тот же
+
+
 def test_non_visual_block_is_rejected():
     with pytest.raises(ValueError, match="'text'"):
         parse_visual({"type": "text", "body": "просто текст"})

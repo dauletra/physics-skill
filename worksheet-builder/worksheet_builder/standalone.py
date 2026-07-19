@@ -70,8 +70,14 @@ def _legend_svg(model: GraphModel, w: float, y: float) -> list[str]:
     return parts
 
 
-def build_standalone_svg(model: VisualModel) -> str:
-    """Самодостаточный SVG одного визуального блока (для `--visual`)."""
+def build_standalone_svg(model: VisualModel, zoom: float = 1.0) -> str:
+    """Самодостаточный SVG одного визуального блока (для `--visual`).
+
+    `zoom` — множитель экранного размера (`--scale`): растягивает
+    width/height корня при том же viewBox, так что вся геометрия и шрифты
+    растут пропорционально — крупная иллюстрация для учебника/слайда.
+    Калибровку листа (1.5px/ед.) он не трогает: базовый размер задаёт
+    SCALE, zoom применяется поверх."""
     fragment = render_component(model)
     match = _VISUAL_SVG_RE.search(fragment)
     if match is None:
@@ -91,9 +97,10 @@ def build_standalone_svg(model: VisualModel) -> str:
         ]
     total_h = h + (_FOOTER_H if footer else 0)
 
+    px = SCALE * zoom
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" '
-        f'width="{fmt_num(w * SCALE)}" height="{fmt_num(total_h * SCALE)}" '
+        f'width="{fmt_num(w * px)}" height="{fmt_num(total_h * px)}" '
         f'viewBox="0 0 {fmt_num(w)} {fmt_num(total_h)}" font-family="{FONT_STACK}">'
         f'<rect x="0" y="0" width="{fmt_num(w)}" height="{fmt_num(total_h)}" fill="#fff"/>'
         f'{inner}{"".join(footer)}</svg>'

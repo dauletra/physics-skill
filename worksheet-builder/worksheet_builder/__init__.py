@@ -1,5 +1,6 @@
-"""worksheet_builder — детерминированный рендерер рабочих листов.
+"""worksheet_builder — детерминированный рендерер учебных документов.
 
-Контент живёт в JSON (meta.json + tasks/task-NN.json), пакет собирает из него
-единый читаемый HTML. Точка входа — `python -m worksheet_builder` (cli.py).
+Контент живёт в JSON (document.json + blocks/*.json), пакет собирает из него
+единый читаемый HTML (теория, задания и их комбинации; ответы — секцией в
+конце). Точка входа — `python -m worksheet_builder` (cli.py).
 """

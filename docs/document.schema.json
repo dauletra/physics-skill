@@ -1,0 +1,1848 @@
+{
+  "document": {
+    "$defs": {
+      "HeaderModel": {
+        "additionalProperties": false,
+        "description": "Анкета-шапка (нужна самостоятельной работе, не нужна конспекту):\nстрока «Школа/класс … Дата … Фамилия Имя …», подзаголовок из\nпредмета/класса и строка-инструкция. Поля пустые — соответствующие\nкуски шапки не печатаются.",
+        "properties": {
+          "school": {
+            "default": "",
+            "title": "School",
+            "type": "string"
+          },
+          "date": {
+            "default": "",
+            "title": "Date",
+            "type": "string"
+          },
+          "subject": {
+            "default": "",
+            "title": "Subject",
+            "type": "string"
+          },
+          "grade": {
+            "default": "",
+            "title": "Grade",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Instructions"
+          }
+        },
+        "title": "HeaderModel",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "Манифест документа (document.json): заголовок, опциональная\nанкета-шапка и порядок верхнеуровневых блоков. Сами блоки живут в\nblocks/<id>.json — по файлу на блок, чтобы точечная правка трогала\nодин маленький файл.",
+    "properties": {
+      "title": {
+        "default": "",
+        "title": "Title",
+        "type": "string"
+      },
+      "header": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/HeaderModel"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "order": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Order"
+      }
+    },
+    "title": "DocumentModel",
+    "type": "object"
+  },
+  "block": {
+    "$defs": {
+      "BlankCellModel": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer"
+        ],
+        "title": "BlankCellModel",
+        "type": "object"
+      },
+      "ChoiceModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "choice",
+            "title": "Type",
+            "type": "string"
+          },
+          "select": {
+            "default": "single",
+            "enum": [
+              "single",
+              "multiple"
+            ],
+            "title": "Select",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/$defs/ChoiceOptionModel"
+            },
+            "minItems": 1,
+            "title": "Options",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "options"
+        ],
+        "title": "ChoiceModel",
+        "type": "object"
+      },
+      "ChoiceOptionModel": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "correct": {
+            "default": false,
+            "title": "Correct",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ChoiceOptionModel",
+        "type": "object"
+      },
+      "ClassifyItemModel": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "category"
+        ],
+        "title": "ClassifyItemModel",
+        "type": "object"
+      },
+      "ClassifyModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "classify",
+            "title": "Type",
+            "type": "string"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Categories",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/$defs/ClassifyItemModel"
+            },
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "categories",
+          "items"
+        ],
+        "title": "ClassifyModel",
+        "type": "object"
+      },
+      "DocRowModel": {
+        "additionalProperties": false,
+        "description": "Верхнеуровневый `row` документа: те же равные колонки (CSS\n`.task-row`), но дети — только компоненты/заголовки. Отдельная модель,\nа не RowModel задания: вопросы, part и task в колонках верхнего уровня\nневыразимы структурно (заодно невыразим и вложенный row).",
+        "properties": {
+          "type": {
+            "const": "row",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "graph": "#/$defs/GraphModel",
+                  "heading": "#/$defs/HeadingModel",
+                  "instrument": "#/$defs/InstrumentModel",
+                  "list": "#/$defs/ListModel",
+                  "table": "#/$defs/TableModel",
+                  "text": "#/$defs/TextModel"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TextModel"
+                },
+                {
+                  "$ref": "#/$defs/TableModel"
+                },
+                {
+                  "$ref": "#/$defs/GraphModel"
+                },
+                {
+                  "$ref": "#/$defs/ListModel"
+                },
+                {
+                  "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/HeadingModel"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Blocks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "blocks"
+        ],
+        "title": "DocRowModel",
+        "type": "object"
+      },
+      "FillTableModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "fill_table",
+            "title": "Type",
+            "type": "string"
+          },
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Headers",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/BlankCellModel"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          },
+          "bank": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Bank"
+          }
+        },
+        "required": [
+          "type",
+          "headers",
+          "rows"
+        ],
+        "title": "FillTableModel",
+        "type": "object"
+      },
+      "FillTextModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "fill_text",
+            "title": "Type",
+            "type": "string"
+          },
+          "template": {
+            "title": "Template",
+            "type": "string"
+          },
+          "blanks": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Blanks",
+            "type": "object"
+          },
+          "bank": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Bank"
+          }
+        },
+        "required": [
+          "type",
+          "template"
+        ],
+        "title": "FillTextModel",
+        "type": "object"
+      },
+      "GraphModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "graph",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "x_label": {
+            "title": "X Label",
+            "type": "string"
+          },
+          "y_label": {
+            "title": "Y Label",
+            "type": "string"
+          },
+          "x_range": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            ],
+            "title": "X Range",
+            "type": "array"
+          },
+          "y_range": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            ],
+            "title": "Y Range",
+            "type": "array"
+          },
+          "chart_type": {
+            "default": "line",
+            "enum": [
+              "line",
+              "bar",
+              "scatter"
+            ],
+            "title": "Chart Type",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/$defs/SeriesModel"
+            },
+            "title": "Series",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "x_label",
+          "y_label",
+          "x_range",
+          "y_range"
+        ],
+        "title": "GraphModel",
+        "type": "object"
+      },
+      "HeadingModel": {
+        "additionalProperties": false,
+        "description": "Подзаголовок раздела документа. Внутри задания заголовков нет —\nтам иерархию рисуют номер задания и буквы подзаданий.",
+        "properties": {
+          "type": {
+            "const": "heading",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "HeadingModel",
+        "type": "object"
+      },
+      "InstrumentModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "instrument",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "kind": {
+            "enum": [
+              "ruler",
+              "cylinder",
+              "thermometer",
+              "dynamometer",
+              "ammeter",
+              "voltmeter",
+              "manometer",
+              "scale_dial",
+              "speedometer",
+              "stopwatch",
+              "caliper",
+              "balance",
+              "multimeter",
+              "digital_scale",
+              "digital_stopwatch"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "unit": {
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Max"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "gt": 0,
+            "title": "Step"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value"
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Caption"
+          },
+          "accuracy_class": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Accuracy Class"
+          },
+          "ranges": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ranges"
+          },
+          "vernier": {
+            "anyOf": [
+              {
+                "enum": [
+                  10,
+                  20
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Vernier"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "maxItems": 4,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Weights"
+          }
+        },
+        "required": [
+          "type",
+          "kind",
+          "unit",
+          "min",
+          "max",
+          "step"
+        ],
+        "title": "InstrumentModel",
+        "type": "object"
+      },
+      "ListModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "list",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          },
+          "marker": {
+            "default": "none",
+            "enum": [
+              "none",
+              "number",
+              "letter"
+            ],
+            "title": "Marker",
+            "type": "string"
+          },
+          "columns": {
+            "default": "single",
+            "enum": [
+              "single",
+              "two",
+              "inline"
+            ],
+            "title": "Columns",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "ListModel",
+        "type": "object"
+      },
+      "MatchLeftModel": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "match": {
+            "title": "Match",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "match"
+        ],
+        "title": "MatchLeftModel",
+        "type": "object"
+      },
+      "MatchModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "match",
+            "title": "Type",
+            "type": "string"
+          },
+          "left": {
+            "items": {
+              "$ref": "#/$defs/MatchLeftModel"
+            },
+            "minItems": 1,
+            "title": "Left",
+            "type": "array"
+          },
+          "right": {
+            "items": {
+              "$ref": "#/$defs/MatchRightModel"
+            },
+            "minItems": 1,
+            "title": "Right",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "left",
+          "right"
+        ],
+        "title": "MatchModel",
+        "type": "object"
+      },
+      "MatchRightModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "MatchRightModel",
+        "type": "object"
+      },
+      "OpenModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "open",
+            "title": "Type",
+            "type": "string"
+          },
+          "response": {
+            "default": "none",
+            "title": "Response",
+            "type": "string"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Answer"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "OpenModel",
+        "type": "object"
+      },
+      "PartModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "part",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "gt": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Points"
+          },
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "choice": "#/$defs/ChoiceModel",
+                  "classify": "#/$defs/ClassifyModel",
+                  "fill_table": "#/$defs/FillTableModel",
+                  "fill_text": "#/$defs/FillTextModel",
+                  "graph": "#/$defs/GraphModel",
+                  "instrument": "#/$defs/InstrumentModel",
+                  "list": "#/$defs/ListModel",
+                  "match": "#/$defs/MatchModel",
+                  "open": "#/$defs/OpenModel",
+                  "part": "#/$defs/PartModel",
+                  "plot": "#/$defs/PlotModel",
+                  "rank": "#/$defs/RankModel",
+                  "row": "#/$defs/RowModel",
+                  "table": "#/$defs/TableModel",
+                  "text": "#/$defs/TextModel",
+                  "true_false": "#/$defs/TrueFalseModel"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TextModel"
+                },
+                {
+                  "$ref": "#/$defs/TableModel"
+                },
+                {
+                  "$ref": "#/$defs/GraphModel"
+                },
+                {
+                  "$ref": "#/$defs/ListModel"
+                },
+                {
+                  "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/OpenModel"
+                },
+                {
+                  "$ref": "#/$defs/ChoiceModel"
+                },
+                {
+                  "$ref": "#/$defs/MatchModel"
+                },
+                {
+                  "$ref": "#/$defs/FillTextModel"
+                },
+                {
+                  "$ref": "#/$defs/FillTableModel"
+                },
+                {
+                  "$ref": "#/$defs/PlotModel"
+                },
+                {
+                  "$ref": "#/$defs/TrueFalseModel"
+                },
+                {
+                  "$ref": "#/$defs/RankModel"
+                },
+                {
+                  "$ref": "#/$defs/ClassifyModel"
+                },
+                {
+                  "$ref": "#/$defs/PartModel"
+                },
+                {
+                  "$ref": "#/$defs/RowModel"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Blocks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "blocks"
+        ],
+        "title": "PartModel",
+        "type": "object"
+      },
+      "PlotModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "plot",
+            "title": "Type",
+            "type": "string"
+          },
+          "x_label": {
+            "title": "X Label",
+            "type": "string"
+          },
+          "y_label": {
+            "title": "Y Label",
+            "type": "string"
+          },
+          "x_range": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            ],
+            "title": "X Range",
+            "type": "array"
+          },
+          "y_range": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            ],
+            "title": "Y Range",
+            "type": "array"
+          },
+          "chart_type": {
+            "default": "line",
+            "enum": [
+              "line",
+              "bar",
+              "scatter"
+            ],
+            "title": "Chart Type",
+            "type": "string"
+          },
+          "given": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/SeriesModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Given"
+          },
+          "answer": {
+            "items": {
+              "$ref": "#/$defs/SeriesModel"
+            },
+            "minItems": 1,
+            "title": "Answer",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "x_label",
+          "y_label",
+          "x_range",
+          "y_range",
+          "answer"
+        ],
+        "title": "PlotModel",
+        "type": "object"
+      },
+      "RankItemModel": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "text",
+          "position"
+        ],
+        "title": "RankItemModel",
+        "type": "object"
+      },
+      "RankModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "rank",
+            "title": "Type",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/$defs/RankItemModel"
+            },
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "RankModel",
+        "type": "object"
+      },
+      "RowModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "row",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "choice": "#/$defs/ChoiceModel",
+                  "classify": "#/$defs/ClassifyModel",
+                  "fill_table": "#/$defs/FillTableModel",
+                  "fill_text": "#/$defs/FillTextModel",
+                  "graph": "#/$defs/GraphModel",
+                  "instrument": "#/$defs/InstrumentModel",
+                  "list": "#/$defs/ListModel",
+                  "match": "#/$defs/MatchModel",
+                  "open": "#/$defs/OpenModel",
+                  "part": "#/$defs/PartModel",
+                  "plot": "#/$defs/PlotModel",
+                  "rank": "#/$defs/RankModel",
+                  "row": "#/$defs/RowModel",
+                  "table": "#/$defs/TableModel",
+                  "text": "#/$defs/TextModel",
+                  "true_false": "#/$defs/TrueFalseModel"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TextModel"
+                },
+                {
+                  "$ref": "#/$defs/TableModel"
+                },
+                {
+                  "$ref": "#/$defs/GraphModel"
+                },
+                {
+                  "$ref": "#/$defs/ListModel"
+                },
+                {
+                  "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/OpenModel"
+                },
+                {
+                  "$ref": "#/$defs/ChoiceModel"
+                },
+                {
+                  "$ref": "#/$defs/MatchModel"
+                },
+                {
+                  "$ref": "#/$defs/FillTextModel"
+                },
+                {
+                  "$ref": "#/$defs/FillTableModel"
+                },
+                {
+                  "$ref": "#/$defs/PlotModel"
+                },
+                {
+                  "$ref": "#/$defs/TrueFalseModel"
+                },
+                {
+                  "$ref": "#/$defs/RankModel"
+                },
+                {
+                  "$ref": "#/$defs/ClassifyModel"
+                },
+                {
+                  "$ref": "#/$defs/PartModel"
+                },
+                {
+                  "$ref": "#/$defs/RowModel"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Blocks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "blocks"
+        ],
+        "title": "RowModel",
+        "type": "object"
+      },
+      "SeriesModel": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "points": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            "minItems": 1,
+            "title": "Points",
+            "type": "array"
+          },
+          "style": {
+            "default": "solid",
+            "enum": [
+              "solid",
+              "dashed",
+              "dotted"
+            ],
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "points"
+        ],
+        "title": "SeriesModel",
+        "type": "object"
+      },
+      "StatementModel": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "answer"
+        ],
+        "title": "StatementModel",
+        "type": "object"
+      },
+      "TableModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "table",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Headers",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "headers",
+          "rows"
+        ],
+        "title": "TableModel",
+        "type": "object"
+      },
+      "TaskModel": {
+        "additionalProperties": false,
+        "description": "Нумерованное задание — единственный носитель вопросов в документе.\nНомер не хранится: он присваивается рендером по порядку появления\ntask-блоков в документе (теория между задачами нумерацию не сдвигает).",
+        "properties": {
+          "type": {
+            "const": "task",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "gt": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Points"
+          },
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "choice": "#/$defs/ChoiceModel",
+                  "classify": "#/$defs/ClassifyModel",
+                  "fill_table": "#/$defs/FillTableModel",
+                  "fill_text": "#/$defs/FillTextModel",
+                  "graph": "#/$defs/GraphModel",
+                  "instrument": "#/$defs/InstrumentModel",
+                  "list": "#/$defs/ListModel",
+                  "match": "#/$defs/MatchModel",
+                  "open": "#/$defs/OpenModel",
+                  "part": "#/$defs/PartModel",
+                  "plot": "#/$defs/PlotModel",
+                  "rank": "#/$defs/RankModel",
+                  "row": "#/$defs/RowModel",
+                  "table": "#/$defs/TableModel",
+                  "text": "#/$defs/TextModel",
+                  "true_false": "#/$defs/TrueFalseModel"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TextModel"
+                },
+                {
+                  "$ref": "#/$defs/TableModel"
+                },
+                {
+                  "$ref": "#/$defs/GraphModel"
+                },
+                {
+                  "$ref": "#/$defs/ListModel"
+                },
+                {
+                  "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/OpenModel"
+                },
+                {
+                  "$ref": "#/$defs/ChoiceModel"
+                },
+                {
+                  "$ref": "#/$defs/MatchModel"
+                },
+                {
+                  "$ref": "#/$defs/FillTextModel"
+                },
+                {
+                  "$ref": "#/$defs/FillTableModel"
+                },
+                {
+                  "$ref": "#/$defs/PlotModel"
+                },
+                {
+                  "$ref": "#/$defs/TrueFalseModel"
+                },
+                {
+                  "$ref": "#/$defs/RankModel"
+                },
+                {
+                  "$ref": "#/$defs/ClassifyModel"
+                },
+                {
+                  "$ref": "#/$defs/PartModel"
+                },
+                {
+                  "$ref": "#/$defs/RowModel"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Blocks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "blocks"
+        ],
+        "title": "TaskModel",
+        "type": "object"
+      },
+      "TextModel": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "text",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "body"
+        ],
+        "title": "TextModel",
+        "type": "object"
+      },
+      "TrueFalseModel": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "type": {
+            "const": "true_false",
+            "title": "Type",
+            "type": "string"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/$defs/StatementModel"
+            },
+            "minItems": 1,
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "statements"
+        ],
+        "title": "TrueFalseModel",
+        "type": "object"
+      }
+    },
+    "discriminator": {
+      "mapping": {
+        "graph": "#/$defs/GraphModel",
+        "heading": "#/$defs/HeadingModel",
+        "instrument": "#/$defs/InstrumentModel",
+        "list": "#/$defs/ListModel",
+        "row": "#/$defs/DocRowModel",
+        "table": "#/$defs/TableModel",
+        "task": "#/$defs/TaskModel",
+        "text": "#/$defs/TextModel"
+      },
+      "propertyName": "type"
+    },
+    "oneOf": [
+      {
+        "$ref": "#/$defs/HeadingModel"
+      },
+      {
+        "$ref": "#/$defs/TextModel"
+      },
+      {
+        "$ref": "#/$defs/TableModel"
+      },
+      {
+        "$ref": "#/$defs/GraphModel"
+      },
+      {
+        "$ref": "#/$defs/ListModel"
+      },
+      {
+        "$ref": "#/$defs/InstrumentModel"
+      },
+      {
+        "$ref": "#/$defs/TaskModel"
+      },
+      {
+        "$ref": "#/$defs/DocRowModel"
+      }
+    ]
+  }
+}

@@ -1,17 +1,19 @@
-"""Pydantic-модели схемы задания и meta.json — единственное представление
-данных пакета: и валидация, и типизированное дерево, по которому работает
-рендер (`components.py`/`questions.py`/`document.py`). Другого слоя данных
-нет — параллельных классов с повторным парсингом сырых dict'ов не заводить.
+"""Pydantic-модели схемы документа (document.json + blocks/*.json) —
+единственное представление данных пакета: и валидация, и типизированное
+дерево, по которому работает рендер (`components.py`/`questions.py`/
+`document.py`). Другого слоя данных нет — параллельных классов с повторным
+парсингом сырых dict'ов не заводить.
 
 Модели проверяют сырой JSON при загрузке: обязательные поля, закрытые
 словари, кросс-инварианты — всё с `extra="forbid"`, так что опечатка в имени
 поля — ошибка, а не молчаливое игнорирование. Текстовые поля хранят СЫРОЙ
 авторский текст — экранирует рендер в точке интерполяции (см. правило
-экранирования в references/task-schema.md).
+экранирования в references/document-schema.md).
 
-Публичные точки: `parse_task()` / `parse_meta()` (возвращают модель;
-ValueError перечисляет ВСЕ нарушения разом, каждое — с путём до блока) и
-`emit_json_schema()`.
+Публичные точки: `parse_document()` (манифест document.json) /
+`parse_block()` (один верхнеуровневый блок из blocks/*.json; возвращают
+модель; ValueError перечисляет ВСЕ нарушения разом, каждое — с путём до
+блока), `parse_visual()` и `emit_json_schema()`.
 
 Формат пути в ошибке: `task-10 -> blocks[2] -> graph -> x_range: ...`
 (ASCII-стрелка `->` намеренно: `→` роняет печать в cp1251-консоли Windows).
@@ -605,7 +607,11 @@ class PartModel(StrictModel):
 
 
 class TaskModel(StrictModel):
-    id: str
+    """Нумерованное задание — единственный носитель вопросов в документе.
+    Номер не хранится: он присваивается рендером по порядку появления
+    task-блоков в документе (теория между задачами нумерацию не сдвигает)."""
+    type: Literal["task"]
+    id: Optional[str] = None
     points: Optional[Number] = Field(default=None, gt=0)
     blocks: list[AnyBlockModel] = Field(min_length=1)
 
@@ -646,19 +652,97 @@ class TaskModel(StrictModel):
         walk(self.blocks, "blocks")
 
 
-class MetaModel(StrictModel):
-    title: str = ""
-    subject: str = ""
-    grade: str = ""
+# --- Верхний уровень документа: манифест + union блоков ---
+
+class HeadingModel(StrictModel):
+    """Подзаголовок раздела документа. Внутри задания заголовков нет —
+    там иерархию рисуют номер задания и буквы подзаданий."""
+    type: Literal["heading"]
+    id: Optional[str] = None
+    text: str
+
+
+# Вопросы и part структурно живут только внутри задания (`task`): на верхнем
+# уровне документа и в верхнеуровневом row по ним before-валидатор даёт
+# человеческую ошибку вместо загадочного "unknown block type".
+_QUESTION_TYPE_TAGS = frozenset({
+    "open", "choice", "match", "fill_text", "fill_table",
+    "plot", "true_false", "rank", "classify",
+})
+
+
+def _reject_free_question(block: object, path: str) -> None:
+    if not isinstance(block, dict):
+        return
+    btype = block.get("type")
+    if btype in _QUESTION_TYPE_TAGS or btype == "part":
+        raise ValueError(
+            f"{path}: block type {btype!r} must live inside a task "
+            "(wrap it in a block with type 'task')"
+        )
+
+
+class DocRowModel(StrictModel):
+    """Верхнеуровневый `row` документа: те же равные колонки (CSS
+    `.task-row`), но дети — только компоненты/заголовки. Отдельная модель,
+    а не RowModel задания: вопросы, part и task в колонках верхнего уровня
+    невыразимы структурно (заодно невыразим и вложенный row)."""
+    type: Literal["row"]
+    id: Optional[str] = None
+    blocks: list[
+        Annotated[Union[ComponentModel, HeadingModel], Field(discriminator="type")]
+    ] = Field(min_length=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _children_are_plain(cls, data: object) -> object:
+        if isinstance(data, dict):
+            children = data.get("blocks")
+            for i, child in enumerate(children if isinstance(children, list) else []):
+                _reject_free_question(child, f"blocks[{i}]")
+                if isinstance(child, dict) and child.get("type") in ("row", "task"):
+                    raise ValueError(
+                        f"blocks[{i}]: a {child['type']!r} block cannot live inside "
+                        "a top-level row"
+                    )
+        return data
+
+
+# Верхнеуровневый блок документа — содержимое одного файла blocks/*.json:
+# заголовок раздела, чистый компонент, задание или row из компонентов.
+DocBlockModel = Annotated[
+    Union[HeadingModel, ComponentModel, TaskModel, DocRowModel],
+    Field(discriminator="type"),
+]
+
+_BLOCK_ADAPTER: TypeAdapter[DocBlockModel] = TypeAdapter(DocBlockModel)
+
+
+class HeaderModel(StrictModel):
+    """Анкета-шапка (нужна самостоятельной работе, не нужна конспекту):
+    строка «Школа/класс … Дата … Фамилия Имя …», подзаголовок из
+    предмета/класса и строка-инструкция. Поля пустые — соответствующие
+    куски шапки не печатаются."""
     school: str = ""
     date: str = ""
+    subject: str = ""
+    grade: str = ""
     instructions: Optional[str] = None
-    order: Optional[list[str]] = None
 
     @field_validator("grade", mode="before")
     @classmethod
     def _grade_to_str(cls, v: object) -> str:
         return str(v) if v is not None else ""
+
+
+class DocumentModel(StrictModel):
+    """Манифест документа (document.json): заголовок, опциональная
+    анкета-шапка и порядок верхнеуровневых блоков. Сами блоки живут в
+    blocks/<id>.json — по файлу на блок, чтобы точечная правка трогала
+    один маленький файл."""
+    title: str = ""
+    header: Optional[HeaderModel] = None
+    order: Optional[list[str]] = None
 
     @field_validator("order")
     @classmethod
@@ -667,94 +751,6 @@ class MetaModel(StrictModel):
             dupes = sorted({x for x in v if v.count(x) > 1})
             raise ValueError(f"order contains duplicates: {dupes}")
         return v
-
-
-# --- Документ (режим --document): произвольный текст + визуалы, без вопросов ---
-
-class HeadingModel(StrictModel):
-    """Подзаголовок раздела — только для документов: в заданиях листа своей
-    иерархии заголовков нет (номер и буквы подзаданий рисует рендер)."""
-    type: Literal["heading"]
-    id: Optional[str] = None
-    text: str
-
-
-DocumentLeafModel = Union[ComponentModel, HeadingModel]
-
-
-class DocumentRowModel(StrictModel):
-    """`row` документа: те же равные колонки (CSS `.task-row`), но дети —
-    только компоненты/заголовки. Отдельная модель, а не RowModel листа,
-    чтобы вопросы и part в документе были невыразимы структурно (заодно
-    невыразим и вложенный row)."""
-    type: Literal["row"]
-    id: Optional[str] = None
-    blocks: list[Annotated[DocumentLeafModel, Field(discriminator="type")]] = Field(min_length=1)
-
-
-DocumentBlockModel = Annotated[
-    Union[DocumentLeafModel, DocumentRowModel],
-    Field(discriminator="type"),
-]
-
-# Типы блоков листа, которым нет места в документе: по ним before-валидатор
-# даёт человеческую ошибку вместо загадочного "unknown block type".
-_DOC_FORBIDDEN_TYPES = frozenset({
-    "part", "open", "choice", "match", "fill_text", "fill_table",
-    "plot", "true_false", "rank", "classify",
-})
-
-
-def _reject_worksheet_block(block: object, path: str) -> None:
-    if not isinstance(block, dict):
-        return
-    btype = block.get("type")
-    if btype in _DOC_FORBIDDEN_TYPES:
-        raise ValueError(
-            f"{path}: block type {btype!r} is not allowed in a document "
-            "(questions and parts belong to worksheet tasks)"
-        )
-    if btype == "row":
-        children = block.get("blocks")
-        for i, child in enumerate(children if isinstance(children, list) else []):
-            _reject_worksheet_block(child, f"{path}.blocks[{i}]")
-
-
-class DocumentModel(StrictModel):
-    """Документ (конспект, теория, текст с иллюстрациями): заголовок + блоки
-    из чистых компонентов. Вопросов нет — нет и режимов student/teacher."""
-    title: str = ""
-    blocks: list[DocumentBlockModel] = Field(min_length=1)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _no_worksheet_blocks(cls, data: object) -> object:
-        if isinstance(data, dict):
-            blocks = data.get("blocks")
-            for i, block in enumerate(blocks if isinstance(blocks, list) else []):
-                _reject_worksheet_block(block, f"blocks[{i}]")
-        return data
-
-    @model_validator(mode="after")
-    def _unique_ids(self) -> "DocumentModel":
-        seen: dict[str, str] = {}
-        for i, block in enumerate(self.blocks):
-            flat: list[tuple[str, object]] = [(f"blocks[{i}]", block)]
-            if isinstance(block, DocumentRowModel):
-                flat += [
-                    (f"blocks[{i}].blocks[{j}]", child)
-                    for j, child in enumerate(block.blocks)
-                ]
-            for path, b in flat:
-                block_id = getattr(b, "id", None)
-                if block_id:
-                    if block_id in seen:
-                        raise ValueError(
-                            f"duplicate block id {block_id!r} at {path} "
-                            f"(already used at {seen[block_id]})"
-                        )
-                    seen[block_id] = path
-        return self
 
 
 # --- Адаптер ошибок и публичные точки входа ---
@@ -794,21 +790,28 @@ def format_validation_error(prefix: str, exc: ValidationError) -> str:
     return "\n".join(lines)
 
 
-def parse_task(data: object) -> TaskModel:
-    """Проверяет сырой dict задания и возвращает типизированную модель;
-    ValueError перечисляет ВСЕ нарушения, каждое — с путём до блока."""
-    task_id = data.get("id", "<no id>") if isinstance(data, dict) else "<not an object>"
+def parse_block(data: object, name: str | None = None) -> DocBlockModel:
+    """Проверяет сырой dict одного верхнеуровневого блока (файл blocks/*.json)
+    и возвращает типизированную модель; ValueError перечисляет ВСЕ нарушения,
+    каждое — с путём до блока."""
+    if name is None:
+        name = data.get("id", "<no id>") if isinstance(data, dict) else "<not an object>"
     try:
-        return TaskModel.model_validate(data)
+        _reject_free_question(data, "<root>")
+    except ValueError as exc:
+        raise ValueError(f"{name} -> {exc}") from None
+    try:
+        return _BLOCK_ADAPTER.validate_python(data)
     except ValidationError as exc:
-        raise ValueError(format_validation_error(str(task_id), exc)) from None
+        raise ValueError(format_validation_error(str(name), exc)) from None
 
 
-def parse_meta(data: object) -> MetaModel:
+def parse_document(data: object, name: str = "document.json") -> DocumentModel:
+    """Проверяет сырой dict манифеста document.json."""
     try:
-        return MetaModel.model_validate(data)
+        return DocumentModel.model_validate(data)
     except ValidationError as exc:
-        raise ValueError(format_validation_error("meta.json", exc)) from None
+        raise ValueError(format_validation_error(name, exc)) from None
 
 
 # Спека режима `--visual` (cli.py) — ровно один визуальный блок листа, по той
@@ -822,27 +825,18 @@ _VISUAL_ADAPTER: TypeAdapter[VisualModel] = TypeAdapter(
 
 def parse_visual(data: object, name: str = "visual") -> VisualModel:
     """Проверяет сырой dict спеки `--visual` и возвращает модель визуального
-    блока; ValueError — в том же формате с путём до поля, что и parse_task."""
+    блока; ValueError — в том же формате с путём до поля, что и parse_block."""
     try:
         return _VISUAL_ADAPTER.validate_python(data)
     except ValidationError as exc:
         raise ValueError(format_validation_error(name, exc)) from None
 
 
-def parse_document(data: object, name: str = "document") -> DocumentModel:
-    """Проверяет сырой dict документа (`--document`); ValueError перечисляет
-    все нарушения разом, каждое — с путём до блока."""
-    try:
-        return DocumentModel.model_validate(data)
-    except ValidationError as exc:
-        raise ValueError(format_validation_error(name, exc)) from None
-
-
 def emit_json_schema() -> dict:
-    """JSON Schema всех корневых моделей — для автокомплита в редакторе
-    (`python -m worksheet_builder --emit-schema`)."""
+    """JSON Schema корневых моделей — для автокомплита в редакторе
+    (`python -m worksheet_builder --emit-schema`): манифест document.json
+    и один верхнеуровневый блок blocks/*.json."""
     return {
-        "meta": MetaModel.model_json_schema(),
-        "task": TaskModel.model_json_schema(),
         "document": DocumentModel.model_json_schema(),
+        "block": _BLOCK_ADAPTER.json_schema(),
     }

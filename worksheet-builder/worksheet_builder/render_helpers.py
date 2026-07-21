@@ -1,11 +1,11 @@
 """Мелкие текстовые хелперы, общие для рендера компонентов (components.py)
-и вопросов (questions.py) — см. references/task-schema.md. Экранирование:
+и вопросов (questions.py) — см. references/document-schema.md. Экранирование:
 `esc()` эскейпит сырой авторский текст в точке интерполяции; `lines`/
-`blank`/`blank_cell`/`answer_block`/`bank_list` сами строят готовую, уже
+`blank`/`blank_cell`/`bank_list` сами строят готовую, уже
 HTML-безопасную разметку ("место под ответ") и не знают ничего о конкретном
 вопросе. `fmt_num`/`svg_label` — общие хелперы SVG-генераторов
 (visuals.py, instruments.py): единый формат чисел и подписей на всех
-артефактах листа (см. references/artifacts/README.md)."""
+артефактах документа (см. references/artifacts/README.md)."""
 import html
 
 from worksheet_builder.strings import t
@@ -61,12 +61,6 @@ def blank_cell() -> str:
     """Пустая ячейка-заглушка для таблицы (тот же визуальный язык "пропуска",
     что и `fill-blank` в тексте, а не голый `&nbsp;`)."""
     return '<span class="fill-blank"></span>'
-
-
-def answer_block(text: str, label_key: str = "answer_label") -> str:
-    """Тичер-only рамка "Ответ: ..." (или "Пояснение: ..." для
-    `explanation` — см. Question.render) под условием."""
-    return f'<div class="answer-block"><strong>{t(label_key)}</strong> {esc(text)}</div>'
 
 
 def bank_list(items: list[str]) -> str:

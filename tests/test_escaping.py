@@ -1,14 +1,15 @@
 """Фузз эскейпинга: в каждое свободнотекстовое поле каждого вида задания
-подсовывается HTML-сентинел, и рендер обоих режимов обязан выдать его
-экранированным. Это поведенческое принуждение правила «модель хранит сырой
-текст — эскейпит рендер»: забытый `esc()` в новом виде вопроса валит этот
-тест, а не доживает до готового листа. Новый вид покрывается автоматически,
-как только его минимальное задание добавлено в MINIMAL_TASKS."""
+подсовывается HTML-сентинел, и рендер (тело задания + его строки в секции
+«Ответы») обязан выдать его экранированным. Это поведенческое принуждение
+правила «модель хранит сырой текст — эскейпит рендер»: забытый `esc()` в
+новом виде вопроса валит этот тест, а не доживает до готового документа.
+Новый вид покрывается автоматически, как только его минимальное задание
+добавлено в MINIMAL_TASKS."""
 import pytest
 
 from conftest import MINIMAL_TASKS
-from worksheet_builder.document import render_task
-from worksheet_builder.models import parse_task
+from worksheet_builder.document import build_answers_section, render_task
+from worksheet_builder.models import TaskModel, parse_block
 
 SENTINEL = '<img src=x>&"'
 ESCAPED = "&lt;img src=x&gt;&amp;&quot;"
@@ -41,19 +42,20 @@ def poison(node, parent_type=None, structural=STRUCTURAL_KEYS):
 
 
 @pytest.mark.parametrize("kind", sorted(MINIMAL_TASKS))
-@pytest.mark.parametrize("mode", ["student", "teacher"])
-def test_authored_text_is_escaped(kind, mode):
-    task = parse_task(poison(MINIMAL_TASKS[kind]))
-    html = render_task(1, task, is_teacher=(mode == "teacher"))
-    assert SENTINEL not in html, f"сырой HTML из данных просочился в рендер ({kind}/{mode})"
-    assert ESCAPED in html, f"сентинел вообще не попал в вывод ({kind}/{mode})"
+def test_authored_text_is_escaped(kind):
+    task = parse_block(poison(MINIMAL_TASKS[kind]))
+    assert isinstance(task, TaskModel)
+    html = render_task(1, task) + build_answers_section([(1, task)])
+    assert SENTINEL not in html, f"сырой HTML из данных просочился в рендер ({kind})"
+    assert ESCAPED in html, f"сентинел вообще не попал в вывод ({kind})"
 
 
 def test_sup_sub_still_pass_through():
     """Контр-проверка: легитимные <sup>/<sub> (symbols.md) esc() пропускает."""
-    task = parse_task({"id": "t-sup", "blocks": [
+    task = parse_block({"type": "task", "id": "t-sup", "blocks": [
         {"type": "text", "body": "м/с<sup>2</sup> и x<sub>max</sub>"},
         {"type": "open"},
     ]})
-    html = render_task(1, task, is_teacher=False)
+    assert isinstance(task, TaskModel)
+    html = render_task(1, task)
     assert "<sup>2</sup>" in html and "<sub>max</sub>" in html

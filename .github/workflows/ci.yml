@@ -34,9 +34,9 @@ jobs:
           python -m worksheet_builder --emit-schema /tmp/schema.json
           python - <<'EOF'
           import json, sys
-          committed = json.load(open("docs/task.schema.json", encoding="utf-8"))
+          committed = json.load(open("docs/document.schema.json", encoding="utf-8"))
           generated = json.load(open("/tmp/schema.json", encoding="utf-8"))
           if committed != generated:
-              sys.exit("docs/task.schema.json is stale - regenerate with "
-                       "`python -m worksheet_builder --emit-schema docs/task.schema.json`")
+              sys.exit("docs/document.schema.json is stale - regenerate with "
+                       "`python -m worksheet_builder --emit-schema docs/document.schema.json`")
           EOF

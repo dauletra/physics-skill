@@ -28,10 +28,12 @@ def golden():
     return check
 
 
-# Минимальное валидное задание на каждый вид вопроса — самодостаточные
-# фикстуры-словари, форма — по references/task-schema.md.
+# Минимальный валидный блок-задание на каждый вид вопроса — самодостаточные
+# фикстуры-словари, форма — по references/document-schema.md (верхнеуровневый
+# блок с type: "task").
 MINIMAL_TASKS = {
     "open": {
+        "type": "task",
         "id": "t-open",
         "points": 2,
         "blocks": [
@@ -41,6 +43,7 @@ MINIMAL_TASKS = {
         ],
     },
     "choice": {
+        "type": "task",
         "id": "t-choice",
         "blocks": [
             {"type": "text", "body": "Скорость — это..."},
@@ -52,6 +55,7 @@ MINIMAL_TASKS = {
         ],
     },
     "match": {
+        "type": "task",
         "id": "t-match",
         "blocks": [
             {"type": "match",
@@ -67,6 +71,7 @@ MINIMAL_TASKS = {
         ],
     },
     "fill_text": {
+        "type": "task",
         "id": "t-fill-text",
         "blocks": [
             {"type": "fill_text",
@@ -76,6 +81,7 @@ MINIMAL_TASKS = {
         ],
     },
     "fill_table": {
+        "type": "task",
         "id": "t-fill-table",
         "blocks": [
             {"type": "fill_table",
@@ -84,6 +90,7 @@ MINIMAL_TASKS = {
         ],
     },
     "plot": {
+        "type": "task",
         "id": "t-plot",
         "blocks": [
             {"type": "plot", "x_label": "t, с", "y_label": "υ, м/с",
@@ -93,6 +100,7 @@ MINIMAL_TASKS = {
         ],
     },
     "true_false": {
+        "type": "task",
         "id": "t-tf",
         "blocks": [
             {"type": "true_false", "statements": [
@@ -102,6 +110,7 @@ MINIMAL_TASKS = {
         ],
     },
     "rank": {
+        "type": "task",
         "id": "t-rank",
         "blocks": [
             {"type": "rank", "items": [
@@ -112,6 +121,7 @@ MINIMAL_TASKS = {
         ],
     },
     "classify": {
+        "type": "task",
         "id": "t-classify",
         "blocks": [
             {"type": "classify",
@@ -124,6 +134,7 @@ MINIMAL_TASKS = {
     },
     # Составное задание: общий контекст + два part (буквы/баллы на part).
     "composite": {
+        "type": "task",
         "id": "t-composite",
         "points": 5,
         "blocks": [
@@ -144,6 +155,7 @@ MINIMAL_TASKS = {
     # Приборы, семейства strip + column: линейка с бруском, мензурка и
     # термометр в row, динамометр с пустой шкалой (value не задан).
     "instruments_scales": {
+        "type": "task",
         "id": "t-instr-scales",
         "blocks": [
             {"type": "text", "body": "Определите цену деления и показания приборов."},
@@ -163,6 +175,7 @@ MINIMAL_TASKS = {
     # Приборы, семейство dial: все пять стрелочных видов, с показанием
     # между штрихами и с пустой шкалой.
     "instruments_dials": {
+        "type": "task",
         "id": "t-instr-dials",
         "blocks": [
             {"type": "row", "blocks": [
@@ -184,6 +197,7 @@ MINIMAL_TASKS = {
     },
     # row из двух part + чистые компоненты table и list.
     "row_and_components": {
+        "type": "task",
         "id": "t-row",
         "blocks": [
             {"type": "table", "headers": ["x", "y"], "rows": [["1", "2"]]},

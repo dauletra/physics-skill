@@ -11,10 +11,9 @@
 Запуск (argv проходит насквозь в CLI):
 
     python scripts/render.py <workspace>
-    python scripts/render.py <workspace> --task task-03
-    python scripts/render.py <workspace> --task task-03 --mode student
+    python scripts/render.py <workspace> --no-answers
+    python scripts/render.py <workspace> --block task-03
     python scripts/render.py --visual spec.json [-o out.svg]
-    python scripts/render.py --document doc.json [-o out.html]
 
 Требует сетевого доступа контейнера к PyPI (см. SANDBOX-MIGRATION.md,
 ограничение №2). Если сети нет — печатает внятную ошибку без traceback.

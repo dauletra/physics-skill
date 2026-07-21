@@ -2,7 +2,7 @@
 компонента `graph` (components.py) и вопроса `plot` (questions.py).
 
 Иллюстрации/схемы (`svg_snippet`/`raw_svg`) намеренно вне scope — см.
-"Явно вне scope" в references/task-schema.md."""
+"Явно вне scope" в references/document-schema.md."""
 
 import math
 from collections.abc import Sequence

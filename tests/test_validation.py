@@ -1,19 +1,19 @@
-"""Негативная таблица: битый JSON задания → ValueError с внятным сообщением
-и путём до блока, поднятая при загрузке (не traceback и не молчаливый
-фолбэк). Вся валидация — pydantic-модели в models.py."""
+"""Негативная таблица: битый JSON блока-задания → ValueError с внятным
+сообщением и путём до блока, поднятая при загрузке (не traceback и не
+молчаливый фолбэк). Вся валидация — pydantic-модели в models.py."""
 import pytest
 
-from worksheet_builder.models import parse_task
+from worksheet_builder.models import parse_block
 
 
 def load_error(task_dict) -> str:
     with pytest.raises(ValueError) as excinfo:
-        parse_task(task_dict)
+        parse_block(task_dict)
     return str(excinfo.value)
 
 
 def make_task(*blocks, **extra):
-    return {"id": "t-bad", "blocks": list(blocks), **extra}
+    return {"type": "task", "id": "t-bad", "blocks": list(blocks), **extra}
 
 
 # --- Инварианты состава и payload-инварианты видов ---
@@ -140,7 +140,7 @@ def test_instrument_too_many_divisions():
     msg = load_error(make_task(_instrument(step=0.01)))
     assert "divisions" in msg
     # Та же плотность у линейки легальна (лимит семейства strip выше).
-    parse_task(make_task(_instrument(kind="ruler", unit="см", max=10, step=0.1)))
+    parse_block(make_task(_instrument(kind="ruler", unit="см", max=10, step=0.1)))
 
 
 def test_instrument_value_outside_scale():
@@ -150,11 +150,11 @@ def test_instrument_value_outside_scale():
 
 def test_instrument_value_between_marks_is_legal():
     # Показание между штрихами — суть задач на погрешность, не ошибка.
-    parse_task(make_task(_instrument(value=1.234)))
+    parse_block(make_task(_instrument(value=1.234)))
 
 
 def test_instrument_empty_scale_is_legal():
-    parse_task(make_task(_instrument(value=None)))
+    parse_block(make_task(_instrument(value=None)))
 
 
 # --- Метрология: класс точности и многопредельность ---
@@ -170,7 +170,7 @@ def test_accuracy_class_closed_set():
     # 0.3 — не класс точности по ГОСТ 8.401; произвольное число — ошибка.
     msg = load_error(make_task(_instrument(accuracy_class=0.3)))
     assert "accuracy_class" in msg
-    parse_task(make_task(_instrument(accuracy_class=1)))  # 1 == 1.0 легален
+    parse_block(make_task(_instrument(accuracy_class=1)))  # 1 == 1.0 легален
 
 
 def test_ranges_only_on_electric():
@@ -195,7 +195,7 @@ def test_dual_scale_must_start_at_zero_or_below():
     assert "start at 0" in msg
     # Заход в минус легален (−1…3 А, как у J0407), показание может быть
     # отрицательным (стрелка левее нуля при обратной полярности).
-    parse_task(make_task(_instrument(min=-1, max=3, ranges=[0.6, 3], value=-0.4)))
+    parse_block(make_task(_instrument(min=-1, max=3, ranges=[0.6, 3], value=-0.4)))
 
 
 def test_dual_scale_max_is_larger_range():
@@ -208,8 +208,8 @@ def test_dual_scale_must_be_round():
     msg = load_error(make_task(_instrument(max=3, ranges=[0.7, 3])))
     assert "non-round" in msg
     # Реальные школьные пары легальны: 3/0.6 А и 6/3 В.
-    parse_task(make_task(_instrument(max=3, ranges=[0.6, 3])))
-    parse_task(make_task(_instrument(kind="voltmeter", unit="В",
+    parse_block(make_task(_instrument(max=3, ranges=[0.6, 3])))
+    parse_block(make_task(_instrument(kind="voltmeter", unit="В",
                                      max=6, step=0.2, ranges=[3, 6], value=2.5)))
 
 
@@ -228,7 +228,7 @@ def test_digital_value_must_match_discreteness():
 
 def test_digital_dense_scale_is_legal():
     # 2000 «делений» дискретности — норма для табло (лимит штрихов не про него).
-    parse_task(make_task(_instrument(kind="multimeter", unit="В",
+    parse_block(make_task(_instrument(kind="multimeter", unit="В",
                                      max=20, step=0.01, value=12.47)))
 
 
@@ -290,10 +290,10 @@ def test_balance_min_is_zero():
 def test_balance_pan_combinations_are_legal():
     # Чашки комбинируются свободно под тип задачи: тело + пустая чаша
     # («какие гири положить?»), только гири, пустые весы, гири с повторами.
-    parse_task(make_task(_balance(value=80, weights=None)))
-    parse_task(make_task(_balance(value=None, weights=[100])))
-    parse_task(make_task(_balance(value=None, weights=None)))
-    parse_task(make_task(_balance(value=70, weights=[50, 10, 10])))
+    parse_block(make_task(_balance(value=80, weights=None)))
+    parse_block(make_task(_balance(value=None, weights=[100])))
+    parse_block(make_task(_balance(value=None, weights=None)))
+    parse_block(make_task(_balance(value=70, weights=[50, 10, 10])))
 
 
 # --- Обязательные поля, закрытые словари, опечатки, дубли ---

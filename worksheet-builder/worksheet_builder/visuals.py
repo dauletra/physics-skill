@@ -140,6 +140,11 @@ def build_chart_svg(
             shape = MARKER_SHAPES[i % len(MARKER_SHAPES)]
             for (x, y) in points:
                 parts.append(_marker_svg(shape, sx(x), sy(y)))
+        elif len(points) == 1:
+            # Line-серия из одной точки (данная точка в plot.given): path из
+            # одной команды M невидим — рисуем узел (см. artifacts/graphs.md).
+            x, y = points[0]
+            parts.append(f'<circle cx="{sx(x):.1f}" cy="{sy(y):.1f}" r="3" fill="#000"/>')
         else:  # линия
             path = " ".join(
                 f'{"M" if idx == 0 else "L"}{sx(x):.1f},{sy(y):.1f}'

@@ -93,6 +93,15 @@ class TableModel(StrictModel):
         return self
 
 
+# Плотность координатной сетки графика. Линии по подписанным делениям
+# есть всегда — по ним считывают значения; `fine` добавляет промежуточные
+# линии внутри деления (снять значение между подписями, отложить точку при
+# построении). Это представление, а не данные задачи, поэтому словарь
+# закрытый и короткий: миллиметровка целым листом — это компонент `paper`,
+# а не третье значение здесь.
+ChartGrid = Literal["ticks", "fine"]
+
+
 class GraphModel(StrictModel):
     type: Literal["graph"]
     id: Optional[str] = None
@@ -101,6 +110,7 @@ class GraphModel(StrictModel):
     x_range: Range
     y_range: Range
     chart_type: Literal["line", "bar", "scatter"] = "line"
+    grid: ChartGrid = "ticks"
     series: list[SeriesModel] = Field(default_factory=list)
 
     @field_validator("x_range")
@@ -561,6 +571,7 @@ class PlotModel(QuestionEnvelope):
     x_range: Range
     y_range: Range
     chart_type: Literal["line", "bar", "scatter"] = "line"
+    grid: ChartGrid = "ticks"
     given: Optional[list[SeriesModel]] = None
     answer: list[SeriesModel] = Field(min_length=1)
 

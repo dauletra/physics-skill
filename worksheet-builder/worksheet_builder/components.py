@@ -81,6 +81,7 @@ def render_graph(model: GraphModel) -> str:
         y_range=model.y_range,
         series=model.series,
         chart_type=model.chart_type,
+        grid=model.grid,
     )
 
 

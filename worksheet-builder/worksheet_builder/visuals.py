@@ -13,6 +13,10 @@ from worksheet_builder.render_helpers import esc, fmt_num, svg_label
 DASH_PATTERNS = {"solid": None, "dashed": "8,4", "dotted": "1,3"}
 MARKER_SHAPES = ["circle", "cross", "triangle"]
 
+# На сколько частей `grid: "fine"` дробит шаг подписанных делений
+# (см. _minor_positions).
+_MINOR_DIVISIONS = 5
+
 
 def _marker_svg(shape: str, cx: float, cy: float) -> str:
     """Один маркер точки данных — используется и на самом графике (scatter),
@@ -45,6 +49,27 @@ def _tick_positions(lo: float, hi: float, max_ticks: int = 9) -> list[float]:
     return [lo, hi]
 
 
+def _minor_positions(ticks: list[float], lo: float, hi: float) -> list[float]:
+    """Промежуточные линии внутри деления — по `_MINOR_DIVISIONS` на шаг
+    подписанных делений, на всю ширину оси (крайние деления диапазон
+    обычно не покрывают: 250…650 подписывается с 300).
+
+    Дробление именно на 5, а не на 10 как у настоящей миллиметровки:
+    при целевых 330px шаг деления ~33px, десятая доля дала бы линии через
+    3px — рябь вместо сетки."""
+    if len(ticks) < 2:
+        return []
+    step = (ticks[1] - ticks[0]) / _MINOR_DIVISIONS
+    first = math.ceil((lo - ticks[0]) / step - 1e-9)
+    last = math.floor((hi - ticks[0]) / step + 1e-9)
+    return [
+        ticks[0] + n * step
+        for n in range(first, last + 1)
+        # Линии самих делений уже нарисованы поверх, толще и темнее.
+        if n % _MINOR_DIVISIONS != 0
+    ]
+
+
 def build_chart_svg(
     x_label: str,
     y_label: str,
@@ -52,6 +77,7 @@ def build_chart_svg(
     y_range: tuple[float, float],
     series: Sequence[SeriesModel] = (),
     chart_type: str = "line",
+    grid: str = "ticks",
 ) -> str:
     """`series` — список `SeriesModel` (models.py): единственное представление
     серии, отдельной dict-формы нет.
@@ -79,8 +105,27 @@ def build_chart_svg(
         f'font-family="PT Sans, Segoe UI, Verdana, Arial, sans-serif">'
     ]
 
+    x_ticks, y_ticks = _tick_positions(x0, x1), _tick_positions(y0, y1)
+
+    # Мелкая сетка внутри деления (`grid: "fine"`) — рисуется первой, чтобы
+    # линии подписанных делений легли поверх неё.
+    if grid == "fine":
+        for mx in _minor_positions(x_ticks, x0, x1):
+            px = sx(mx)
+            parts.append(
+                f'<line x1="{px:.1f}" y1="{margin["top"]}" x2="{px:.1f}" '
+                f'y2="{margin["top"] + plot_h}" stroke="#e6e6e6" stroke-width="0.4"/>'
+            )
+        for my in _minor_positions(y_ticks, y0, y1):
+            py = sy(my)
+            parts.append(
+                f'<line x1="{margin["left"]}" y1="{py:.1f}" '
+                f'x2="{margin["left"] + plot_w}" y2="{py:.1f}" '
+                'stroke="#e6e6e6" stroke-width="0.4"/>'
+            )
+
     # Сетка + подписи делений
-    for gx in _tick_positions(x0, x1):
+    for gx in x_ticks:
         px = sx(gx)
         parts.append(
             f'<line x1="{px:.1f}" y1="{margin["top"]}" x2="{px:.1f}" '
@@ -90,7 +135,7 @@ def build_chart_svg(
             f'<text x="{px:.1f}" y="{margin["top"] + plot_h + 12}" font-size="9" '
             f'text-anchor="middle">{fmt_num(gx)}</text>'
         )
-    for gy in _tick_positions(y0, y1):
+    for gy in y_ticks:
         py = sy(gy)
         parts.append(
             f'<line x1="{margin["left"]}" y1="{py:.1f}" '

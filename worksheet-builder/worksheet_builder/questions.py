@@ -111,6 +111,7 @@ def render_plot(q: PlotModel) -> str:
         y_range=q.y_range,
         series=q.given or [],
         chart_type=q.chart_type,
+        grid=q.grid,
     )
 
 
@@ -202,6 +203,7 @@ def answer_plot(q: PlotModel) -> str:
         y_range=q.y_range,
         series=q.answer,
         chart_type=q.chart_type,
+        grid=q.grid,
     )
 
 

@@ -108,6 +108,13 @@ def test_bar_multiple_series():
     assert "single series" in msg
 
 
+def test_unknown_chart_grid():
+    msg = load_error(make_task({"type": "graph", "grid": "millimeter",
+                                "x_label": "x", "y_label": "y",
+                                "x_range": [0, 5], "y_range": [0, 5]}))
+    assert "grid" in msg
+
+
 def test_unknown_chart_type():
     msg = load_error(make_task({"type": "graph", "chart_type": "pie",
                                 "x_label": "x", "y_label": "y",

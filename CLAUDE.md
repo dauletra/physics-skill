@@ -143,7 +143,9 @@ payload вопроса не живёт (принцип 2 в `docs/schema-design-
     `html.escape()`; модель хранит сырой текст, эскейпит рендер в точке
     интерполяции, забытый `esc()` ловит фузз-тест), `visuals.py`
     (`build_chart_svg`, viewBox 220×124, калиброван под 330px; круглые
-    деления — `_tick_positions`; общие `fmt_num`/`svg_label` — в
+    деления — `_tick_positions`; `grid: "fine"` дробит шаг деления на 5
+    (`_minor_positions`) — сетка под снятие значений и построение по точкам,
+    полноразмерная миллиметровка — не сюда, а в `paper`; общие `fmt_num`/`svg_label` — в
     `render_helpers.py`), `paper.py` (`build_paper_svg` — разлинованное
     поле: 5 разлиновок в `_RULING_PAINTERS`; клетка/миллиметровка/точки —
     SVG-паттерном с id из параметров разлиновки, потому что id в HTML

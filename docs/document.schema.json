@@ -593,6 +593,15 @@
             "title": "Chart Type",
             "type": "string"
           },
+          "grid": {
+            "default": "ticks",
+            "enum": [
+              "ticks",
+              "fine"
+            ],
+            "title": "Grid",
+            "type": "string"
+          },
           "series": {
             "items": {
               "$ref": "#/$defs/SeriesModel"
@@ -1375,6 +1384,15 @@
               "scatter"
             ],
             "title": "Chart Type",
+            "type": "string"
+          },
+          "grid": {
+            "default": "ticks",
+            "enum": [
+              "ticks",
+              "fine"
+            ],
+            "title": "Grid",
             "type": "string"
           },
           "given": {

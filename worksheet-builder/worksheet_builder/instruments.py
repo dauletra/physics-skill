@@ -20,7 +20,12 @@ import math
 from decimal import Decimal
 from typing import Callable
 
-from worksheet_builder.models import INSTRUMENT_FAMILIES, InstrumentModel
+from worksheet_builder.models import (
+    _DUAL_SCALE_MAX_LABELS,
+    _MAX_LABELS,
+    INSTRUMENT_FAMILIES,
+    InstrumentModel,
+)
 from worksheet_builder.render_helpers import esc, fmt_num, svg_label
 
 SVG_OPEN = (
@@ -29,35 +34,52 @@ SVG_OPEN = (
     'font-family="PT Sans, Segoe UI, Verdana, Arial, sans-serif">'
 )
 
-# Прореживание подписей: подписывается каждый k-й штрих от min. Лимиты —
-# per-семейство: линейка традиционно несёт больше чисел (каждый сантиметр),
-# чем дуга или столбик; полный круг секундомера — до 12 (как часовой
-# циферблат). 25 в ряду — ради круглых подписей секундомера (0–30 с × 0,2:
-# подпись каждые 5 с).
-_LABEL_EVERY = (1, 2, 5, 10, 20, 25, 50)
-_MAX_LABELS = {"strip": 16, "column": 8, "dial": 8, "clock": 12, "vernier": 6}
+# «Круглые» шаги подписей: мантисса нормализованного числа — 1, 2 или 5
+# (0.5, 1, 20, 500 — круглые; 2.5, 1.25, 250 — нет). На них держатся
+# бытовые шкалы: линейка со штрихами 2,5 подписывается через 5, а не на
+# каждом штрихе.
+_ROUND_MANTISSAS = ((1,), (2,), (5,))
+
+
+def _label_every(model: InstrumentModel, n: int, max_labels: int) -> int:
+    """Каждый какой штрих подписывать. Явный `label_step` (кратность шагу и
+    лимит подписей проверены моделью) используется как есть; иначе k
+    подбирается по ранжиру среди укладывающихся в лимит: сперва «круглый»
+    шаг подписи в единицах величины (k*step из _ROUND_MANTISSAS) хотя бы с
+    двумя подписанными интервалами, затем k, делящий число делений нацело,
+    затем минимальный (максимум подписей). Если круглый k в лимит не
+    помещается, остаётся просто максимум подписей."""
+    if model.label_step is not None:
+        return round(model.label_step / model.step)
+    fitting = [k for k in range(1, n + 1) if n // k + 1 <= max_labels]
+    if not fitting:
+        fitting = [n]
+
+    def score(k: int) -> tuple[bool, bool, int]:
+        mantissa = (Decimal(str(model.step)) * k).normalize().as_tuple().digits
+        pretty = mantissa in _ROUND_MANTISSAS and n // k >= 2
+        return (not pretty, n % k != 0, k)
+
+    return min(fitting, key=score)
 
 
 def _ticks(model: InstrumentModel) -> list[tuple[float, float, bool]]:
     """Штрихи шкалы: (значение, доля 0..1 вдоль шкалы, подписан ли).
 
-    Прореживание подписей — представление, а не данные (принципы схемы,
-    п. 10), поэтому вычисляется здесь: k — минимальный из _LABEL_EVERY,
-    дающий не больше лимита подписей семейства; предпочитается k, делящий
-    число делений нацело. Предел шкалы подписывается всегда (его читают в
-    любой задаче про пределы измерения); если max не попал в k-сетку,
-    снимается регулярная подпись ближе полушага к нему — иначе две подписи
+    Автопрореживание подписей — представление (принципы схемы, п. 10),
+    поэтому вычисляется здесь (`_label_every`); когда шаг подписей — часть
+    условия задачи, автор фиксирует его полем `label_step`, и он не зависит
+    от max. Предел шкалы подписывается всегда (его читают в любой задаче
+    про пределы измерения); если max не попал в k-сетку, снимается
+    регулярная подпись ближе полушага к нему — иначе две подписи
     слипнутся."""
     n = round((model.max - model.min) / model.step)
     max_labels = _MAX_LABELS[INSTRUMENT_FAMILIES[model.kind]]
     # Двойная шкала несёт два ряда чисел на каждый подписанный штрих —
     # прореживаем сильнее, как на реальном приборе (0-3 А: подписи 0,1,2,3).
     if model.ranges:
-        max_labels = 5
-    fitting = [k for k in _LABEL_EVERY if n // k + 1 <= max_labels]
-    if not fitting:
-        fitting = [_LABEL_EVERY[-1]]
-    k = next((k for k in fitting if n % k == 0), fitting[0])
+        max_labels = _DUAL_SCALE_MAX_LABELS
+    k = _label_every(model, n, max_labels)
     result = []
     for i in range(n + 1):
         labeled = i == n or (i % k == 0 and (n - i) * 2 >= k)

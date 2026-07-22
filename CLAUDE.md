@@ -68,7 +68,8 @@ id="document-source">`, `{"document": …, "blocks": […]}`, каждый си�
   перестановка `position 1..N`, ссылки `match`→`right.id`, плейсхолдеры ==
   `blanks`, `min < max`, инварианты `bar`, уникальные `label` из `LETTERS`,
   состав `part`/вопрос, лимит по алфавиту, уникальность `id` внутри
-  задания); вопросы/`part` вне `task` и task/row в верхнеуровневом `row`
+  задания, `label_step` кратен `step` и в лимите подписей `_MAX_LABELS`);
+  вопросы/`part` вне `task` и task/row в верхнеуровневом `row`
   отбиты before-валидаторами с человеческой ошибкой;
 - инварианты workspace — в `load_workspace` (`cli.py`): файл вне
   `document.order` — ошибка, `id` ≠ имя файла — ошибка;
@@ -139,7 +140,9 @@ document-schema.md`, принципы — `docs/schema-design-principles.md`):
     деления — `_tick_positions`; общие `fmt_num`/`svg_label` — в
     `render_helpers.py`), `instruments.py` (`build_instrument_svg` — приборы
     со шкалой, 7 семейств геометрии со своими viewBox; прореживание
-    подписей штрихов — `_ticks`), `standalone.py` (`build_standalone_svg` —
+    подписей штрихов — `_ticks`/`_label_every`: авто подбирает «круглый»
+    шаг подписи в единицах величины, явный `label_step` из модели
+    используется как есть), `standalone.py` (`build_standalone_svg` —
     самодостаточный SVG одного визуала для `--visual`: поверх
     `render_component` извлекает `<svg class="visual-svg">` — контракт всех
     генераторов, поэтому новый тип подхватывается без правок; width/height

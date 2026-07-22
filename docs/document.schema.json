@@ -688,6 +688,26 @@
             "gt": 0,
             "title": "Step"
           },
+          "label_step": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "gt": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label Step"
+          },
           "value": {
             "anyOf": [
               {

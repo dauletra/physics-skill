@@ -4,6 +4,8 @@
 golden не объясняет."""
 import re
 
+import pytest
+
 from worksheet_builder.instruments import _dial_point, _ticks, build_instrument_svg
 from worksheet_builder.models import InstrumentModel
 
@@ -26,6 +28,36 @@ def test_label_thinning_keeps_round_values():
     # Миллиметровая линейка: подписан каждый сантиметр.
     assert labeled_values(make(kind="ruler", unit="см", max=10, step=0.1)) == \
         list(range(11))
+    # Четвертные шаги (2.5, 0.25): подписи укрупняются до круглого шага
+    # (кратного 1/2/5), а не печатаются на каждом штрихе — 2.5 и 7.5 на
+    # бытовой шкале не подписывают.
+    assert labeled_values(make(kind="ruler", unit="см", max=10, step=2.5)) == [0, 5, 10]
+    assert labeled_values(make(kind="ruler", unit="см", max=10, step=0.25)) == \
+        list(range(11))
+    assert labeled_values(make(kind="dynamometer", unit="Н", max=5, step=0.25)) == \
+        [0, 1, 2, 3, 4, 5]
+    assert labeled_values(make(kind="thermometer", unit="°C", max=50, step=2.5)) == \
+        [0, 10, 20, 30, 40, 50]
+
+
+def test_thinning_falls_back_when_no_round_step_fits():
+    # Шаг 0.4: единственный круглый кратный шаг (2.0) оставил бы на шкале
+    # лишь две подписи — тогда «красота» уступает максимуму подписей.
+    assert labeled_values(make(max=2, step=0.4)) == pytest.approx([0, 0.4, 0.8, 1.2, 1.6, 2])
+
+
+def test_explicit_label_step_is_stable_across_max():
+    # Шаг подписей — педагогическое данное (на нём строится задача «определи
+    # цену деления»): зафиксированный label_step не зависит от max —
+    # длинная шкала несёт больше подписей, но с тем же шагом.
+    for mx in (10, 30, 60):
+        values = labeled_values(
+            make(kind="ruler", unit="см", max=mx, step=2.5, label_step=5))
+        assert values == pytest.approx([5 * i for i in range(mx // 5 + 1)])
+    # Явный label_step может и уплотнить подписи против автоматики —
+    # вплоть до label_step == step (подписан каждый штрих).
+    assert labeled_values(make(kind="ruler", unit="см", max=10, step=2.5, label_step=2.5)) == \
+        pytest.approx([0, 2.5, 5, 7.5, 10])
 
 
 def test_max_is_always_labeled():

@@ -183,6 +183,15 @@ _MAX_DIVISIONS = {
     "vernier": 40, "balance": 10**6, "digital": 10**6,
 }
 
+# Лимит числа подписанных штрихов — per-семейство: линейка традиционно
+# несёт больше чисел (каждый сантиметр), чем дуга или столбик; полный круг
+# секундомера — до 12 (как часовой циферблат). У весов и табло штрихов
+# нет — семейства в словаре отсутствуют, `label_step` на них — ошибка.
+# Двойная шкала (`ranges`) несёт два ряда чисел на каждый подписанный
+# штрих — её лимит жёстче, как на реальном приборе (0-3 А: подписи 0,1,2,3).
+_MAX_LABELS = {"strip": 16, "column": 8, "dial": 8, "clock": 12, "vernier": 6}
+_DUAL_SCALE_MAX_LABELS = 5
+
 # Классы точности по ГОСТ 8.401 — закрытый ряд; произвольное число — ошибка,
 # а не «какой-то класс». Рисуются на шкале стрелочного прибора; задачи на
 # приведённую погрешность (Δ = класс × предел / 100) — instruments.md.
@@ -202,6 +211,14 @@ class InstrumentModel(StrictModel):
     # Цена деления — всегда явная: это педагогическое данное задачи,
     # а не производная представления.
     step: Number = Field(gt=0)
+    # Шаг подписей штрихов в единицах величины — данное той же природы, что
+    # step: на связке «подписанные значения <-> число делений между ними»
+    # строится задача «определи цену деления». Не задан — рендерер сам
+    # прореживает подписи до круглого шага (см. _label_every в
+    # instruments.py); задан — используется как есть, стабильно при любом
+    # max, а превышение лимита читаемости — ошибка, не молчаливое
+    # прореживание.
+    label_step: Optional[Number] = Field(default=None, gt=0)
     value: Optional[Number] = None
     caption: Optional[str] = None
     # Метрология (учебник погрешностей): класс точности печатается на шкале;
@@ -243,8 +260,33 @@ class InstrumentModel(StrictModel):
         # между штрихами — суть задач на погрешность отсчёта.
         if self.value is not None and not (self.min <= self.value <= self.max):
             raise ValueError(f"value {self.value} is outside the scale [{self.min}, {self.max}]")
+        self._label_step_valid(round(divisions))
         self._metrology_valid()
         return self
+
+    def _label_step_valid(self, divisions: int) -> None:
+        if self.label_step is None:
+            return
+        family = INSTRUMENT_FAMILIES[self.kind]
+        if family not in _MAX_LABELS:
+            raise ValueError(
+                f"label_step is only drawn on instruments with a tick scale, "
+                f"not on {self.kind!r}"
+            )
+        ratio = self.label_step / self.step
+        if abs(ratio - round(ratio)) > 1e-6 or round(ratio) < 1:
+            raise ValueError(
+                f"label_step {self.label_step} must be a whole multiple of "
+                f"step {self.step}: labels land on ticks"
+            )
+        limit = _DUAL_SCALE_MAX_LABELS if self.ranges else _MAX_LABELS[family]
+        labels = divisions // round(ratio) + 1
+        if labels > limit:
+            raise ValueError(
+                f"label_step {self.label_step} gives {labels} labels, over the "
+                f"readable limit {limit} for kind {self.kind!r}; "
+                "use a larger label_step"
+            )
 
     def _metrology_valid(self) -> None:
         # Цифровое табло не показывает «между штрихами»: показание всегда

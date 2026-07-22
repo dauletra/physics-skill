@@ -157,6 +157,29 @@ def test_instrument_empty_scale_is_legal():
     parse_block(make_task(_instrument(value=None)))
 
 
+def test_label_step_must_be_multiple_of_step():
+    # 0.25 при цене деления 0.1 — подписи не попадали бы на штрихи.
+    msg = load_error(make_task(_instrument(label_step=0.25)))
+    assert "label_step" in msg and "multiple" in msg
+
+
+def test_label_step_over_label_limit_is_rejected():
+    # 31 подпись на дуге (лимит 8): явный label_step не прореживается
+    # молча — раз автор сказал явно, рендерер не вправе «поправить».
+    msg = load_error(make_task(_instrument(label_step=0.1)))
+    assert "label_step" in msg and "limit" in msg
+    # Тот же шаг подписей с разумной частотой легален.
+    parse_block(make_task(_instrument(label_step=0.5)))
+
+
+def test_label_step_only_on_tick_scales():
+    # У весов и цифрового табло штрихов нет — подписывать нечего.
+    msg = load_error(make_task(_instrument(kind="multimeter", unit="В",
+                                           max=20, step=0.01, value=12.47,
+                                           label_step=5)))
+    assert "label_step" in msg and "tick scale" in msg
+
+
 # --- Метрология: класс точности и многопредельность ---
 
 

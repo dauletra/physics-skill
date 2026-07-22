@@ -19,7 +19,7 @@ HTML-вывод** — если нужно новое визуальное пов
 (`build_answers_section`); раздаточный вариант — флаг `--no-answers`
 (без секции и без встроенного черновика). Второй сценарий с тем же ядром:
 `--visual spec.json` рендерит спеку одного визуального блока
-(`graph`/`instrument`, схема та же, что внутри документа) в самодостаточный
+(`graph`/`instrument`/`paper`, схема та же, что внутри документа) в самодостаточный
 SVG (`standalone.py`) — для показа в диалоге и вставки в презентацию,
 freehand-SVG в проект не входит.
 
@@ -87,13 +87,18 @@ document-schema.md`, принципы — `docs/schema-design-principles.md`):
 верхний уровень — `document.json` (title, опциональная анкета `header`,
 `order`) + по файлу на блок в `blocks/` (`heading` | компонент | `task` |
 `row` из компонентов). Внутри `task` — дерево блоков: чистые компоненты
-(`text`/`table`/`graph`/`list`/`instrument`, `components.py`) не знают об
+(`text`/`table`/`graph`/`list`/`instrument`/`paper`/`answer_line`,
+`components.py`) не знают об
 ответе; вопросы (9 видов, `questions.py`) несут ответ инлайн, у каждого
 пара рендеров — тело (`render_question`) и компактный ответ
 (`render_answer`, печатается только в секции «Ответы»); `part` — компоненты
 + ровно один вопрос, буква и `points` на нём; `row` — дети поровну в одну
 строку, прозрачен для инвариантов/букв (`iter_flat_models`), вложенный
 `row` запрещён. Смысловая связь — вложенностью, не соседством.
+Место, где ученик пишет, — тоже компонент-сосед (`paper` — разлинованное
+поле, `answer_line` — строка «Ответ: ___»), а не поле вопроса: раскладка в
+payload вопроса не живёт (принцип 2 в `docs/schema-design-principles.md`).
+Поля `open.response` больше нет — не воскрешай его.
 Иллюстрации/схемы вне scope; визуальные элементы — только `graph`/`plot`
 (одиночный график ограничен `max-width: 330px` в CSS, в `row` не
 заворачивается) и приборы со шкалой `instrument` (15 видов, 7 семейств
@@ -124,7 +129,8 @@ document-schema.md`, принципы — `docs/schema-design-principles.md`):
     `assets.py`), `artifacts/` (`README.md` — индекс/конвенции
     SVG-артефактов, держи в синхроне при новом генераторе визуала;
     `graphs.md` — per-type разбор; `instruments.md` — приборы со шкалой:
-    виды, типичные шкалы, задачи на погрешности).
+    виды, типичные шкалы, задачи на погрешности; `paper.md` — разлиновки
+    места под ответ и выбор между ними).
   - `worksheet_builder/` — пакет: `cli.py` (`load_workspace` +
     workspace-инварианты, `--no-answers`/`--block`, `--visual`/`-o`,
     `--scale` — множитель размера standalone-SVG, `--emit-schema`),
@@ -138,7 +144,12 @@ document-schema.md`, принципы — `docs/schema-design-principles.md`):
     интерполяции, забытый `esc()` ловит фузз-тест), `visuals.py`
     (`build_chart_svg`, viewBox 220×124, калиброван под 330px; круглые
     деления — `_tick_positions`; общие `fmt_num`/`svg_label` — в
-    `render_helpers.py`), `instruments.py` (`build_instrument_svg` — приборы
+    `render_helpers.py`), `paper.py` (`build_paper_svg` — разлинованное
+    поле: 5 разлиновок в `_RULING_PAINTERS`; клетка/миллиметровка/точки —
+    SVG-паттерном с id из параметров разлиновки, потому что id в HTML
+    глобальны; `lines`/`plain` без `cols` тянутся по ширине колонки,
+    высоту им держит CSS-переменная `--paper-h` с обёртки),
+    `instruments.py` (`build_instrument_svg` — приборы
     со шкалой, 7 семейств геометрии со своими viewBox; прореживание
     подписей штрихов — `_ticks`/`_label_every`: авто подбирает «круглый»
     шаг подписи в единицах величины, явный `label_step` из модели

@@ -14,15 +14,18 @@ from typing import Callable
 
 from worksheet_builder.instruments import build_instrument_svg
 from worksheet_builder.models import (
+    AnswerLineModel,
     ComponentModel,
     GraphModel,
     InstrumentModel,
     ListModel,
+    PaperModel,
     TableModel,
     TextModel,
 )
-from worksheet_builder.render_helpers import esc
-from worksheet_builder.strings import LETTERS
+from worksheet_builder.paper import build_paper_svg, paper_px_height
+from worksheet_builder.render_helpers import blank, esc, fmt_num
+from worksheet_builder.strings import LETTERS, t
 from worksheet_builder.visuals import build_chart_svg
 
 
@@ -89,12 +92,33 @@ def render_instrument(model: InstrumentModel) -> str:
     return build_instrument_svg(model)
 
 
+def render_paper(model: PaperModel) -> str:
+    """Поле для работы ученика. Класс обёртки говорит CSS, откуда берётся
+    ширина: `paper-fixed` — из данных (`cols`, квадратная клетка), тогда
+    ширину несёт сам SVG; `paper-fluid` — вся колонка, и тогда обёртка
+    отдаёт CSS заданную автором высоту (единственный размер, который в этом
+    случае из данных, — см. paper.paper_px_height)."""
+    if model.cols is not None:
+        return f'<div class="paper-wrap paper-fixed">{build_paper_svg(model)}</div>'
+    height = fmt_num(paper_px_height(model))
+    return (
+        f'<div class="paper-wrap paper-fluid" style="--paper-h:{height}px">'
+        f"{build_paper_svg(model)}</div>"
+    )
+
+
+def render_answer_line(model: AnswerLineModel) -> str:
+    return f'<div>{t("answer_label")} {blank()}</div>'
+
+
 COMPONENT_RENDERERS: dict[type, Callable[..., str]] = {
     TextModel: render_text,
     TableModel: render_table,
     GraphModel: render_graph,
     ListModel: render_list,
     InstrumentModel: render_instrument,
+    PaperModel: render_paper,
+    AnswerLineModel: render_answer_line,
 }
 
 

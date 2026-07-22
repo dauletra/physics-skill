@@ -48,6 +48,10 @@ def test_standalone_matches_worksheet_svg(name):
 def test_standalone_escapes_authored_text(name):
     # `label` в визуалах — свободный текст серии, а не буква part.
     spec = poison(MINIMAL_VISUALS[name], structural=STRUCTURAL_KEYS - {"label"})
+    if spec == MINIMAL_VISUALS[name]:
+        # Визуал целиком из чисел и закрытых словарей (бумага) — эскейпить
+        # в нём нечего, и требовать сентинел в выводе бессмысленно.
+        pytest.skip("в спеке нет свободнотекстовых полей")
     svg = build_standalone_svg(parse_visual(spec))
     assert SENTINEL not in svg, f"сырой HTML из данных просочился в SVG ({name})"
     assert ESCAPED in svg, f"сентинел вообще не попал в вывод ({name})"

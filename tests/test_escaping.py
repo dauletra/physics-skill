@@ -17,7 +17,7 @@ ESCAPED = "&lt;img src=x&gt;&amp;&quot;"
 # Ключи, чьи значения — не свободный текст, а закрытые словари/ссылки/буквы:
 # их порча ломала бы валидацию, а не проверяла эскейпинг.
 STRUCTURAL_KEYS = {"type", "id", "marker", "columns", "style", "chart_type",
-                   "select", "response", "match", "label", "kind"}
+                   "select", "match", "label", "kind", "ruling"}
 
 
 def poison(node, parent_type=None, structural=STRUCTURAL_KEYS):

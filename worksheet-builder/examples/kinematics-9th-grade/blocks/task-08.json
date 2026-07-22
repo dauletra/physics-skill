@@ -9,8 +9,10 @@
     },
     {
       "type": "open",
-      "response": "blank",
       "answer": "F = mg∙sin(α) = 2 ∙ 9.8 ∙ 0.5 = 9.8 Н"
+    },
+    {
+      "type": "answer_line"
     }
   ]
 }

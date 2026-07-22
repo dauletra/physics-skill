@@ -1,9 +1,10 @@
 """Мелкие текстовые хелперы, общие для рендера компонентов (components.py)
 и вопросов (questions.py) — см. references/document-schema.md. Экранирование:
-`esc()` эскейпит сырой авторский текст в точке интерполяции; `lines`/
+`esc()` эскейпит сырой авторский текст в точке интерполяции;
 `blank`/`blank_cell`/`bank_list` сами строят готовую, уже
-HTML-безопасную разметку ("место под ответ") и не знают ничего о конкретном
-вопросе. `fmt_num`/`svg_label` — общие хелперы SVG-генераторов
+HTML-безопасную разметку ("пропуск в строке") и не знают ничего о конкретном
+вопросе. Разлинованное место под ответ — не здесь, а компонентом `paper`
+(paper.py): у него есть данные и своя модель. `fmt_num`/`svg_label` — общие хелперы SVG-генераторов
 (visuals.py, instruments.py): единый формат чисел и подписей на всех
 артефактах документа (см. references/artifacts/README.md)."""
 import html
@@ -43,13 +44,6 @@ def svg_label(raw: str) -> str:
     escaped = escaped.replace("<sub>", '<tspan baseline-shift="sub" font-size="7">')
     escaped = escaped.replace("</sup>", "</tspan>").replace("</sub>", "</tspan>")
     return escaped
-
-
-def lines(n: int) -> str:
-    """N разлинованных строк под решение (открытый вопрос, `response: 'lines:N'`)."""
-    return '<div class="solution-area">' + "".join(
-        '<div class="solution-line"></div>' for _ in range(n)
-    ) + "</div>"
 
 
 def blank(width_px: int = 150) -> str:

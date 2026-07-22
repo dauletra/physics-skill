@@ -30,7 +30,8 @@ SAMPLE_SOURCE = {
         ]},
         {"type": "task", "id": "b4", "points": 2, "blocks": [
             {"type": "text", "body": "Найдите путь за t = 5 с при υ = 20 м/с."},
-            {"type": "open", "response": "lines:2", "answer": "s = 100 м"},
+            {"type": "open", "answer": "s = 100 м"},
+            {"type": "paper", "ruling": "lines", "rows": 2},
         ]},
         {"type": "heading", "id": "b5", "text": "График"},
         {"type": "graph", "id": "b6", "x_label": "t, с", "y_label": "s, м",

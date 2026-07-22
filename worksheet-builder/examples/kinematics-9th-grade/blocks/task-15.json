@@ -30,8 +30,12 @@
             },
             {
               "type": "open",
-              "response": "lines:2",
               "answer": "Цена деления 5 км/ч; υ = 62,5 ± 2,5 км/ч"
+            },
+            {
+              "type": "paper",
+              "ruling": "lines",
+              "rows": 2
             }
           ]
         },
@@ -55,8 +59,12 @@
             },
             {
               "type": "open",
-              "response": "lines:2",
               "answer": "L = 6,40 ± 0,05 см"
+            },
+            {
+              "type": "paper",
+              "ruling": "lines",
+              "rows": 2
             }
           ]
         }

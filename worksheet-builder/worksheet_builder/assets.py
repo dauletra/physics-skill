@@ -54,8 +54,6 @@ body {
 .task-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .task-num { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
 .task-points { font-size: 9pt; color: #333; }
-.solution-area { margin-top: 8px; }
-.solution-line { border-bottom: 1px dotted #000; height: 26px; }
 .answer-line { display: inline-block; min-width: 150px; border-bottom: 1px solid #000; margin-left: 8px; }
 .bank-list { margin-top: 8px; font-size: 11pt; }
 /* Подсказка "Отметьте все подходящие варианты." над списком choice при
@@ -148,4 +146,19 @@ body {
 .instrument-wrap.instrument-balance { max-width: 255px; }
 .instrument-wrap.instrument-digital { max-width: 225px; }
 .instrument-caption { font-size: 9pt; text-align: center; margin-top: 3px; }
+/* Место для работы ученика (компонент `paper`, paper.py). Оба правила ниже
+   перебивают общее `.task-block svg.visual-svg` (ширина 100%, max-width
+   330px, height auto): бумага под 330px схлопнулась бы, а высота у неё —
+   авторские данные, а не производная ширины. Перебивается узко, по классу
+   обёртки — как и остальные ширины SVG в этом файле.
+   `paper-fixed` — ширина из `cols`: её несут атрибуты самого SVG, CSS лишь
+   не даёт полю вылезти из узкой колонки `row` (сжимается пропорционально,
+   клетка остаётся квадратной).
+   `paper-fluid` — поле на всю колонку: ширину даёт колонка, высоту —
+   переменная `--paper-h` от рендера (иначе в узкой колонке `height: auto`
+   сплющил бы строки). */
+.paper-wrap { margin-top: 8px; }
+.paper-wrap svg.visual-svg { display: block; }
+.paper-wrap.paper-fixed svg.visual-svg { width: auto; max-width: 100%; height: auto; }
+.paper-wrap.paper-fluid svg.visual-svg { width: 100%; max-width: none; height: var(--paper-h); }
 """.strip()

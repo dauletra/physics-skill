@@ -97,6 +97,11 @@ def render_leaf(block: Union[ComponentModel, QuestionModel]) -> str:
         body = render_question(block)
     else:
         body = render_component(block)
+    if not body:
+        # `open` в теле не печатает ничего (условие и место под ответ —
+        # соседние блоки): пустая обёртка добавила бы только вертикальный
+        # отступ на пустом месте.
+        return ""
     return f'<div class="task-block">{body}</div>'
 
 

@@ -60,8 +60,10 @@
     },
     {
       "type": "open",
-      "response": "blank",
       "answer": "a<sub>A</sub> = Δυ/Δt = 20/10 = 2 м/с²; a<sub>B</sub> = 10/10 = 1 м/с²"
+    },
+    {
+      "type": "answer_line"
     }
   ]
 }

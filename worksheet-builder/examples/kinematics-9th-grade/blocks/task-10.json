@@ -46,8 +46,12 @@
         },
         {
           "type": "open",
-          "response": "lines:3",
           "answer": "a = Δυ/Δt = 8/4 = 2 м/с²"
+        },
+        {
+          "type": "paper",
+          "ruling": "lines",
+          "rows": 3
         }
       ]
     },
@@ -61,8 +65,10 @@
         },
         {
           "type": "open",
-          "response": "blank",
           "answer": "s = υt/2 = 8*4/2 = 16 м"
+        },
+        {
+          "type": "answer_line"
         }
       ]
     }

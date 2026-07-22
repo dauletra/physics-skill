@@ -82,6 +82,34 @@
   },
   "block": {
     "$defs": {
+      "AnswerLineModel": {
+        "additionalProperties": false,
+        "description": "Прочерк под короткий ответ в строку («Ответ: ______»). Отдельный\nкомпонент, а не разлиновка `paper`: это не площадь, а строчка в потоке\nтекста, и геометрии у неё нет.",
+        "properties": {
+          "type": {
+            "const": "answer_line",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "AnswerLineModel",
+        "type": "object"
+      },
       "BlankCellModel": {
         "additionalProperties": false,
         "properties": {
@@ -273,10 +301,12 @@
             "items": {
               "discriminator": {
                 "mapping": {
+                  "answer_line": "#/$defs/AnswerLineModel",
                   "graph": "#/$defs/GraphModel",
                   "heading": "#/$defs/HeadingModel",
                   "instrument": "#/$defs/InstrumentModel",
                   "list": "#/$defs/ListModel",
+                  "paper": "#/$defs/PaperModel",
                   "table": "#/$defs/TableModel",
                   "text": "#/$defs/TextModel"
                 },
@@ -297,6 +327,12 @@
                 },
                 {
                   "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/PaperModel"
+                },
+                {
+                  "$ref": "#/$defs/AnswerLineModel"
                 },
                 {
                   "$ref": "#/$defs/HeadingModel"
@@ -980,6 +1016,7 @@
       },
       "OpenModel": {
         "additionalProperties": false,
+        "description": "Открытый вопрос: ответ свободной формы. Payload — только сам ответ:\nусловие живёт соседним `text`-блоком, а место под ответ — соседним\n`paper`/`answer_line`. Раскладка в вопросе не живёт (принцип 2 в\ndocs/schema-design-principles.md), поэтому поля `response` здесь нет.",
         "properties": {
           "id": {
             "anyOf": [
@@ -1010,11 +1047,6 @@
             "title": "Type",
             "type": "string"
           },
-          "response": {
-            "default": "none",
-            "title": "Response",
-            "type": "string"
-          },
           "answer": {
             "anyOf": [
               {
@@ -1032,6 +1064,65 @@
           "type"
         ],
         "title": "OpenModel",
+        "type": "object"
+      },
+      "PaperModel": {
+        "additionalProperties": false,
+        "description": "Место для работы ученика: разлинованное поле заданной высоты и\nширины (`references/artifacts/paper.md`). Чистый компонент — про\nответ он не знает ничего, это бумага; что на ней делают, говорит\nсоседний вопрос.",
+        "properties": {
+          "type": {
+            "const": "paper",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "ruling": {
+            "default": "lines",
+            "enum": [
+              "lines",
+              "grid",
+              "mm",
+              "dots",
+              "plain"
+            ],
+            "title": "Ruling",
+            "type": "string"
+          },
+          "rows": {
+            "exclusiveMinimum": 0,
+            "title": "Rows",
+            "type": "integer"
+          },
+          "cols": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cols"
+          }
+        },
+        "required": [
+          "type",
+          "rows"
+        ],
+        "title": "PaperModel",
         "type": "object"
       },
       "PartModel": {
@@ -1090,6 +1181,7 @@
             "items": {
               "discriminator": {
                 "mapping": {
+                  "answer_line": "#/$defs/AnswerLineModel",
                   "choice": "#/$defs/ChoiceModel",
                   "classify": "#/$defs/ClassifyModel",
                   "fill_table": "#/$defs/FillTableModel",
@@ -1099,6 +1191,7 @@
                   "list": "#/$defs/ListModel",
                   "match": "#/$defs/MatchModel",
                   "open": "#/$defs/OpenModel",
+                  "paper": "#/$defs/PaperModel",
                   "part": "#/$defs/PartModel",
                   "plot": "#/$defs/PlotModel",
                   "rank": "#/$defs/RankModel",
@@ -1124,6 +1217,12 @@
                 },
                 {
                   "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/PaperModel"
+                },
+                {
+                  "$ref": "#/$defs/AnswerLineModel"
                 },
                 {
                   "$ref": "#/$defs/OpenModel"
@@ -1404,6 +1503,7 @@
             "items": {
               "discriminator": {
                 "mapping": {
+                  "answer_line": "#/$defs/AnswerLineModel",
                   "choice": "#/$defs/ChoiceModel",
                   "classify": "#/$defs/ClassifyModel",
                   "fill_table": "#/$defs/FillTableModel",
@@ -1413,6 +1513,7 @@
                   "list": "#/$defs/ListModel",
                   "match": "#/$defs/MatchModel",
                   "open": "#/$defs/OpenModel",
+                  "paper": "#/$defs/PaperModel",
                   "part": "#/$defs/PartModel",
                   "plot": "#/$defs/PlotModel",
                   "rank": "#/$defs/RankModel",
@@ -1438,6 +1539,12 @@
                 },
                 {
                   "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/PaperModel"
+                },
+                {
+                  "$ref": "#/$defs/AnswerLineModel"
                 },
                 {
                   "$ref": "#/$defs/OpenModel"
@@ -1662,6 +1769,7 @@
             "items": {
               "discriminator": {
                 "mapping": {
+                  "answer_line": "#/$defs/AnswerLineModel",
                   "choice": "#/$defs/ChoiceModel",
                   "classify": "#/$defs/ClassifyModel",
                   "fill_table": "#/$defs/FillTableModel",
@@ -1671,6 +1779,7 @@
                   "list": "#/$defs/ListModel",
                   "match": "#/$defs/MatchModel",
                   "open": "#/$defs/OpenModel",
+                  "paper": "#/$defs/PaperModel",
                   "part": "#/$defs/PartModel",
                   "plot": "#/$defs/PlotModel",
                   "rank": "#/$defs/RankModel",
@@ -1696,6 +1805,12 @@
                 },
                 {
                   "$ref": "#/$defs/InstrumentModel"
+                },
+                {
+                  "$ref": "#/$defs/PaperModel"
+                },
+                {
+                  "$ref": "#/$defs/AnswerLineModel"
                 },
                 {
                   "$ref": "#/$defs/OpenModel"
@@ -1827,10 +1942,12 @@
     },
     "discriminator": {
       "mapping": {
+        "answer_line": "#/$defs/AnswerLineModel",
         "graph": "#/$defs/GraphModel",
         "heading": "#/$defs/HeadingModel",
         "instrument": "#/$defs/InstrumentModel",
         "list": "#/$defs/ListModel",
+        "paper": "#/$defs/PaperModel",
         "row": "#/$defs/DocRowModel",
         "table": "#/$defs/TableModel",
         "task": "#/$defs/TaskModel",
@@ -1856,6 +1973,12 @@
       },
       {
         "$ref": "#/$defs/InstrumentModel"
+      },
+      {
+        "$ref": "#/$defs/PaperModel"
+      },
+      {
+        "$ref": "#/$defs/AnswerLineModel"
       },
       {
         "$ref": "#/$defs/TaskModel"

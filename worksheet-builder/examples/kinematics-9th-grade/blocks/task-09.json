@@ -9,8 +9,10 @@
     },
     {
       "type": "open",
-      "response": "blank",
       "answer": "E<sub>k</sub> = 4 ∙ 9 / 2 = 18 Дж"
+    },
+    {
+      "type": "answer_line"
     }
   ]
 }

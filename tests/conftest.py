@@ -38,8 +38,9 @@ MINIMAL_TASKS = {
         "points": 2,
         "blocks": [
             {"type": "text", "body": "Путь при υ = 20 м/с за t = 5 с?"},
-            {"type": "open", "response": "lines:2", "answer": "s = υt = 100 м",
+            {"type": "open", "answer": "s = υt = 100 м",
              "explanation": "Равномерное движение."},
+            {"type": "paper", "ruling": "lines", "rows": 2},
         ],
     },
     "choice": {
@@ -144,11 +145,13 @@ MINIMAL_TASKS = {
              "series": [{"label": "Тело", "points": [[0, 0], [4, 8]], "style": "solid"}]},
             {"type": "part", "points": 2, "blocks": [
                 {"type": "text", "body": "Найдите ускорение."},
-                {"type": "open", "response": "lines:2", "answer": "a = 2 м/с²"},
+                {"type": "open", "answer": "a = 2 м/с²"},
+                {"type": "paper", "ruling": "lines", "rows": 2},
             ]},
             {"type": "part", "points": 3, "blocks": [
                 {"type": "text", "body": "Найдите путь."},
-                {"type": "open", "response": "blank", "answer": "s = 16 м"},
+                {"type": "open", "answer": "s = 16 м"},
+                {"type": "answer_line"},
             ]},
         ],
     },
@@ -169,7 +172,8 @@ MINIMAL_TASKS = {
                 {"type": "instrument", "kind": "dynamometer", "unit": "Н",
                  "min": 0, "max": 4, "step": 0.1, "caption": "Динамометр"},
             ]},
-            {"type": "open", "response": "lines:3", "answer": "V = 175 ± 5 мл"},
+            {"type": "open", "answer": "V = 175 ± 5 мл"},
+            {"type": "paper", "ruling": "lines", "rows": 3},
         ],
     },
     # Приборы, семейство dial: все пять стрелочных видов, с показанием
@@ -192,7 +196,8 @@ MINIMAL_TASKS = {
                 {"type": "instrument", "kind": "speedometer", "unit": "км/ч",
                  "min": 0, "max": 180, "step": 5},
             ]},
-            {"type": "open", "response": "blank", "answer": "I = 1,35 ± 0,05 А"},
+            {"type": "open", "answer": "I = 1,35 ± 0,05 А"},
+            {"type": "answer_line"},
         ],
     },
     # row из двух part + чистые компоненты table и list.
@@ -205,11 +210,11 @@ MINIMAL_TASKS = {
             {"type": "row", "blocks": [
                 {"type": "part", "blocks": [
                     {"type": "text", "body": "Левая колонка."},
-                    {"type": "open", "response": "none"},
+                    {"type": "open"},
                 ]},
                 {"type": "part", "blocks": [
                     {"type": "text", "body": "Правая колонка."},
-                    {"type": "open", "response": "none"},
+                    {"type": "open"},
                 ]},
             ]},
         ],
@@ -288,6 +293,14 @@ MINIMAL_VISUALS = {
         "min": -2, "max": 2, "step": 0.001, "value": 1.234,
         "caption": "Милливольтовый режим",
     },
+    # Бумага (компонент `paper`): все пять разлиновок — две тянущиеся по
+    # ширине колонки (cols не задан) и три с квадратной клеткой, где ширина
+    # обязана быть в данных. mm 12x12 — квадратная миллиметровка «12 см».
+    "paper-lines": {"type": "paper", "ruling": "lines", "rows": 4},
+    "paper-plain": {"type": "paper", "ruling": "plain", "rows": 6},
+    "paper-grid": {"type": "paper", "ruling": "grid", "rows": 14, "cols": 20},
+    "paper-dots": {"type": "paper", "ruling": "dots", "rows": 8, "cols": 24},
+    "paper-mm": {"type": "paper", "ruling": "mm", "rows": 12, "cols": 12},
     # Двухпредельный прибор (шаблон школьного J0407): двойная шкала на
     # одной дуге (внешняя −1…3, внутренняя −0.2…0.6 — заход в минус),
     # клеммы «−»/«0.6А»/«3А», класс точности.

@@ -93,9 +93,11 @@ def test_fill_text_placeholder_mismatch():
     assert "placeholder" in msg.lower() or "blanks" in msg
 
 
-def test_open_bad_response():
-    msg = load_error(make_task({"type": "open", "response": "lines:zero"}))
-    assert "lines" in msg
+def test_open_response_is_gone():
+    # Место под ответ переехало в соседний компонент `paper`/`answer_line`
+    # (раскладка не живёт в payload вопроса) — старое поле теперь опечатка.
+    msg = load_error(make_task({"type": "open", "response": "lines:4"}))
+    assert "response" in msg
 
 
 def test_bar_multiple_series():
@@ -178,6 +180,41 @@ def test_label_step_only_on_tick_scales():
                                            max=20, step=0.01, value=12.47,
                                            label_step=5)))
     assert "label_step" in msg and "tick scale" in msg
+
+
+# --- Бумага (компонент `paper`) ---
+
+
+def test_paper_square_ruling_needs_cols():
+    # Клетку нельзя растянуть по ширине колонки — она перестанет быть
+    # квадратной, поэтому ширина обязана быть в данных.
+    msg = load_error(make_task({"type": "paper", "ruling": "mm", "rows": 12}))
+    assert "cols" in msg
+    # Линиям ширина не нужна: без cols поле занимает колонку целиком.
+    parse_block(make_task({"type": "paper", "ruling": "lines", "rows": 4}))
+
+
+def test_paper_too_wide_for_column():
+    msg = load_error(make_task({"type": "paper", "ruling": "mm", "rows": 4, "cols": 40}))
+    assert "cols" in msg and "column" in msg
+
+
+def test_paper_too_tall():
+    msg = load_error(make_task({"type": "paper", "ruling": "mm", "rows": 200, "cols": 10}))
+    assert "rows" in msg
+    # Ровно та же ошибка ловит перепутанную единицу: 120 «клеток» вместо
+    # 12 см — типовая опечатка автора миллиметровки.
+    assert "at most" in msg
+
+
+def test_paper_unknown_ruling():
+    msg = load_error(make_task({"type": "paper", "ruling": "hexagons", "rows": 4}))
+    assert "ruling" in msg
+
+
+def test_paper_zero_rows():
+    msg = load_error(make_task({"type": "paper", "ruling": "lines", "rows": 0}))
+    assert "rows" in msg
 
 
 # --- Метрология: класс точности и многопредельность ---

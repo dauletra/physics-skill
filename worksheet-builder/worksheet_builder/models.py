@@ -383,6 +383,71 @@ class InstrumentModel(StrictModel):
             raise ValueError(f"weights are only supported for balance, not {self.kind!r}")
 
 
+PaperRuling = Literal["lines", "grid", "mm", "dots", "plain"]
+
+# Шаг разлиновки в единицах viewBox; экранный px = 1.5 x единица (общая
+# калибровка всех SVG документа, см. references/artifacts/README.md). Для
+# `mm` это КРУПНАЯ, сантиметровая клетка: `rows`/`cols` везде считаются в
+# крупной клетке разлиновки, а не в тонких миллиметровых линиях — иначе
+# «миллиметровка 20x20» означала бы 2x2 см вместо 20x20.
+PAPER_STEPS: dict[str, int] = {"lines": 18, "plain": 18, "grid": 12, "dots": 12, "mm": 30}
+
+# Разлиновки с квадратной клеткой: растянуть их по ширине колонки нельзя —
+# клетка перестала бы быть квадратной, поэтому ширина задаётся `cols` явно.
+# У `lines`/`plain` горизонтальной геометрии нет, и без `cols` они занимают
+# всю ширину колонки.
+PAPER_FIXED_WIDTH = frozenset({"grid", "dots", "mm"})
+
+# Ширина колонки документа в единицах viewBox (800px тела минус поля 2x32,
+# делённые на 1.5) и предел высоты одного поля (~2 экрана): поле шире
+# колонки вылезало бы за неё, а выше предела — почти наверняка опечатка в
+# единицах `rows`.
+PAPER_NOMINAL_W = 490
+PAPER_MAX_H = 900
+
+
+class PaperModel(StrictModel):
+    """Место для работы ученика: разлинованное поле заданной высоты и
+    ширины (`references/artifacts/paper.md`). Чистый компонент — про
+    ответ он не знает ничего, это бумага; что на ней делают, говорит
+    соседний вопрос."""
+    type: Literal["paper"]
+    id: Optional[str] = None
+    ruling: PaperRuling = "lines"
+    # Высота и ширина — в клетках/строках самой разлиновки (PAPER_STEPS), а
+    # не в пикселях: автор мыслит «четыре строки», «поле 12x12 клеток».
+    rows: int = Field(gt=0)
+    cols: Optional[int] = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def _geometry_fits(self) -> "PaperModel":
+        step = PAPER_STEPS[self.ruling]
+        if self.cols is None and self.ruling in PAPER_FIXED_WIDTH:
+            raise ValueError(
+                f"ruling {self.ruling!r} requires 'cols': a square cell cannot be "
+                "stretched to the column width"
+            )
+        if self.cols is not None and self.cols * step > PAPER_NOMINAL_W:
+            raise ValueError(
+                f"cols {self.cols} does not fit the page column: at most "
+                f"{PAPER_NOMINAL_W // step} for ruling {self.ruling!r}"
+            )
+        if self.rows * step > PAPER_MAX_H:
+            raise ValueError(
+                f"rows {self.rows} is too tall: at most {PAPER_MAX_H // step} "
+                f"for ruling {self.ruling!r}"
+            )
+        return self
+
+
+class AnswerLineModel(StrictModel):
+    """Прочерк под короткий ответ в строку («Ответ: ______»). Отдельный
+    компонент, а не разлиновка `paper`: это не площадь, а строчка в потоке
+    текста, и геометрии у неё нет."""
+    type: Literal["answer_line"]
+    id: Optional[str] = None
+
+
 # --- Вопросы (конверт: type + опциональные id/explanation) ---
 
 class QuestionEnvelope(StrictModel):
@@ -391,21 +456,12 @@ class QuestionEnvelope(StrictModel):
 
 
 class OpenModel(QuestionEnvelope):
+    """Открытый вопрос: ответ свободной формы. Payload — только сам ответ:
+    условие живёт соседним `text`-блоком, а место под ответ — соседним
+    `paper`/`answer_line`. Раскладка в вопросе не живёт (принцип 2 в
+    docs/schema-design-principles.md), поэтому поля `response` здесь нет."""
     type: Literal["open"]
-    response: str = "none"
     answer: Optional[str] = None
-
-    @field_validator("response")
-    @classmethod
-    def _response_valid(cls, v: str) -> str:
-        if v.startswith("lines:"):
-            suffix = v.split(":", 1)[1]
-            if not (suffix.isdigit() and int(suffix) > 0):
-                raise ValueError(f"response 'lines:N' requires positive integer N, got {v!r}")
-            return v
-        if v not in ("blank", "none"):
-            raise ValueError(f"response must be 'lines:N', 'blank' or 'none', got {v!r}")
-        return v
 
 
 class ChoiceOptionModel(StrictModel):
@@ -577,7 +633,10 @@ class ClassifyModel(QuestionEnvelope):
 
 # --- Контейнеры ---
 
-ComponentModel = Union[TextModel, TableModel, GraphModel, ListModel, InstrumentModel]
+ComponentModel = Union[
+    TextModel, TableModel, GraphModel, ListModel, InstrumentModel,
+    PaperModel, AnswerLineModel,
+]
 QuestionModel = Union[
     OpenModel, ChoiceModel, MatchModel, FillTextModel, FillTableModel,
     PlotModel, TrueFalseModel, RankModel, ClassifyModel,
@@ -859,7 +918,7 @@ def parse_document(data: object, name: str = "document.json") -> DocumentModel:
 # Спека режима `--visual` (cli.py) — ровно один визуальный блок листа, по той
 # же схеме и с теми же инвариантами, что и внутри задания. Новый визуальный
 # компонент добавляется в этот union — и standalone-рендер его видит.
-VisualModel = Union[GraphModel, InstrumentModel]
+VisualModel = Union[GraphModel, InstrumentModel, PaperModel]
 _VISUAL_ADAPTER: TypeAdapter[VisualModel] = TypeAdapter(
     Annotated[VisualModel, Field(discriminator="type")]
 )

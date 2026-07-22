@@ -9,8 +9,10 @@
     },
     {
       "type": "open",
-      "response": "blank",
       "answer": "g ≈ 9.8 м/с²"
+    },
+    {
+      "type": "answer_line"
     }
   ]
 }

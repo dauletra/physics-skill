@@ -9,8 +9,12 @@
     },
     {
       "type": "open",
-      "response": "lines:4",
       "answer": "υ = 20 м/с, t = 900 с, s = υt = 20 * 900 = 18000 м = 18 км"
+    },
+    {
+      "type": "paper",
+      "ruling": "lines",
+      "rows": 4
     }
   ]
 }

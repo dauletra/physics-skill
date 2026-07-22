@@ -35,7 +35,6 @@ from worksheet_builder.render_helpers import (
     blank,
     blank_cell,
     esc,
-    lines,
 )
 from worksheet_builder.strings import LETTERS, t
 from worksheet_builder.visuals import build_chart_svg
@@ -44,11 +43,12 @@ from worksheet_builder.visuals import build_chart_svg
 
 def render_open(q: OpenModel) -> str:
     """Открытый вопрос (развёрнутый/короткий); "найти и исправить ошибку" —
-    тот же вид, отличие только в соседнем `text`-блоке с условием."""
-    if q.response.startswith("lines:"):
-        return lines(int(q.response.split(":", 1)[1]))
-    if q.response == "blank":
-        return f'<div>{t("answer_label")} {blank()}</div>'
+    тот же вид, отличие только в соседнем `text`-блоке с условием.
+
+    В теле задания не печатает ничего: условие — соседний `text`, место под
+    ответ — соседний `paper`/`answer_line` (компоненты, components.py).
+    Вопросом вид остаётся ради ответа в секции «Ответы» — рендер пустого
+    тела `render_leaf` (document.py) обёрткой не оборачивает."""
     return ""
 
 

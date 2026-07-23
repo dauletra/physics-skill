@@ -22,7 +22,10 @@ def make_workspace(tmp_path, order, files):
 
 
 def minimal(block_id):
-    return {"type": "task", "id": block_id, "blocks": [{"type": "open"}]}
+    return {"type": "task", "id": block_id, "blocks": [
+        {"type": "text", "body": "Условие."},
+        {"type": "open"},
+    ]}
 
 
 def load_exit(ws) -> str:

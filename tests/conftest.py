@@ -59,6 +59,7 @@ MINIMAL_TASKS = {
         "type": "task",
         "id": "t-match",
         "blocks": [
+            {"type": "text", "body": "Сопоставьте величину с её единицей измерения."},
             {"type": "match",
              "left": [
                  {"text": "Скорость", "match": "ms"},
@@ -75,6 +76,7 @@ MINIMAL_TASKS = {
         "type": "task",
         "id": "t-fill-text",
         "blocks": [
+            {"type": "text", "body": "Вставьте пропущенное слово."},
             {"type": "fill_text",
              "template": "Сила измеряется в ___u___.",
              "blanks": {"u": "ньютонах"},
@@ -85,6 +87,7 @@ MINIMAL_TASKS = {
         "type": "task",
         "id": "t-fill-table",
         "blocks": [
+            {"type": "text", "body": "Заполните пропуски в таблице."},
             {"type": "fill_table",
              "headers": ["t, с", "s, м"],
              "rows": [["0", "0"], ["1", {"answer": "5"}]]},
@@ -94,6 +97,7 @@ MINIMAL_TASKS = {
         "type": "task",
         "id": "t-plot",
         "blocks": [
+            {"type": "text", "body": "Постройте график зависимости скорости от времени."},
             {"type": "plot", "x_label": "t, с", "y_label": "υ, м/с",
              "x_range": [0, 5], "y_range": [0, 10],
              "given": [{"points": [[0, 0]], "style": "solid"}],
@@ -104,6 +108,7 @@ MINIMAL_TASKS = {
         "type": "task",
         "id": "t-tf",
         "blocks": [
+            {"type": "text", "body": "Верно ли утверждение?"},
             {"type": "true_false", "statements": [
                 {"text": "Скорость — вектор.", "answer": True},
                 {"text": "Путь — вектор.", "answer": False},
@@ -114,6 +119,7 @@ MINIMAL_TASKS = {
         "type": "task",
         "id": "t-rank",
         "blocks": [
+            {"type": "text", "body": "Расположите объекты в порядке возрастания скорости."},
             {"type": "rank", "items": [
                 {"text": "Поезд: 120 км/ч", "position": 3},
                 {"text": "Пешеход: 5 км/ч", "position": 1},
@@ -125,6 +131,7 @@ MINIMAL_TASKS = {
         "type": "task",
         "id": "t-classify",
         "blocks": [
+            {"type": "text", "body": "Распределите вещества по агрегатным состояниям."},
             {"type": "classify",
              "categories": ["Твёрдое", "Жидкое", "Газообразное"],
              "items": [
@@ -182,6 +189,7 @@ MINIMAL_TASKS = {
         "type": "task",
         "id": "t-instr-dials",
         "blocks": [
+            {"type": "text", "body": "Определите показания стрелочных приборов."},
             {"type": "row", "blocks": [
                 {"type": "instrument", "kind": "ammeter", "unit": "А",
                  "min": 0, "max": 3, "step": 0.1, "value": 1.35, "caption": "Амперметр"},
@@ -200,7 +208,9 @@ MINIMAL_TASKS = {
             {"type": "answer_line"},
         ],
     },
-    # row из двух part + чистые компоненты table и list.
+    # row из двух part + чистые компоненты table и list. Условия здесь только
+    # на уровне part — фикстура заодно держит инвариант условия честным:
+    # общий `text` на задании не обязателен, если он есть у каждого part.
     "row_and_components": {
         "type": "task",
         "id": "t-row",

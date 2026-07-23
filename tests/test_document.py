@@ -38,6 +38,7 @@ SAMPLE_SOURCE = {
          "x_range": [0, 5], "y_range": [0, 50],
          "series": [{"label": "Тело", "points": [[0, 0], [5, 50]]}]},
         {"type": "task", "id": "b7", "blocks": [
+            {"type": "text", "body": "Скорость — это скаляр или вектор?"},
             {"type": "choice", "options": [
                 {"text": "скаляр"}, {"text": "вектор", "correct": True},
             ]},

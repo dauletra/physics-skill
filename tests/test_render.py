@@ -72,11 +72,12 @@ def test_choice_multiple_prints_hint():
     """При select: multiple решающий обязан видеть, что верных ответов больше
     одного — single и multiple рендерятся одинаковым списком."""
     def choice_task(select, correct_flags):
-        return {"type": "task", "id": "t-c", "blocks": [{
-            "type": "choice", "select": select,
-            "options": [{"text": f"вариант {i}", "correct": flag}
-                        for i, flag in enumerate(correct_flags)],
-        }]}
+        return {"type": "task", "id": "t-c", "blocks": [
+            {"type": "text", "body": "Выберите верное."},
+            {"type": "choice", "select": select,
+             "options": [{"text": f"вариант {i}", "correct": flag}
+                         for i, flag in enumerate(correct_flags)]},
+        ]}
 
     multiple = render_task_with_answers(choice_task("multiple", [True, True, False]))
     assert 'class="choice-hint"' in multiple

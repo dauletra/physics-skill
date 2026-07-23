@@ -55,6 +55,78 @@ def test_part_needs_exactly_one_question():
     assert "exactly one question" in msg
 
 
+# --- Условие вопроса (см. TaskModel._check_condition_present) ---
+
+
+def test_question_without_condition_rejected():
+    # Аппарат без формулировки: варианты напечатаются, вопроса не будет,
+    # а строка в секции «Ответы» появится.
+    msg = load_error(make_task({"type": "choice", "options": [
+        {"text": "а", "correct": True}, {"text": "б"},
+    ]}))
+    assert "no condition" in msg and "blocks[0]" in msg
+
+
+def test_open_without_condition_prints_only_the_number():
+    # Вырожденный случай: тело `open` пустое по построению, поэтому без
+    # условия от задания остаётся один номер.
+    msg = load_error(make_task({"type": "open", "answer": "s = 50 м"}))
+    assert "no condition" in msg
+
+
+def test_part_without_condition_rejected():
+    msg = load_error(make_task(
+        {"type": "part", "blocks": [{"type": "open"}]},
+        {"type": "part", "blocks": [{"type": "text", "body": "x"}, {"type": "open"}]},
+    ))
+    assert "part has no condition" in msg and "blocks[0]" in msg
+
+
+def test_task_level_condition_covers_every_part():
+    # Общее условие не нужно повторять в каждом подпункте.
+    parse_block(make_task(
+        {"type": "text", "body": "Определите показания приборов."},
+        {"type": "part", "blocks": [{"type": "open"}]},
+        {"type": "part", "blocks": [{"type": "open"}]},
+    ))
+
+
+def test_condition_inside_row_counts():
+    # `row` прозрачен: текст в колонке — такое же условие уровня задания.
+    parse_block(make_task(
+        {"type": "row", "blocks": [
+            {"type": "text", "body": "Условие рядом с прибором."},
+            {"type": "instrument", "kind": "ammeter", "unit": "А",
+             "min": 0, "max": 3, "step": 0.1, "value": 1.35},
+        ]},
+        {"type": "open", "answer": "I = 1,35 А"},
+    ))
+
+
+def test_task_without_questions_needs_no_condition():
+    # Блок-иллюстрация внутри задания вопросов не несёт — требовать от неё
+    # формулировку нечего.
+    parse_block(make_task({"type": "table", "headers": ["t"], "rows": [["0"]]}))
+
+
+def test_explanation_without_answer_rejected():
+    msg = load_error(make_task(
+        {"type": "text", "body": "x"},
+        {"type": "open", "explanation": "Равномерное движение."},
+    ))
+    assert "explanation without answer" in msg
+    # `open` вообще без ответа — законный устный вопрос.
+    parse_block(make_task({"type": "text", "body": "x"}, {"type": "open"}))
+
+
+def test_fill_text_without_placeholders_rejected():
+    msg = load_error(make_task(
+        {"type": "text", "body": "x"},
+        {"type": "fill_text", "template": "Сила измеряется в ньютонах."},
+    ))
+    assert "no ___placeholders___" in msg
+
+
 def test_width_rejected():
     msg = load_error(make_task(
         {"type": "row", "blocks": [

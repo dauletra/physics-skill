@@ -473,6 +473,15 @@ class OpenModel(QuestionEnvelope):
     type: Literal["open"]
     answer: Optional[str] = None
 
+    @model_validator(mode="after")
+    def _explanation_needs_answer(self) -> "OpenModel":
+        # `open` без ответа легален (устный вопрос, свободное рассуждение), но
+        # пояснение без ответа печатает в секции «Ответы» комментарий к тому,
+        # чего там нет.
+        if self.explanation and not self.answer:
+            raise ValueError("explanation without answer - add 'answer' or drop 'explanation'")
+        return self
+
 
 class ChoiceOptionModel(StrictModel):
     text: str
@@ -533,6 +542,12 @@ class FillTextModel(QuestionEnvelope):
     @model_validator(mode="after")
     def _placeholders_match(self) -> "FillTextModel":
         placeholders = set(BLANK_RE.findall(self.template))
+        if not placeholders:
+            # Шаблон без пропусков — не вопрос: тело печатает обычный текст,
+            # а строка ответов выходит пустой. Это `text`, а не `fill_text`.
+            raise ValueError(
+                "template has no ___placeholders___ - fill_text needs at least one blank"
+            )
         if placeholders != set(self.blanks.keys()):
             raise ValueError(
                 f"template placeholders {placeholders or '{}'} != blanks keys {set(self.blanks.keys()) or '{}'}"
@@ -667,16 +682,28 @@ AnyBlockModel = Annotated[
 ]
 
 
+def iter_flat_paths(
+    blocks: "list[AnyBlockModel]", prefix: str = "blocks"
+) -> "Iterator[tuple[str, AnyBlockModel]]":
+    """Сплющенный обход с путём до блока: `row` прозрачен — его дети считаются
+    сиблингами на уровне родителя, но в пути остаются на своём настоящем
+    месте (`blocks[1].blocks[0]`), чтобы автор нашёл блок в файле. Правило
+    прозрачности `row` живёт здесь в единственном экземпляре."""
+    for i, block in enumerate(blocks):
+        if isinstance(block, RowModel):
+            for j, inner in enumerate(block.blocks):
+                yield f"{prefix}[{i}].blocks[{j}]", inner
+        else:
+            yield f"{prefix}[{i}]", block
+
+
 def iter_flat_models(blocks: "list[AnyBlockModel]") -> "Iterator[AnyBlockModel]":
     """Сплющенный обход: `row` прозрачен — его дети считаются сиблингами на
     уровне родителя. По этому обходу считаются и инварианты состава (здесь),
     и раздача букв подзаданий (document.py) — раскладка не может изменить
     смысл/нумерацию."""
-    for block in blocks:
-        if isinstance(block, RowModel):
-            yield from block.blocks
-        else:
-            yield block
+    for _path, block in iter_flat_paths(blocks):
+        yield block
 
 
 class RowModel(StrictModel):
@@ -743,7 +770,36 @@ class TaskModel(StrictModel):
         if dupes:
             raise ValueError(f"explicit part labels must be unique, duplicated: {dupes}")
         self._check_unique_ids()
+        self._check_condition_present()
         return self
+
+    def _check_condition_present(self) -> None:
+        """Условие — обязательный сосед вопроса. Без него задание печатает
+        аппарат без формулировки (варианты, утверждения, оси), а `open` —
+        вообще ничего, кроме номера; строка в секции «Ответы» при этом
+        появляется, и документ сам себе противоречит.
+
+        Проверка — по пути к корню задания, а не по каждому узлу: `text`
+        уровня задания покрывает все свои `part`, поэтому общее условие
+        («Определите показания приборов») не приходится повторять в каждом
+        подпункте. Условием считается только `text` — узкое правило, которое
+        автор помнит; подпись графика или пункты списка на эту роль не
+        назначаются."""
+        if any(isinstance(b, TextModel) for b in iter_flat_models(self.blocks)):
+            return
+        for path, block in iter_flat_paths(self.blocks):
+            if isinstance(block, QUESTION_MODEL_TYPES):
+                raise ValueError(
+                    f"{path}: question has no condition - add a 'text' block "
+                    "with the problem statement"
+                )
+            if isinstance(block, PartModel) and not any(
+                isinstance(b, TextModel) for b in iter_flat_models(block.blocks)
+            ):
+                raise ValueError(
+                    f"{path}: part has no condition - add a 'text' block here "
+                    "or at the task level"
+                )
 
     def _check_unique_ids(self) -> None:
         seen: dict[str, str] = {}

@@ -1,0 +1,75 @@
+"""Matching — pair each item on the left with one on the right."""
+
+from __future__ import annotations
+
+from typing import Literal, Optional
+
+from physics_svg.document.html import list_html
+from physics_svg.document.questions.registry import register
+from physics_svg.document.strings import LETTERS
+from physics_svg.draw import esc
+from physics_svg.schema import Invalid, field, spec
+
+
+@spec
+class LeftSpec:
+    """Пункт левого столбца."""
+
+    text: str
+    match: str = field(doc="id соответствующего пункта справа")
+
+
+@spec
+class RightSpec:
+    """Пункт правого столбца (пула вариантов)."""
+
+    id: str = field(min_length=1, doc="Устойчивый идентификатор, на него ссылается left")
+    text: str
+
+
+@spec
+class MatchSpec:
+    """Сопоставление двух столбцов."""
+
+    type: Literal["match"]
+    left: list[LeftSpec] = field(min_items=1)
+    right: list[RightSpec] = field(min_items=1, doc="Пул вариантов; дистракторы допустимы")
+    id: Optional[str] = None
+    explanation: Optional[str] = None
+
+    def check(self) -> None:
+        ids = [item.id for item in self.right]
+        if len(set(ids)) != len(ids):
+            raise Invalid(f"id в правом столбце должны быть уникальны, получено {ids}", field="right")
+        if len(self.right) > len(LETTERS):
+            raise Invalid(
+                f"в правом столбце не больше {len(LETTERS)} пунктов (буквенные маркеры), "
+                f"получено {len(self.right)}",
+                field="right",
+            )
+        for i, item in enumerate(self.left):
+            if item.match not in set(ids):
+                raise Invalid(
+                    f"left[{i}].match = '{item.match}' не найден среди id правого столбца {ids}",
+                    field="left",
+                )
+
+
+def body(model: MatchSpec) -> str:
+    """Two columns. The link is by `id`, so shuffling either list breaks
+    nothing — which is why the letters can be positional here."""
+    left = list_html([esc(item.text) for item in model.left], marker="number")
+    right = list_html([esc(item.text) for item in model.right], marker="letter")
+    return f'<div class="match-columns">{left}{right}</div>'
+
+
+def answer(model: MatchSpec) -> str:
+    letters = {item.id: LETTERS[i] for i, item in enumerate(model.right)}
+    return esc(
+        ", ".join(f"{i + 1}-{letters[item.match]}" for i, item in enumerate(model.left))
+    )
+
+
+register(
+    tag="match", title="Сопоставление", model=MatchSpec, body=body, answer=answer, module=__name__
+)

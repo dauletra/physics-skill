@@ -1,0 +1,66 @@
+"""Multiple choice — one correct option or several."""
+
+from __future__ import annotations
+
+from typing import Literal, Optional
+
+from physics_svg.document.html import list_html
+from physics_svg.document.questions.registry import register
+from physics_svg.document.strings import LETTERS, t
+from physics_svg.draw import esc
+from physics_svg.schema import Invalid, field, spec
+
+
+@spec
+class OptionSpec:
+    """Вариант ответа."""
+
+    text: str
+    correct: bool = False
+
+
+@spec
+class ChoiceSpec:
+    """Выбор одного или нескольких вариантов."""
+
+    type: Literal["choice"]
+    options: list[OptionSpec] = field(min_items=1, doc="Варианты; правильность — инлайн")
+    select: Literal["single", "multiple"] = "single"
+    id: Optional[str] = None
+    explanation: Optional[str] = None
+
+    def check(self) -> None:
+        correct = sum(1 for option in self.options if option.correct)
+        if self.select == "single" and correct != 1:
+            raise Invalid(
+                f"при select='single' правильный вариант должен быть ровно один, "
+                f"получено {correct}",
+                field="options",
+            )
+        if self.select == "multiple" and correct == 0:
+            raise Invalid(
+                "при select='multiple' нужен хотя бы один правильный вариант", field="options"
+            )
+
+
+def body(model: ChoiceSpec) -> str:
+    """Correctness is not marked in any way here — it is printed as a letter
+    in the answers section."""
+    options = list_html([esc(option.text) for option in model.options], marker="letter")
+    if model.select == "multiple":
+        # Without the hint a student cannot tell `multiple` from `single`:
+        # both render as the same list of options.
+        return f'<div class="choice-hint">{t("choice_multiple_hint")}</div>{options}'
+    return options
+
+
+def answer(model: ChoiceSpec) -> str:
+    # The same а)/б) actually printed as list markers: one source of letters.
+    letters = [LETTERS[i] for i, option in enumerate(model.options) if option.correct]
+    return esc(", ".join(letters))
+
+
+register(
+    tag="choice", title="Выбор варианта", model=ChoiceSpec, body=body, answer=answer,
+    module=__name__,
+)

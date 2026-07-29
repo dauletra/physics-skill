@@ -58,7 +58,7 @@ def validator(block_schema: dict) -> object:
 
 class TestShape:
     def test_definitions_are_collected_and_sorted(self, block_schema: dict) -> None:
-        assert list(block_schema["$defs"]) == ["Graph", "Note", "Point", "Series"]
+        assert list(block_schema["$defs"]) == ["Graph", "Note", "Point", "Series", "Source"]
 
     def test_specs_are_closed(self, block_schema: dict) -> None:
         assert block_schema["$defs"]["Graph"]["additionalProperties"] is False

@@ -3,6 +3,10 @@
 Tests here are written against the registry rather than against a list of
 types, so a new illustration is covered the moment its package exists — that
 is the whole point of the registry.
+
+Not a `conftest.py` on purpose: several test directories would each want one,
+and a bare `from conftest import ...` then resolves to whichever was imported
+first. Named modules keep that unambiguous.
 """
 
 from __future__ import annotations
@@ -43,8 +47,7 @@ EXAMPLES = list(all_examples())
 TYPES = list(load_all().values())
 
 
-def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    if "example" in metafunc.fixturenames:
-        metafunc.parametrize("example", EXAMPLES, ids=[e.name for e in EXAMPLES])
-    if "visual_type" in metafunc.fixturenames:
-        metafunc.parametrize("visual_type", TYPES, ids=[t.tag for t in TYPES])
+#: Ready-made parametrisations: put `pytestmark = EACH_EXAMPLE` on a module or
+#: a class instead of repeating the id list.
+EACH_EXAMPLE = pytest.mark.parametrize("example", EXAMPLES, ids=[e.name for e in EXAMPLES])
+EACH_TYPE = pytest.mark.parametrize("visual_type", TYPES, ids=[t.tag for t in TYPES])

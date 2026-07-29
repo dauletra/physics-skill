@@ -239,7 +239,10 @@ def _build_dial(model: InstrumentSpec, canvas: Canvas) -> None:
     center = Pt(80.0, 88.0)
     r_arc, r_needle = 58.0, 52.0
     electric = model.kind in ("ammeter", "voltmeter")
-    canvas.add(Rect(Pt(1.5, 1.5), 157, 107, BODY, radius=6))
+    # Three labelled terminals need a row of their own: with the body at its
+    # normal height their captions would sit on the needle pivot.
+    body_height = 116.0 if model.ranges else 107.0
+    canvas.add(Rect(Pt(1.5, 1.5), 157, body_height, BODY, radius=6))
     axis = ArcAxis(center, r_arc, DIAL_START, DIAL_END)
     canvas.add(_arc_path(axis, LINE))
     ticks = _ticks(model)
@@ -274,26 +277,29 @@ def _build_dial(model: InstrumentSpec, canvas: Canvas) -> None:
     if model.accuracy_class is not None:
         # As on a real scale: just the number in the corner. Decoding the
         # marking is the problem's job, not the drawing's.
-        canvas.add(Text(Pt(10, 103), num(model.accuracy_class), _LABEL_SIZE, "start"))
+        canvas.add(
+            Text(Pt(10, body_height - 5.5), num(model.accuracy_class), _LABEL_SIZE, "start")
+        )
     if electric:
-        canvas.extend(_terminals(model))
+        canvas.extend(_terminals(model, body_height))
 
 
-def _terminals(model: InstrumentSpec) -> list[Node]:
-    if model.ranges:
-        labels = [_MINUS] + [f"{num(r)}{model.unit}" for r in model.ranges]
-    else:
-        labels = ["+", _MINUS]
+def _terminals(model: InstrumentSpec, body_height: float) -> list[Node]:
+    socket = Style(stroke=BLACK, width=1, fill=WHITE)
     nodes: list[Node] = []
     if not model.ranges:
+        # Two terminals, signs beside them.
         for x, sign in ((58.0, "+"), (102.0, _MINUS)):
-            nodes.append(Circle(Pt(x, 99), 3, Style(stroke=BLACK, width=1, fill=WHITE)))
+            nodes.append(Circle(Pt(x, 99), 3, socket))
             nodes.append(Text(Pt(x + (-8 if sign == "+" else 8), 102), sign, 8))
         return nodes
+    # A common terminal plus one per range, each captioned above its socket.
+    labels = [_MINUS] + [f"{num(r)}{model.unit}" for r in model.ranges]
+    socket_y = body_height - 9
     for i, label in enumerate(labels):
         x = 36 + i * 88 / (len(labels) - 1)
-        nodes.append(Circle(Pt(x, 99), 3, Style(stroke=BLACK, width=1, fill=WHITE)))
-        nodes.append(Text(Pt(x, 93), label, 6))
+        nodes.append(Circle(Pt(x, socket_y), 3, socket))
+        nodes.append(Text(Pt(x, socket_y - 6), label, 6))
     return nodes
 
 

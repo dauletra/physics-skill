@@ -1,0 +1,74 @@
+{
+  "type": "task",
+  "id": "task-15",
+  "points": 4,
+  "blocks": [
+    {
+      "type": "text",
+      "body": "Для измерения скорости и пути важно уметь снимать показания приборов с учётом погрешности."
+    },
+    {
+      "type": "row",
+      "blocks": [
+        {
+          "type": "part",
+          "points": 2,
+          "blocks": [
+            {
+              "type": "instrument",
+              "kind": "speedometer",
+              "unit": "км/ч",
+              "min": 0,
+              "max": 200,
+              "step": 5,
+              "value": 62.5,
+              "caption": "Спидометр автомобиля"
+            },
+            {
+              "type": "text",
+              "body": "Определите цену деления спидометра и запишите его показание с учётом погрешности прибора."
+            },
+            {
+              "type": "open",
+              "answer": "Цена деления 5 км/ч; υ = 62,5 ± 2,5 км/ч"
+            },
+            {
+              "type": "paper",
+              "ruling": "lines",
+              "rows": 2
+            }
+          ]
+        },
+        {
+          "type": "part",
+          "points": 2,
+          "blocks": [
+            {
+              "type": "instrument",
+              "kind": "ruler",
+              "unit": "см",
+              "min": 0,
+              "max": 10,
+              "step": 0.1,
+              "value": 6.4,
+              "caption": "Измерение бруска линейкой"
+            },
+            {
+              "type": "text",
+              "body": "Запишите длину бруска с учётом погрешности измерения линейкой."
+            },
+            {
+              "type": "open",
+              "answer": "L = 6,40 ± 0,05 см"
+            },
+            {
+              "type": "paper",
+              "ruling": "lines",
+              "rows": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

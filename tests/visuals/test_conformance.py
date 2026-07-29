@@ -12,6 +12,7 @@ import json
 import re
 
 import pytest
+from library import EACH_EXAMPLE, EACH_TYPE
 
 from physics_svg.draw import BBox, Canvas
 from physics_svg.schema import SchemaError, emit_schema, spec_meta
@@ -30,6 +31,7 @@ VIEWBOX = re.compile(r'viewBox="(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)"')
 PAYLOAD = '<script>alert("x")</script> & <sub>i</sub>'
 
 
+@EACH_TYPE
 class TestTypePackages:
     def test_has_example_specs(self, visual_type) -> None:
         assert visual_type.specs, f"у типа '{visual_type.tag}' нет ни одной спеки в specs/"
@@ -56,6 +58,7 @@ class TestTypePackages:
         assert visual_type.model.__name__ in schema["$defs"]
 
 
+@EACH_EXAMPLE
 class TestExamples:
     def test_parses(self, example) -> None:
         assert example.model is not None

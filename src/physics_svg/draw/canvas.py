@@ -108,6 +108,10 @@ class Canvas:
                     height, for rulings that have no horizontal geometry.
         """
         box = self._resolve_box(viewbox, padding)
+        if fluid_height is not None:
+            # Marks the one case where the height attribute must survive the
+            # page stylesheet: a stretched ruling has no intrinsic ratio.
+            css_class = f"{css_class} visual-fluid"
         parts = [
             f'<svg class="{css_class}" xmlns="http://www.w3.org/2000/svg" '
             f'viewBox="{num(box.x0)} {num(box.y0)} {num(box.width)} {num(box.height)}" '

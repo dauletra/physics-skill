@@ -13,12 +13,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from library import EACH_EXAMPLE, EXAMPLES
+
 from physics_svg.visuals import build_svg
 
 GOLDEN_DIR = Path(__file__).resolve().parent.parent / "golden" / "visuals"
 REGENERATE = os.environ.get("REGEN_GOLDEN") == "1"
 
 
+@EACH_EXAMPLE
 def test_matches_golden(example) -> None:
     # A fixed scope keeps element ids stable across runs.
     actual = build_svg(example.model, scope="v", standalone=True)
@@ -36,8 +39,6 @@ def test_matches_golden(example) -> None:
 
 def test_golden_directory_has_no_orphans() -> None:
     """A spec that was deleted must not leave its golden behind."""
-    from conftest import EXAMPLES
-
     expected = {f"{e.type.tag}-{e.path.stem}.svg" for e in EXAMPLES}
     actual = {p.name for p in GOLDEN_DIR.glob("*.svg")}
     assert actual - expected == set(), f"эталоны без спеки: {sorted(actual - expected)}"

@@ -6,9 +6,17 @@ vocabularies and a cross-field invariant — so kernel behaviour is tested
 against the shapes it actually has to support.
 """
 
-from typing import Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union
 
-from physics_svg.schema import Invalid, Number, field, spec
+from physics_svg.schema import Deferred, Invalid, Number, field, spec
+
+
+@spec
+class Source:
+    """Вложенный объект без дискриминатора — не выбор между видами блоков."""
+
+    title: str = field(min_length=1)
+    year: Optional[int] = None
 
 
 @spec
@@ -38,6 +46,7 @@ class Graph:
     series: list[Series] = field(default_factory=list)
     grid: Literal["ticks", "fine"] = "ticks"
     ticks: Optional[int] = field(default=None, gt=0, le=20)
+    source: Optional[Source] = field(default=None, doc="Откуда данные")
 
     def check(self) -> None:
         if self.y_range[0] >= self.y_range[1]:
@@ -57,3 +66,19 @@ class Note:
 
 
 Block = Union[Graph, Note]
+
+
+#: A container whose children are resolved at parse time, the way document
+#: blocks are: the union is assembled from a registry, not written down.
+if TYPE_CHECKING:
+    CHILD = Any
+else:
+    CHILD = Deferred(lambda: Block)
+
+
+@spec
+class Folder:
+    """Контейнер, союз детей которого разрешается при разборе."""
+
+    type: Literal["folder"]
+    children: list[CHILD] = field(min_items=1)

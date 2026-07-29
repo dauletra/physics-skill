@@ -8,7 +8,7 @@ costs a whole edit-render cycle, so the message content is under test too.
 
 import pytest
 
-from demo import Block, Graph, Note, Point, Series
+from demo import Block, Folder, Graph, Note, Point, Series
 from physics_svg.schema import SchemaError, parse, spec_meta
 
 VALID_GRAPH = {
@@ -209,3 +209,53 @@ class TestMeta:
 
     def test_docs_are_kept_for_the_reference_and_schema(self) -> None:
         assert spec_meta(Graph).fields["y_range"].constraints.doc.startswith("Диапазон")
+
+
+class TestNestedObjects:
+    """An optional nested spec is not a choice between block types.
+
+    Asking one for a `type` discriminator is the regression this guards: it
+    made every document with a header fail to load.
+    """
+
+    def test_a_nested_object_parses(self) -> None:
+        graph = parse(Graph, {**VALID_GRAPH, "source": {"title": "Учебник", "year": 2019}})
+        assert graph.source is not None and graph.source.year == 2019
+
+    def test_it_may_be_absent_or_null(self) -> None:
+        assert parse(Graph, VALID_GRAPH).source is None
+        assert parse(Graph, {**VALID_GRAPH, "source": None}).source is None
+
+    def test_problems_inside_it_keep_the_path(self) -> None:
+        assert parse_fails(Graph, {**VALID_GRAPH, "source": {"title": ""}}) == [
+            "source -> title: строка не должна быть пустой"
+        ]
+
+    def test_it_is_not_asked_for_a_discriminator(self) -> None:
+        problems = parse_fails(Graph, {**VALID_GRAPH, "source": {"year": 2019}})
+        assert problems == ["source: отсутствует обязательное поле 'title'"]
+
+
+class TestDeferredAnnotations:
+    """Containers whose children come from a registry."""
+
+    def test_children_are_resolved_at_parse_time(self) -> None:
+        folder = parse(Folder, {"type": "folder", "children": [VALID_GRAPH]})
+        assert isinstance(folder.children[0], Graph)
+
+    def test_errors_inside_a_deferred_child_keep_their_path(self) -> None:
+        problems = parse_fails(
+            Folder, {"type": "folder", "children": [{**VALID_GRAPH, "x_label": 1}]}
+        )
+        assert problems == ["children[0] -> x_label: ожидается строка, получено число"]
+
+    def test_constraints_still_apply_to_the_container(self) -> None:
+        assert parse_fails(Folder, {"type": "folder", "children": []}) == [
+            "children: нужно хотя бы 1 элемент(ов), получено 0"
+        ]
+
+    def test_a_deferred_union_reaches_the_published_schema(self) -> None:
+        from physics_svg.schema import emit_schema
+
+        schema = emit_schema({"folder": Folder})
+        assert "Graph" in schema["$defs"] and "Note" in schema["$defs"]

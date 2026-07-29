@@ -17,6 +17,7 @@ from typing import Any, Literal, get_args, get_origin
 from physics_svg.schema.kernel import (
     UNION_ORIGINS,
     Constraints,
+    Deferred,
     FieldMeta,
     is_spec,
     spec_meta,
@@ -47,6 +48,8 @@ def emit_schema(roots: dict[str, Any], title: str = "") -> dict[str, Any]:
 
 
 def _schema_for(annotation: Any, defs: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(annotation, Deferred):
+        return _schema_for(annotation(), defs)
     if is_spec(annotation):
         return {"$ref": f"#/$defs/{_register(annotation, defs)}"}
 

@@ -30,9 +30,11 @@ from __future__ import annotations
 
 import dataclasses
 import difflib
+import sys
 from dataclasses import dataclass
 from typing import (
     Any,
+    Callable,
     Literal,
     TypeVar,
     Union,
@@ -49,6 +51,13 @@ try:  # Python 3.10+ writes unions as `X | Y`, whose origin is UnionType
     UNION_ORIGINS: tuple[object, ...] = (Union, UnionType)
 except ImportError:  # pragma: no cover - 3.9 and older
     UNION_ORIGINS = (Union,)
+
+if sys.version_info >= (3, 11):
+    from typing import dataclass_transform
+else:  # pragma: no cover - runtime floor is 3.10, type checking runs newer
+
+    def dataclass_transform(**kwargs: Any) -> Any:
+        return lambda cls: cls
 
 #: JSON numbers: authors write `3` and `3.5` interchangeably and both are
 #: valid physics data, so the library has one numeric annotation.
@@ -119,8 +128,31 @@ def field(
     return dataclasses.field(metadata=metadata)
 
 
+@dataclass(frozen=True)
+class Deferred:
+    """An annotation resolved at parse time instead of at class definition.
+
+    Block types are *discovered* — the illustration library registers itself,
+    and a container therefore cannot name the union of its children when it is
+    defined. Wrapping the union in `Deferred(lambda: ...)` keeps the registry
+    as the single source of what may appear where, instead of a hand-kept list
+    that has to be updated whenever a type is added.
+    """
+
+    resolve: "Callable[[], Any]"
+
+    def __call__(self) -> Any:
+        return self.resolve()
+
+
+@dataclass_transform(field_specifiers=(field,))
 def spec(cls: type[T]) -> type[T]:
-    """Turn a class into an immutable, validatable spec."""
+    """Turn a class into an immutable, validatable spec.
+
+    `dataclass_transform` is what lets a type checker see the generated
+    `__init__` — without it every construction of a spec in normal code looks
+    like an error.
+    """
     frozen = dataclasses.dataclass(frozen=True)(cls)
     setattr(frozen, "__is_spec__", True)
     return frozen
@@ -189,6 +221,8 @@ def parse(annotation: Any, data: object, *, name: str = "") -> Any:
 
 
 def _build(annotation: Any, value: object, path: Path, problems: list[Problem]) -> Any:
+    if isinstance(annotation, Deferred):
+        return _build(annotation(), value, path, problems)
     if is_spec(annotation):
         return _build_spec(annotation, value, path, problems)
 
@@ -276,6 +310,10 @@ def _build_union(annotation: Any, value: object, path: Path, problems: list[Prob
         return _FAIL
 
     if all(is_spec(a) for a in args):
+        # A single spec (an optional nested object) is not a choice between
+        # block types and must not be asked for a discriminator.
+        if len(args) == 1:
+            return _build_spec(args[0], value, path, problems)
         return _build_tagged_union(args, value, path, problems)
 
     # A plain scalar union (`Number`, `str | int`): the first member that
@@ -525,6 +563,7 @@ def build_registry(members: list[type]) -> dict[str, type]:
 
 __all__: list[str] = [
     "Constraints",
+    "Deferred",
     "FieldMeta",
     "Invalid",
     "Number",

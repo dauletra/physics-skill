@@ -9,6 +9,7 @@ from physics_svg.schema.errors import Invalid, Path, Problem, SchemaError
 from physics_svg.schema.jsonschema import emit_schema
 from physics_svg.schema.kernel import (
     Constraints,
+    Deferred,
     FieldMeta,
     Number,
     SpecMeta,
@@ -22,6 +23,7 @@ from physics_svg.schema.kernel import (
 
 __all__ = [
     "Constraints",
+    "Deferred",
     "FieldMeta",
     "Invalid",
     "Number",

@@ -1,0 +1,133 @@
+"""The registry of illustration types.
+
+One package per type, self-registering on import. A type declares its spec,
+its renderer and the directory holding its example specs and documentation;
+everything else in the project — the JSON Schema, the gallery, the golden
+tests, the reference shipped with the skill, the example library the model
+picks from — is derived from that declaration.
+
+The consequence worth protecting: adding an illustration should be adding a
+directory, never editing a list somewhere else. `tests/test_conformance.py`
+enforces the other half — that a registered type actually carries the specs
+and documentation it promises.
+"""
+
+from __future__ import annotations
+
+import importlib
+import pkgutil
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Union
+
+from physics_svg.draw import DEFAULT_PADDING, SCREEN_SCALE, WHITE, BBox, Canvas
+from physics_svg.schema import parse
+
+
+@dataclass(frozen=True)
+class Layout:
+    """How a type wants its canvas framed. Returned by a renderer that needs
+    something other than "fit the content"."""
+
+    padding: float = DEFAULT_PADDING
+    #: Pin the frame instead of fitting the content.
+    viewbox: BBox | None = None
+    #: Stretch to the container width at this pixel height. Only meaningful
+    #: inside a document; a standalone file is always sized from its content.
+    fluid_height: float | None = None
+
+
+Renderer = Callable[[Any, Canvas], Union[Layout, None]]
+
+
+@dataclass(frozen=True)
+class VisualType:
+    #: Value of the `type` field in JSON.
+    tag: str
+    #: Human name, used by the gallery and the generated reference.
+    title: str
+    model: type
+    render: Renderer
+    #: The type's package directory: specs/, doc.md, card.md live here.
+    directory: Path
+
+    @property
+    def specs(self) -> list[Path]:
+        return sorted((self.directory / "specs").glob("*.json"))
+
+    def doc(self, name: str) -> Path:
+        return self.directory / name
+
+
+_REGISTRY: dict[str, VisualType] = {}
+_LOADED = False
+
+
+def register(*, tag: str, title: str, model: type, render: Renderer, module: str) -> None:
+    """Called by a type package at import time."""
+    if tag in _REGISTRY:
+        raise RuntimeError(f"visual type {tag!r} is already registered")
+    directory = Path(importlib.import_module(module).__file__ or "").parent
+    _REGISTRY[tag] = VisualType(tag, title, model, render, directory)
+
+
+def load_all() -> dict[str, VisualType]:
+    """Import every type package once, then hand back the registry."""
+    global _LOADED
+    if not _LOADED:
+        package = importlib.import_module("physics_svg.visuals")
+        for info in pkgutil.iter_modules(package.__path__):
+            if info.ispkg:
+                importlib.import_module(f"physics_svg.visuals.{info.name}")
+        _LOADED = True
+    return dict(sorted(_REGISTRY.items()))
+
+
+def visual_type(tag: str) -> VisualType:
+    return load_all()[tag]
+
+
+def visual_annotation() -> Any:
+    """Union of every registered spec — the annotation a visual is parsed
+    against, assembled at runtime so no list has to be maintained by hand."""
+    models = tuple(entry.model for entry in load_all().values())
+    if not models:
+        raise RuntimeError("no visual types registered")
+    return Union[models]
+
+
+def parse_visual(data: object, name: str = "") -> Any:
+    """Validate one visual spec — the same schema whether it stands alone or
+    sits inside a document."""
+    return parse(visual_annotation(), data, name=name)
+
+
+def render_to_canvas(model: Any, canvas: Canvas) -> Layout:
+    entry = load_all()[getattr(model, "type")]
+    return entry.render(model, canvas) or Layout()
+
+
+def build_svg(
+    model: Any,
+    *,
+    scope: str = "",
+    standalone: bool = False,
+    scale: float = SCREEN_SCALE,
+) -> str:
+    """Render one visual to SVG.
+
+    `standalone` produces a file that can be dropped into a presentation: it
+    carries its own white paper. Inside a document the page provides that,
+    and a fluid type may stretch to the column. Sizing is emitted either way
+    — the frame is known exactly, so the document CSS only has to cap it.
+    """
+    canvas = Canvas(scope)
+    layout = render_to_canvas(model, canvas)
+    return canvas.render(
+        viewbox=layout.viewbox,
+        padding=layout.padding,
+        scale=scale,
+        sized=True,
+        background=WHITE if standalone else None,
+        fluid_height=None if standalone else layout.fluid_height,
+    )

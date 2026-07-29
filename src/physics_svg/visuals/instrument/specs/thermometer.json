@@ -1,0 +1,10 @@
+{
+  "type": "instrument",
+  "kind": "thermometer",
+  "unit": "°C",
+  "min": -20,
+  "max": 100,
+  "step": 2,
+  "value": 36.6,
+  "caption": "Термометр"
+}

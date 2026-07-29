@@ -1,0 +1,10 @@
+{
+  "type": "instrument",
+  "kind": "manometer",
+  "unit": "кПа",
+  "min": 0,
+  "max": 400,
+  "step": 10,
+  "value": 260,
+  "caption": "Манометр"
+}

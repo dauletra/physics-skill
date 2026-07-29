@@ -1,0 +1,15 @@
+{
+  "type": "instrument",
+  "kind": "balance",
+  "unit": "г",
+  "min": 0,
+  "max": 200,
+  "step": 1,
+  "value": 70,
+  "weights": [
+    50,
+    10,
+    10
+  ],
+  "caption": "Рычажные весы"
+}

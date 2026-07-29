@@ -1,0 +1,10 @@
+{
+  "type": "instrument",
+  "kind": "digital_stopwatch",
+  "unit": "с",
+  "min": 0,
+  "max": 60,
+  "step": 0.01,
+  "value": 8.43,
+  "caption": "Электронный секундомер"
+}

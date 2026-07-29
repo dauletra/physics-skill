@@ -1,0 +1,10 @@
+{
+  "type": "instrument",
+  "kind": "speedometer",
+  "unit": "км/ч",
+  "min": 0,
+  "max": 180,
+  "step": 5,
+  "value": 95,
+  "caption": "Спидометр"
+}

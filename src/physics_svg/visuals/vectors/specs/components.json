@@ -1,0 +1,36 @@
+{
+  "type": "vectors",
+  "arrangement": "common",
+  "grid": true,
+  "vectors": [
+    {
+      "length": 5,
+      "angle": 37,
+      "label": "υ",
+      "id": "v"
+    },
+    {
+      "length": 4,
+      "angle": 0,
+      "label": "υ<sub>x</sub>",
+      "id": "vx",
+      "style": "dashed"
+    },
+    {
+      "length": 3,
+      "angle": 90,
+      "label": "υ<sub>y</sub>",
+      "style": "dashed"
+    }
+  ],
+  "angles": [
+    {
+      "between": [
+        "vx",
+        "v"
+      ],
+      "label": "α"
+    }
+  ],
+  "caption": "Разложение скорости на составляющие"
+}

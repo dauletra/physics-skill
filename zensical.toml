@@ -19,6 +19,7 @@ nav = [
     { "Графики" = "gallery/graph.md" },
     { "Приборы со шкалой" = "gallery/instrument.md" },
     { "Бумага" = "gallery/paper.md" },
+    { "Векторные диаграммы" = "gallery/vectors.md" },
   ] },
   { "Разработчикам" = [
     { "С чего начать" = "contribute.md" },

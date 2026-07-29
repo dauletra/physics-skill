@@ -1,0 +1,30 @@
+{
+  "type": "vectors",
+  "arrangement": "parallelogram",
+  "grid": true,
+  "vectors": [
+    {
+      "length": 4,
+      "angle": 0,
+      "label": "F₁",
+      "id": "f1"
+    },
+    {
+      "length": 3,
+      "angle": 70,
+      "label": "F₂",
+      "id": "f2"
+    }
+  ],
+  "resultant": "R",
+  "angles": [
+    {
+      "between": [
+        "f1",
+        "f2"
+      ],
+      "label": "70°"
+    }
+  ],
+  "caption": "Сложение по правилу параллелограмма"
+}

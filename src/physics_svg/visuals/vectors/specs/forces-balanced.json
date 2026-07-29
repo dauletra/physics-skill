@@ -1,0 +1,18 @@
+{
+  "type": "vectors",
+  "arrangement": "common",
+  "body": "block",
+  "vectors": [
+    {
+      "length": 4,
+      "angle": 90,
+      "label": "N"
+    },
+    {
+      "length": 4,
+      "angle": -90,
+      "label": "mg"
+    }
+  ],
+  "caption": "Тело на опоре: силы уравновешены"
+}

@@ -1,0 +1,19 @@
+{
+  "type": "vectors",
+  "arrangement": "chain",
+  "grid": true,
+  "vectors": [
+    {
+      "length": 4,
+      "angle": 0,
+      "label": "a"
+    },
+    {
+      "length": 3,
+      "angle": 90,
+      "label": "b"
+    }
+  ],
+  "resultant": "a + b",
+  "caption": "Сложение по правилу треугольника"
+}

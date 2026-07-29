@@ -7,6 +7,17 @@ marks and dimension lines arrive with the mechanics types that require them,
 not in advance.
 """
 
+from physics_svg.elements.arrow import (
+    HEAD_LENGTH,
+    LABEL_BIAS,
+    LABEL_GAP,
+    LABEL_SIZE,
+    angle_mark,
+    arrow,
+    label_near,
+    signed_angle_span,
+    vector_sum,
+)
 from physics_svg.elements.fills import HATCH_SPACING, LIQUID_SPACING, hatch, liquid
 from physics_svg.elements.scale import (
     FINE_DIVISIONS,
@@ -27,15 +38,24 @@ __all__ = [
     "Axis",
     "FINE_DIVISIONS",
     "HATCH_SPACING",
+    "HEAD_LENGTH",
+    "LABEL_BIAS",
+    "LABEL_GAP",
+    "LABEL_SIZE",
     "LIQUID_SPACING",
     "LinearAxis",
     "Tick",
+    "angle_mark",
+    "arrow",
     "division_count",
     "hatch",
     "label_every",
+    "label_near",
     "liquid",
     "nice_ticks",
     "scale_marks",
+    "signed_angle_span",
     "subdivisions",
     "tick_layout",
+    "vector_sum",
 ]

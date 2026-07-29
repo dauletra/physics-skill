@@ -32,10 +32,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install package with docs extras
+      - name: Install with docs extras
         run: pip install -e ".[docs]"
-      - name: Generate gallery and reference mirrors
-        run: python build_docs.py
+      - name: Generate gallery, previews and the downloadable bundle
+        run: python tools/build_site.py
       - name: Build site
         run: zensical build --clean --strict
       - uses: actions/upload-pages-artifact@v3

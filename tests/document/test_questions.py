@@ -8,8 +8,8 @@ easily forgotten by hand.
 from __future__ import annotations
 
 import pytest
-from kinds import EACH_KIND
 
+from kinds import EACH_KIND
 from physics_svg.document import build_document, parse_block, parse_document
 from physics_svg.document.blocks import doc_block_annotation
 from physics_svg.document.questions import load_all, render_answer, render_body
@@ -31,9 +31,17 @@ class TestRegistry:
     def test_tag_matches_the_spec_literal(self, kind) -> None:
         assert spec_meta(kind.type.model).tag == kind.tag
 
-    def test_has_a_reference_fragment(self, kind) -> None:
+    def test_has_a_reference_fragment_for_the_model(self, kind) -> None:
         assert kind.type.doc.exists(), f"нет {kind.type.doc}"
         assert kind.type.doc.read_text(encoding="utf-8").strip()
+
+    def test_has_a_card_for_the_teacher(self, kind) -> None:
+        # Two audiences, two texts: the card feeds the site, the fragment
+        # feeds the bundle.
+        assert kind.type.card.exists(), f"нет {kind.type.card}"
+        text = kind.type.card.read_text(encoding="utf-8")
+        assert text.strip().startswith("# ")
+        assert "Что сказать Claude" in text, "в карточке нет примеров фраз для учителя"
 
     def test_has_a_human_title(self, kind) -> None:
         assert kind.type.title and kind.type.title != kind.tag

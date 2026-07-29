@@ -9,13 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        # Нижняя граница поддержки и текущая версия: пакет обязан работать
+        # на той, что окажется в песочнице учителя.
         python-version: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install package with dev extras
+      - name: Install with dev extras
         run: pip install -e ".[dev]"
       - name: Lint (ruff)
         run: ruff check .
@@ -23,36 +25,43 @@ jobs:
         run: mypy
       - name: Tests
         run: python -m pytest tests -q
-      - name: Bundle builds and SKILL.md promises nothing missing
-        run: python tools/build_skill.py --out dist/ci-skill
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-      - name: uv.lock is in sync with pyproject (user-facing run contract)
+      - name: uv.lock is in sync with pyproject
         run: uv lock --check
-      - name: Machine-readable schema is in sync with models
-        run: |
-          python -m worksheet_builder --emit-schema /tmp/schema.json
-          python - <<'EOF'
-          import json, sys
-          committed = json.load(open("docs/document.schema.json", encoding="utf-8"))
-          generated = json.load(open("/tmp/schema.json", encoding="utf-8"))
-          if committed != generated:
-              sys.exit("docs/document.schema.json is stale - regenerate with "
-                       "`python -m worksheet_builder --emit-schema docs/document.schema.json`")
-          EOF
 
-  docs:
-    # Сайт документации: все спеки галереи валидны и рендерятся, зеркала
-    # справочников на месте, страницы собираются без битых ссылок (--strict).
+  bundle:
+    # Бандл собирается и проверяется целиком: SKILL.md ничего не обещает
+    # впустую, справочники сходятся с реестрами, распакованный архив
+    # запускается в чистом окружении (tests/test_bundle.py).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install package with docs extras
+      - name: Install with dev extras
+        run: pip install -e ".[dev]"
+      - name: Build the skill bundle
+        run: python tools/build_skill.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: physics-materials-skill
+          path: dist/skill/physics-materials-skill.zip
+
+  docs:
+    # Сайт: галерея рендерится из спек, примеры заданий — настоящим
+    # рендерером, справочники зеркалятся из бандла, страницы собираются без
+    # битых ссылок и страниц вне меню (--strict).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install with docs extras
         run: pip install -e ".[docs]"
-      - name: Generate gallery and reference mirrors
-        run: python build_docs.py
+      - name: Generate gallery, previews and reference mirrors
+        run: python tools/build_site.py
       - name: Site builds without warnings
         run: zensical build --strict

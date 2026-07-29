@@ -1,30 +1,30 @@
 # Сайт документации (Zensical). Часть страниц генерируется — сначала
-# `python build_docs.py`, потом `zensical serve` / `zensical build`.
-# Сгенерированное (docs/gallery/, docs/reference/) в гит не коммитится.
+# `python tools/build_site.py`, потом `zensical serve` / `zensical build`.
+# Сгенерированное (docs/gallery/, docs/reference/, docs/assets/,
+# docs/questions.md) в гит не коммитится.
 
 [project]
-site_name = "worksheet-builder"
-site_description = "Claude-скилл: учебные документы из JSON-черновика — задания, конспекты, SVG-иллюстрации"
+site_name = "Учебные материалы по физике"
+site_description = "Claude-скилл для учителей: рабочие листы, конспекты и SVG-иллюстрации по физике"
 
 nav = [
   { "Обзор" = "index.md" },
-  { "Быстрый старт" = "quickstart.md" },
+  { "Установка" = "install.md" },
+  { "Виды заданий" = "questions.md" },
   { "Галерея иллюстраций" = [
-    { "Графики" = "gallery/graphs.md" },
-    { "Приборы со шкалой" = "gallery/instruments.md" },
+    { "Графики" = "gallery/graph.md" },
+    { "Приборы со шкалой" = "gallery/instrument.md" },
     { "Бумага" = "gallery/paper.md" },
   ] },
-  { "Справочники скилла" = [
-    { "Схема документа" = "reference/document-schema.md" },
-    { "Дизайн-система" = "reference/design-system.md" },
-    { "Символы и формулы" = "reference/symbols.md" },
-    { "Графики: формат данных" = "reference/charts-and-graphs.md" },
-    { "Библиотека SVG-артефактов" = "reference/artifacts/README.md" },
-    { "Графики: подробно" = "reference/artifacts/graphs.md" },
-    { "Приборы: подробно" = "reference/artifacts/instruments.md" },
-    { "Бумага: подробно" = "reference/artifacts/paper.md" },
+  { "Разработчикам" = [
+    { "С чего начать" = "contribute.md" },
+    { "Архитектура" = "architecture.md" },
+    { "Принципы схемы" = "schema-design-principles.md" },
+    { "Справочник: документ" = "reference/document.md" },
+    { "Справочник: виды заданий" = "reference/questions.md" },
+    { "Справочник: иллюстрации" = "reference/visuals.md" },
+    { "Справочник: символы" = "reference/symbols.md" },
   ] },
-  { "Принципы схемы" = "schema-design-principles.md" },
 ]
 
 [project.theme]
@@ -47,8 +47,8 @@ scheme = "slate"
 toggle.icon = "lucide/moon"
 toggle.name = "Светлая тема"
 
-# Нужны страницам галереи и зеркалам справочников: врезки (`!!!`),
-# свёрнутые спеки (`???`), таблицы, подсветка JSON.
+# Нужны страницам галереи и справочников: врезки (`!!!`), свёрнутые спеки
+# (`???`), таблицы, подсветка JSON, кнопки на главной.
 [project.markdown_extensions.admonition]
 [project.markdown_extensions.attr_list]
 [project.markdown_extensions.def_list]

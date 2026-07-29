@@ -22,7 +22,6 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 
 import build_skill  # noqa: E402
-
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 

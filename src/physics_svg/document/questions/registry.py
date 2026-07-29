@@ -38,7 +38,17 @@ class QuestionType:
 
     @property
     def doc(self) -> Path:
+        """Reference fragment for the model: fields, invariants, JSON."""
         return self.directory / f"{self.tag}.md"
+
+    @property
+    def card(self) -> Path:
+        """Gallery card for the teacher: what it is and what to ask for.
+
+        Two audiences, two texts. The model needs field names; a teacher
+        needs to know the kind exists and what phrase produces it.
+        """
+        return self.directory / f"{self.tag}.card.md"
 
 
 _REGISTRY: dict[str, QuestionType] = {}

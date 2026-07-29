@@ -14,7 +14,6 @@ import os
 from pathlib import Path
 
 from library import EACH_EXAMPLE, EXAMPLES
-
 from physics_svg.visuals import build_svg
 
 GOLDEN_DIR = Path(__file__).resolve().parent.parent / "golden" / "visuals"

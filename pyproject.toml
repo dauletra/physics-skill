@@ -7,13 +7,10 @@ name = "physics-svg"
 version = "0.2.0.dev0"
 description = "Библиотека SVG-иллюстраций по физике и конструктор учебных документов"
 requires-python = ">=3.10"
-# Пакет `physics_svg` зависимостей не имеет и не должен их заводить: скилл
-# работает офлайн, без pip и без сети (docs/architecture.md). pydantic здесь
-# только ради старого пакета worksheet_builder, который остаётся эталоном
-# невырождения до конца Ф3 и уезжает вместе с ним.
-dependencies = [
-    "pydantic>=2",
-]
+# Зависимостей нет и не должно появиться: скилл работает офлайн, без pip и
+# без сети. Проверяется тестом, который сверяет импорты собранного бандла со
+# списком стандартной библиотеки (docs/architecture.md).
+dependencies = []
 
 [project.optional-dependencies]
 dev = [
@@ -24,35 +21,29 @@ dev = [
     # фикстуры, что и нашим ядром (см. schema/jsonschema.py).
     "jsonschema>=4",
 ]
-# Сайт документации (zensical). Отдельной группой намеренно: контракт
-# запуска скилла — «в sandbox нужен только pydantic», и генератор сайта не
-# должен просачиваться ни в зависимости пакета, ни в dev-набор тестов.
+# Сайт документации (zensical). Отдельной группой намеренно: генератор сайта
+# не должен просачиваться ни в зависимости пакета, ни в dev-набор тестов.
 docs = [
     "zensical>=0.0.51",
 ]
 
 [project.scripts]
-render-worksheet = "worksheet_builder.cli:main"
+physics-svg = "physics_svg.cli:main"
 
 [tool.setuptools]
-# Новый пакет живёт в src/ и никак не связан с раскладкой бандла: бандл —
-# артефакт сборки (tools/build_skill.py), а не подкаталог репозитория.
-# worksheet_builder — старый пакет, лежит внутри папки-бандла и уедет
-# вместе с ней после Ф3.
-package-dir = { "physics_svg" = "src/physics_svg", "worksheet_builder" = "worksheet-builder/worksheet_builder" }
-packages = [
-    "physics_svg",
-    "physics_svg.draw",
-    "physics_svg.schema",
-    "worksheet_builder",
-]
+# Пакет живёт в src/ и никак не связан с раскладкой бандла: бандл — артефакт
+# сборки (tools/build_skill.py), а не подкаталог репозитория.
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.mypy]
-files = ["src/physics_svg", "worksheet-builder/worksheet_builder"]
-mypy_path = "src:worksheet-builder"
+files = ["src/physics_svg", "tools"]
+mypy_path = "src:tools"
 explicit_package_bases = true
 # Пакет работает на 3.10 (это проверяет матрица в CI), но проверяется типами
 # на 3.11: там есть typing.dataclass_transform, без которого проверяющий не
@@ -66,10 +57,9 @@ warn_unused_ignores = true
 
 [tool.ruff]
 target-version = "py310"
-# Для isort: новый пакет в src/, старый — в worksheet-builder/, conftest — в
-# tests/; tests/schema — потому что pytest кладёт папку теста в sys.path, и
-# фикстурный модуль оттуда импортируется по имени.
-src = ["src", "worksheet-builder", "tests", "tests/schema"]
+# Для isort. Папки тестов перечислены потому, что pytest кладёт папку теста
+# в sys.path, и фикстурный модуль оттуда импортируется по имени.
+src = ["src", "tools", "tests", "tests/schema", "tests/visuals", "tests/document"]
 line-length = 100
 
 [tool.ruff.lint]

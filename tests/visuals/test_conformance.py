@@ -12,8 +12,8 @@ import json
 import re
 
 import pytest
-from library import EACH_EXAMPLE, EACH_TYPE
 
+from library import EACH_EXAMPLE, EACH_TYPE
 from physics_svg.draw import BBox, Canvas
 from physics_svg.schema import SchemaError, emit_schema, spec_meta
 from physics_svg.visuals import (

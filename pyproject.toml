@@ -3,10 +3,14 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "worksheet-builder"
-version = "0.1.0"
-description = "Детерминированный рендерер рабочих листов: JSON-черновик -> читаемый HTML"
+name = "physics-svg"
+version = "0.2.0.dev0"
+description = "Библиотека SVG-иллюстраций по физике и конструктор учебных документов"
 requires-python = ">=3.10"
+# Пакет `physics_svg` зависимостей не имеет и не должен их заводить: скилл
+# работает офлайн, без pip и без сети (docs/architecture.md). pydantic здесь
+# только ради старого пакета worksheet_builder, который остаётся эталоном
+# невырождения до конца Ф3 и уезжает вместе с ним.
 dependencies = [
     "pydantic>=2",
 ]
@@ -16,6 +20,9 @@ dev = [
     "pytest>=8",
     "mypy>=1.10",
     "ruff>=0.5",
+    # Независимая проверка: сгенерированной JSON Schema валидируются те же
+    # фикстуры, что и нашим ядром (см. schema/jsonschema.py).
+    "jsonschema>=4",
 ]
 # Сайт документации (zensical). Отдельной группой намеренно: контракт
 # запуска скилла — «в sandbox нужен только pydantic», и генератор сайта не
@@ -28,10 +35,15 @@ docs = [
 render-worksheet = "worksheet_builder.cli:main"
 
 [tool.setuptools]
-# Пакет живёт внутри папки скилла: worksheet-builder/ = ровно состав бандла,
-# вся dev-обвязка (этот файл, tests/, docs/) — в корне репо.
-package-dir = {"" = "worksheet-builder"}
+# Новый пакет живёт в src/ и никак не связан с раскладкой бандла: бандл —
+# артефакт сборки (tools/build_skill.py), а не подкаталог репозитория.
+# worksheet_builder — старый пакет, лежит внутри папки-бандла и уедет
+# вместе с ней после Ф3.
+package-dir = { "physics_svg" = "src/physics_svg", "worksheet_builder" = "worksheet-builder/worksheet_builder" }
 packages = [
+    "physics_svg",
+    "physics_svg.draw",
+    "physics_svg.schema",
     "worksheet_builder",
 ]
 
@@ -39,8 +51,8 @@ packages = [
 testpaths = ["tests"]
 
 [tool.mypy]
-files = ["worksheet-builder/worksheet_builder"]
-mypy_path = "worksheet-builder"
+files = ["src/physics_svg", "worksheet-builder/worksheet_builder"]
+mypy_path = "src:worksheet-builder"
 explicit_package_bases = true
 python_version = "3.10"
 disallow_untyped_defs = true
@@ -51,8 +63,11 @@ warn_unused_ignores = true
 
 [tool.ruff]
 target-version = "py310"
-# Для isort: пакет лежит в worksheet-builder/, conftest — в tests/.
-src = ["worksheet-builder", "tests"]
+# Для isort: новый пакет в src/, старый — в worksheet-builder/, conftest — в
+# tests/; tests/schema — потому что pytest кладёт папку теста в sys.path, и
+# фикстурный модуль оттуда импортируется по имени.
+src = ["src", "worksheet-builder", "tests", "tests/schema"]
+line-length = 100
 
 [tool.ruff.lint]
 # Базовые pyflakes/pycodestyle + сортировка импортов.

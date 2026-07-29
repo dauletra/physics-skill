@@ -23,8 +23,8 @@ jobs:
         run: mypy
       - name: Tests
         run: python -m pytest tests -q
-      - name: Bundle builds and SKILL.md paths exist in it
-        run: python build_bundle.py --out dist/ci-bundle.zip
+      - name: Bundle builds and SKILL.md promises nothing missing
+        run: python tools/build_skill.py --out dist/ci-skill
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: uv.lock is in sync with pyproject (user-facing run contract)

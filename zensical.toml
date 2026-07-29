@@ -6,6 +6,10 @@
 [project]
 site_name = "Учебные материалы по физике"
 site_description = "Claude-скилл для учителей: рабочие листы, конспекты и SVG-иллюстрации по физике"
+# Ссылка на репозиторий в шапке сайта: одно место на весь сайт, вместо
+# URL, разбросанных по страницам.
+repo_url = "https://github.com/dauletra/physics-skill"
+repo_name = "dauletra/physics-skill"
 
 nav = [
   { "Обзор" = "index.md" },

@@ -1,5 +1,7 @@
 # physics-materials
 
+[![CI](https://github.com/dauletra/physics-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/dauletra/physics-skill/actions/workflows/ci.yml)
+
 Claude-скилл для учителей физики: собирает рабочие листы, карточки с
 задачами, конспекты и объяснения — и рисует к ним SVG-иллюстрации.
 
@@ -8,9 +10,14 @@ JSON-описание документа, а вёрстку и рисунки д
 рендерер. Поэтому все документы выглядят одинаково, а не так, как модель
 запомнила прошлый раз.
 
+**Сайт с галереей, примерами и установкой:**
+<https://dauletra.github.io/physics-skill/>
+
 ## Для учителя
 
-1. Скачать `physics-materials-skill.zip` со страницы установки.
+1. Скачать [`physics-materials-skill.zip`](https://dauletra.github.io/physics-skill/assets/physics-materials-skill.zip)
+   — свежая сборка, либо конкретная версия
+   [из релизов](https://github.com/dauletra/physics-skill/releases).
 2. Загрузить в Claude: **Settings → Capabilities → Skills**.
 3. Написать в диалоге: «сделай рабочий лист по кинематике для 9 класса…».
 

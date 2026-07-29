@@ -1,0 +1,59 @@
+# Выпуск версии скилла.
+#
+# Триггер — тег вида v1.2.0. Сначала прогоняются те же проверки, что в CI:
+# релиз с непрошедшими тестами хуже отсутствия релиза. Затем собирается
+# бандл и публикуется GitHub Release с архивом и разделом из CHANGELOG.md.
+#
+# Свежая сборка из main лежит на сайте всегда (workflow Docs) — релиз нужен
+# для того, чтобы на конкретную версию можно было сослаться и откатиться.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Тег для повторной публикации, например v1.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install with dev extras
+        run: pip install -e ".[dev]"
+
+      - name: Resolve the tag
+        id: tag
+        run: echo "value=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      # Версия в архиве обязана совпадать с тегом: релиз, чей VERSION врёт,
+      # невозможно потом сопоставить с багом.
+      - name: Tag matches the package version, and CHANGELOG has a section
+        run: python tools/release_notes.py "${{ steps.tag.outputs.value }}" -o notes.md
+
+      - name: Lint, types, tests
+        run: |
+          ruff check .
+          mypy
+          python -m pytest tests -q
+
+      - name: Build the skill bundle
+        run: python tools/build_skill.py
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.tag.outputs.value }}" \
+            dist/skill/physics-materials-skill.zip \
+            --title "${{ steps.tag.outputs.value }}" \
+            --notes-file notes.md

@@ -40,3 +40,19 @@ jobs:
               sys.exit("docs/document.schema.json is stale - regenerate with "
                        "`python -m worksheet_builder --emit-schema docs/document.schema.json`")
           EOF
+
+  docs:
+    # Сайт документации: все спеки галереи валидны и рендерятся, зеркала
+    # справочников на месте, страницы собираются без битых ссылок (--strict).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package with docs extras
+        run: pip install -e ".[docs]"
+      - name: Generate gallery and reference mirrors
+        run: python build_docs.py
+      - name: Site builds without warnings
+        run: zensical build --strict

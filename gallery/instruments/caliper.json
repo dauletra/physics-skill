@@ -1,0 +1,11 @@
+{
+  "type": "instrument",
+  "kind": "caliper",
+  "unit": "мм",
+  "min": 0,
+  "max": 40,
+  "step": 1,
+  "vernier": 10,
+  "value": 27.4,
+  "caption": "Штангенциркуль"
+}

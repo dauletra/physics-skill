@@ -1,0 +1,10 @@
+{
+  "type": "instrument",
+  "kind": "voltmeter",
+  "unit": "В",
+  "min": 0,
+  "max": 6,
+  "step": 0.2,
+  "value": 4.5,
+  "caption": "Вольтметр"
+}

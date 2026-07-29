@@ -32,3 +32,10 @@ drafts/
 # Generated render artifacts
 **/output/
 *.preview.html
+
+# Documentation site: собранный сайт и страницы, которые генерирует
+# build_docs.py (источник — gallery/ и worksheet-builder/references/)
+site/
+.cache/
+docs/gallery/
+docs/reference/

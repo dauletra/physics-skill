@@ -17,6 +17,12 @@ dev = [
     "mypy>=1.10",
     "ruff>=0.5",
 ]
+# Сайт документации (zensical). Отдельной группой намеренно: контракт
+# запуска скилла — «в sandbox нужен только pydantic», и генератор сайта не
+# должен просачиваться ни в зависимости пакета, ни в dev-набор тестов.
+docs = [
+    "zensical>=0.0.51",
+]
 
 [project.scripts]
 render-worksheet = "worksheet_builder.cli:main"

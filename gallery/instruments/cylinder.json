@@ -1,0 +1,10 @@
+{
+  "type": "instrument",
+  "kind": "cylinder",
+  "unit": "мл",
+  "min": 0,
+  "max": 250,
+  "step": 10,
+  "value": 175,
+  "caption": "Мензурка"
+}

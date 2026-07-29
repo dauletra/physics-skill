@@ -1,0 +1,63 @@
+# Сайт документации (Zensical). Часть страниц генерируется — сначала
+# `python build_docs.py`, потом `zensical serve` / `zensical build`.
+# Сгенерированное (docs/gallery/, docs/reference/) в гит не коммитится.
+
+[project]
+site_name = "worksheet-builder"
+site_description = "Claude-скилл: учебные документы из JSON-черновика — задания, конспекты, SVG-иллюстрации"
+
+nav = [
+  { "Обзор" = "index.md" },
+  { "Быстрый старт" = "quickstart.md" },
+  { "Галерея иллюстраций" = [
+    { "Графики" = "gallery/graphs.md" },
+    { "Приборы со шкалой" = "gallery/instruments.md" },
+    { "Бумага" = "gallery/paper.md" },
+  ] },
+  { "Справочники скилла" = [
+    { "Схема документа" = "reference/document-schema.md" },
+    { "Дизайн-система" = "reference/design-system.md" },
+    { "Символы и формулы" = "reference/symbols.md" },
+    { "Графики: формат данных" = "reference/charts-and-graphs.md" },
+    { "Библиотека SVG-артефактов" = "reference/artifacts/README.md" },
+    { "Графики: подробно" = "reference/artifacts/graphs.md" },
+    { "Приборы: подробно" = "reference/artifacts/instruments.md" },
+    { "Бумага: подробно" = "reference/artifacts/paper.md" },
+  ] },
+  { "Принципы схемы" = "schema-design-principles.md" },
+]
+
+[project.theme]
+language = "ru"
+features = [
+  "content.code.copy",
+  "navigation.sections",
+  "navigation.top",
+  "search.highlight",
+  "toc.follow",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Тёмная тема"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Светлая тема"
+
+# Нужны страницам галереи и зеркалам справочников: врезки (`!!!`),
+# свёрнутые спеки (`???`), таблицы, подсветка JSON.
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.def_list]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.tables]
+[project.markdown_extensions.toc]
+permalink = true
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.superfences]

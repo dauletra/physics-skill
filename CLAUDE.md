@@ -116,10 +116,25 @@ payload вопроса не живёт (принцип 2 в `docs/schema-design-
 ## Где что лежит
 
 - Корень (dev, в бандл не едет): `pyproject.toml` (пакет через
-  `package-dir`; конфиги mypy/ruff/pytest), `uv.lock`, `tests/`, `docs/`
+  `package-dir`; конфиги mypy/ruff/pytest; экстра `docs` — только zensical,
+  из основного контракта запуска он вынесен намеренно), `uv.lock`,
+  `tests/`, `docs/`
   (`schema-design-principles.md` — принципы схемы и чек-лист нового вида
-  вопроса; `document.schema.json` — генерируемый), `build_bundle.py`,
-  `.github/workflows/ci.yml`, `drafts/` (гитигнорные локальные документы).
+  вопроса; `document.schema.json` — генерируемый; `index.md`/`quickstart.md`
+  — рукописные страницы сайта), `build_bundle.py`,
+  `.github/workflows/` (`ci.yml`, `docs.yml` — публикация на Pages),
+  `drafts/` (гитигнорные локальные документы).
+- **Сайт документации** (zensical, `zensical.toml` + `build_docs.py`):
+  копий документации не держит — `build_docs.py` генерирует галерею
+  иллюстраций из спек `gallery/<семейство>/*.json` тем же
+  `parse_visual`+`build_standalone_svg`, что и `--visual`, и зеркалит
+  `worksheet-builder/references/**.md` (дерево сохраняется — относительные
+  ссылки внутри справочников остаются рабочими). Рукописного на сайте
+  только `docs/index.md`, `docs/quickstart.md` и вступления
+  `gallery/<семейство>.md`; `docs/gallery/` и `docs/reference/`
+  генерируются и гитигнорятся. Новый вид визуала = спека в
+  `gallery/<семейство>/` (невалидная роняет сборку сайта); новый справочник
+  в `references/` — плюс строка в `nav` (`zensical.toml`).
 - `worksheet-builder/` — **ровно состав бандла** (`build_bundle.py` жмёт всю
   папку минус кэши/`output/`/превью и падает, если SKILL.md ссылается на
   путь, которого нет в архиве; итог — `dist/worksheet-builder-skill.zip`
@@ -218,6 +233,11 @@ payload вопроса не живёт (принцип 2 в `docs/schema-design-
    (`--emit-schema`); CI сверяет.
 5. **Бандл**: `python build_bundle.py` — собирает zip и падает при
    рассинхроне SKILL.md с составом архива. CI собирает бандл на каждый push.
+6. **Сайт** (после правок `references/`, спек галереи или `build_docs.py`):
+   `python build_docs.py && zensical build --strict` — `--strict` ловит
+   битые ссылки и страницы вне `nav`; посмотреть глазами —
+   `zensical serve`. Нужна экстра `docs` (`pip install -e ".[docs]"` или
+   `uv sync --extra docs`). CI гоняет это отдельным job'ом.
 
 Открытый follow-up: полный e2e на реальном бандле в Settings → Skills
 (загрузить zip → «сделай рабочий лист…» → первый рендер сам ставит pydantic

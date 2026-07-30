@@ -418,7 +418,7 @@ wheels = [
 
 [[package]]
 name = "physics-svg"
-version = "0.2.0a1"
+version = "0.2.0.dev1"
 source = { editable = "." }
 
 [package.optional-dependencies]

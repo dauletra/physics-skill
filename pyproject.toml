@@ -4,7 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "physics-svg"
-version = "0.2.0.dev1"
+# Номер версии живёт в одном месте — src/physics_svg/__init__.py, откуда его
+# берут и бандл (VERSION), и проверка тега при выпуске. Дублировать здесь
+# значит однажды выпустить архив, чей номер расходится с тегом.
+dynamic = ["version"]
 description = "Библиотека SVG-иллюстраций по физике и конструктор учебных документов"
 requires-python = ">=3.10"
 # Зависимостей нет и не должно появиться: скилл работает офлайн, без pip и
@@ -37,6 +40,11 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+# Пакет ничего не импортирует на верхнем уровне, поэтому setuptools читает
+# __version__ разбором файла, а не импортом.
+version = { attr = "physics_svg.__version__" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

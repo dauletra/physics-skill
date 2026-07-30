@@ -92,7 +92,7 @@ JSON, плотно). `card.md` — для учителя (что это, ког�
 4. **Бандл**: `python tools/build_skill.py` — падает, если SKILL.md
    обещает несуществующий файл или карточка типа открывается не коротким
    описанием.
-5. **Сайт**: `python tools/build_site.py && zensical build --strict`
+5. **Сайт**: `python tools/build_site.py && zensical build --clean --strict`
    (нужна экстра `docs`). Смотреть — `zensical serve`.
 
 ## Язык

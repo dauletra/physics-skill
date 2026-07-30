@@ -44,7 +44,7 @@ pip install -e ".[dev,docs]"
 python -m pytest tests -q     # тесты
 python tools/dev.py           # живой просмотр иллюстраций и примера
 python tools/build_skill.py   # собрать бандл
-python tools/build_site.py && zensical build --strict
+python tools/build_site.py && zensical build --clean --strict
 ```
 
 Пакет `physics_svg` не имеет зависимостей: скилл должен работать офлайн, в

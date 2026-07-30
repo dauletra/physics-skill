@@ -75,7 +75,7 @@ golden-тесты, справочник в бандле и библиотека 
 python -m pytest tests -q
 python -m ruff check . && python -m mypy
 python tools/build_skill.py        # бандл собирается, SKILL.md ничего не врёт
-python tools/build_site.py && zensical build --strict
+python tools/build_site.py && zensical build --clean --strict
 ```
 
 Если рендер изменился намеренно — пересоздайте эталоны

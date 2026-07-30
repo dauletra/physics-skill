@@ -35,6 +35,11 @@ JSON Schema. Второго представления нет и кодоген�
 что нельзя вывести. Всё, что дублирует существующий источник, собирается
 из реестров — см. «Что где лежит».
 
+**Работа идёт в `next`, `main` — это выпуск.** Push в `main` пересобирает
+сайт вместе с архивом скилла, то есть всё, что там лежит, учитель уже
+скачал. Не коммить туда по привычке; выпуск делает `tools/release.py`,
+порядок — в [docs/contribute.md](docs/contribute.md).
+
 ## Что где лежит
 
 ```
@@ -48,7 +53,7 @@ src/physics_svg/
 skill/        рукописные исходники бандла: SKILL.md, references/, scripts/
 examples/     проработанный пример-черновик
 docs/         источник сайта; генерируемые страницы гитигнорятся
-tools/        build_skill.py, build_site.py, dev.py, contact_sheet.py
+tools/        build_skill.py, build_site.py, dev.py, contact_sheet.py, release.py
 tests/        draw/, schema/, visuals/, document/, test_bundle.py
 evals/        triggers.md — ручной чек-лист срабатываний скилла
 ```

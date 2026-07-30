@@ -58,6 +58,24 @@ class TestVersionNumbers:
         assert release.next_cycle("0.2.0", patch=True) == "0.2.1.dev0"
 
 
+class TestTheFloorForTheNextRelease:
+    def test_a_released_tag_is_what_a_release_may_not_go_back_to(self) -> None:
+        assert release.as_floor("v0.2.0") == "0.2.0"
+
+    def test_an_early_prerelease_tag_is_not_a_floor(self) -> None:
+        assert release.as_floor("v0.2.0a1") is None
+
+    def test_a_patch_clears_the_floor_left_by_the_previous_release(self) -> None:
+        floor = release.as_floor("v0.2.0")
+        assert floor is not None
+        assert release.parse("0.2.1") > release.parse(floor)
+
+    def test_an_opened_cycle_does_not_decide_the_size_of_the_release(self) -> None:
+        """The floor comes from a tag, so `0.3.0.dev0` in the working tree
+        leaves a patch release available — it only labels the branch."""
+        assert release.parse("0.2.1") < release.parse("0.3.0.dev0")
+
+
 class TestTheVersionInThePackage:
     def test_the_declaration_is_found_and_rewritten(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

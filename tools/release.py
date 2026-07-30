@@ -61,6 +61,16 @@ def next_cycle(version: str, patch: bool = False) -> str:
     return f"{major}.{minor + 1}.0.dev0"
 
 
+def as_floor(tag: str) -> str | None:
+    """The version a tag forbids going back to, if it is one.
+
+    Only a stable tag bounds the next release. An early prerelease is still in
+    the history (`v0.2.0a1`), and it is not a number this tool compares to.
+    """
+    version = tag.lstrip("v")
+    return version if RELEASE.match(version) else None
+
+
 def read_version() -> str:
     match = VERSION_LINE.search(INIT.read_text(encoding="utf-8"))
     if not match:
@@ -111,9 +121,17 @@ def _git(*args: str) -> str:
     return done.stdout.strip()
 
 
+def _git_out(*args: str) -> str | None:
+    """Output, or None if git refused — for questions that may legitimately
+    have no answer: no such branch, no release yet."""
+    done = subprocess.run(
+        ["git", *args], cwd=REPO, capture_output=True, text=True, encoding="utf-8"
+    )
+    return done.stdout.strip() if done.returncode == 0 else None
+
+
 def _git_ok(*args: str) -> bool:
-    done = subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True)
-    return done.returncode == 0
+    return _git_out(*args) is not None
 
 
 def require_branch(name: str) -> None:
@@ -125,6 +143,12 @@ def require_branch(name: str) -> None:
 def require_clean() -> None:
     if _git("status", "--porcelain"):
         raise SystemExit("в рабочем дереве есть незакоммиченные изменения")
+
+
+def last_release() -> str | None:
+    """The newest version published on this line, or None before the first."""
+    tag = _git_out("describe", "--tags", "--abbrev=0", "--match", "v*")
+    return as_floor(tag) if tag else None
 
 
 def require_merged(branch: str) -> None:
@@ -148,9 +172,13 @@ def release(version: str, dry_run: bool) -> None:
     if _git("tag", "--list", f"v{version}"):
         raise SystemExit(f"тег v{version} уже существует")
 
+    # Against the last tag, not against the number in the working tree: that
+    # one is the development label carried over from `next`, and comparing to
+    # it would let an opened cycle decide the size of the next release.
     current = read_version()
-    if parse(version) <= parse(current):
-        raise SystemExit(f"версия {version} не старше текущей {current}")
+    previous = last_release()
+    if previous and parse(version) <= parse(previous):
+        raise SystemExit(f"версия {version} не старше выпущенной {previous}")
 
     text = CHANGELOG.read_text(encoding="utf-8")
     if not unreleased_notes(text):

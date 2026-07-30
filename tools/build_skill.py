@@ -54,6 +54,12 @@ MENTIONED_PATH = re.compile(r"\b((?:references|scripts|examples|library|physics_
 #: type's card, so the table and the gallery never disagree.
 _FIRST_PARAGRAPH = re.compile(r"^#[^\n]*\n+(.+?)(?:\n\n|$)", re.S)
 
+#: The front matter is the only part of the skill read before it triggers,
+#: and it is cut at this length. Silently losing the tail would cost the
+#: examples that make the skill fire at all.
+_DESCRIPTION_LIMIT = 1024
+_DESCRIPTION = re.compile(r"^description:[ \t]*(.+)$", re.M)
+
 
 def build(destination: Path, make_zip: bool = True) -> Path:
     root = destination / BUNDLE_NAME
@@ -174,17 +180,29 @@ def _table(header: tuple[str, str], rows: list[tuple[str, str]]) -> str:
 
 
 def _write_skill_md(destination: Path) -> None:
-    destination.write_text(
-        _fill(
-            (SOURCE / "SKILL.md").read_text(encoding="utf-8"),
-            {
-                "VERSION": __version__,
-                "QUESTION_COUNT": str(len(load_questions())),
-                "VISUAL_COUNT": str(len(load_visuals())),
-            },
-        ),
-        encoding="utf-8",
+    text = _fill(
+        (SOURCE / "SKILL.md").read_text(encoding="utf-8"),
+        {
+            "VERSION": __version__,
+            "QUESTION_COUNT": str(len(load_questions())),
+            "VISUAL_COUNT": str(len(load_visuals())),
+        },
     )
+    _check_description(text)
+    destination.write_text(text, encoding="utf-8")
+
+
+def _check_description(text: str) -> None:
+    match = _DESCRIPTION.search(text)
+    if match is None:
+        raise SystemExit("в SKILL.md нет поля 'description' — без него скилл не находится")
+    length = len(match.group(1).strip())
+    if length > _DESCRIPTION_LIMIT:
+        raise SystemExit(
+            f"description в SKILL.md — {length} символов при лимите {_DESCRIPTION_LIMIT}: "
+            f"убери {length - _DESCRIPTION_LIMIT}, начиная с перечисления возможностей "
+            "(оно и так в теле скилла), а примеры формулировок оставь"
+        )
 
 
 def _fill(template: str, values: dict[str, str]) -> str:

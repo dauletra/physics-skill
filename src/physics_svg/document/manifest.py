@@ -15,7 +15,7 @@ from physics_svg.schema import Invalid, field, parse, spec
 
 @spec
 class HeaderSpec:
-    """Анкета-шапка: нужна самостоятельной работе, не нужна конспекту.
+    """Анкета-шапка: только раздаточной работе на несколько заданий.
 
     Пустые поля просто не печатаются — «Школа/класс … Дата …» собирается
     только из заполненного.
@@ -32,8 +32,10 @@ class HeaderSpec:
 class DocumentSpec:
     """Манифест документа."""
 
-    title: str = field(default="", doc="Название документа")
-    header: Optional[HeaderSpec] = field(default=None, doc="Анкета-шапка; конспекту не нужна")
+    title: str = field(default="", doc="Название документа; одиночному заданию не нужно")
+    header: Optional[HeaderSpec] = field(
+        default=None, doc="Анкета-шапка: только раздаточной работе на несколько заданий"
+    )
     order: Optional[list[str]] = field(
         default=None, doc="Порядок блоков: имена файлов из blocks/ без расширения"
     )

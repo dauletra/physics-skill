@@ -50,6 +50,7 @@ examples/     проработанный пример-черновик
 docs/         источник сайта; генерируемые страницы гитигнорятся
 tools/        build_skill.py, build_site.py, dev.py, contact_sheet.py
 tests/        draw/, schema/, visuals/, document/, test_bundle.py
+evals/        triggers.md — ручной чек-лист срабатываний скилла
 ```
 
 **Одна папка = один тип.** Новый тип иллюстрации:

@@ -31,9 +31,18 @@ jobs:
       - name: Install with dev extras
         run: pip install -e ".[dev]"
 
+      # Предвыпуск не должен становиться «Latest release»: учитель, зашедший
+      # за архивом, обязан попадать на последнюю стабильную версию.
       - name: Resolve the tag
         id: tag
-        run: echo "value=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "value=$tag" >> "$GITHUB_OUTPUT"
+          if [[ "$tag" =~ (a|b|rc|dev)[0-9]+$ ]]; then
+            echo "prerelease=--prerelease" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=" >> "$GITHUB_OUTPUT"
+          fi
 
       # Версия в архиве обязана совпадать с тегом: релиз, чей VERSION врёт,
       # невозможно потом сопоставить с багом.
@@ -56,4 +65,5 @@ jobs:
           gh release create "${{ steps.tag.outputs.value }}" \
             dist/skill/physics-materials-skill.zip \
             --title "${{ steps.tag.outputs.value }}" \
-            --notes-file notes.md
+            --notes-file notes.md \
+            ${{ steps.tag.outputs.prerelease }}

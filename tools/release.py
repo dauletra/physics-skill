@@ -164,7 +164,9 @@ def release(version: str, dry_run: bool) -> None:
     write_version(version)
     CHANGELOG.write_text(release_changelog(text, version, today), encoding="utf-8")
     _git("commit", "-am", f"Версия {version}")
-    _git("tag", f"v{version}")
+    # Annotated, because `git push --follow-tags` — the command below and the
+    # one in docs/contribute.md — silently ignores lightweight tags.
+    _git("tag", "-a", f"v{version}", "-m", f"Версия {version}")
     print(f"Готово: {version} закоммичена и помечена тегом v{version}")
     print("Дальше: git push --follow-tags, затем влить main в next и release.py --next")
 

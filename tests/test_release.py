@@ -41,8 +41,13 @@ SAMPLE = """\
 
 
 class TestVersionNumbers:
-    def test_a_development_version_precedes_its_release(self) -> None:
-        assert release.parse("0.3.0.dev0") < release.parse("0.3.0")
+    def test_a_cycle_label_follows_the_release_it_is_based_on(self) -> None:
+        assert release.parse("0.2.1") < release.parse("0.2.1+dev")
+
+    def test_a_cycle_label_precedes_every_release_that_could_follow(self) -> None:
+        # Whatever size comes next, the label does not stand in its way.
+        for following in ("0.2.2", "0.3.0", "1.0.0"):
+            assert release.parse("0.2.1+dev") < release.parse(following)
 
     def test_versions_order_by_parts_not_by_text(self) -> None:
         assert release.parse("0.9.0") < release.parse("0.10.0")
@@ -51,11 +56,20 @@ class TestVersionNumbers:
         with pytest.raises(SystemExit, match="не вида"):
             release.parse("0.3")
 
-    def test_the_cycle_after_a_release_is_the_next_minor(self) -> None:
-        assert release.next_cycle("0.2.0") == "0.3.0.dev0"
+    def test_a_cycle_label_is_not_a_releasable_number(self) -> None:
+        # `release()` publishes only X.Y.Z; the label must not slip through.
+        assert release.RELEASE.match("0.2.1+dev") is None
 
-    def test_a_patch_cycle_is_asked_for_explicitly(self) -> None:
-        assert release.next_cycle("0.2.0", patch=True) == "0.2.1.dev0"
+    def test_the_cycle_names_the_release_behind_it_not_the_one_ahead(self) -> None:
+        # The whole point: opening a cycle asks no question, because the size
+        # of the next release is unknowable until its notes are written.
+        assert release.next_cycle("0.2.1") == "0.2.1+dev"
+        assert release.next_cycle("0.9.0") == "0.9.0+dev"
+
+    def test_opening_a_cycle_takes_no_size(self) -> None:
+        import inspect
+
+        assert list(inspect.signature(release.next_cycle).parameters) == ["version"]
 
 
 class TestTheFloorForTheNextRelease:
@@ -71,9 +85,13 @@ class TestTheFloorForTheNextRelease:
         assert release.parse("0.2.1") > release.parse(floor)
 
     def test_an_opened_cycle_does_not_decide_the_size_of_the_release(self) -> None:
-        """The floor comes from a tag, so `0.3.0.dev0` in the working tree
-        leaves a patch release available — it only labels the branch."""
-        assert release.parse("0.2.1") < release.parse("0.3.0.dev0")
+        """The floor comes from a tag, never from the label in the working
+        tree: from `0.2.1+dev` a patch, a minor and a major are all available.
+        """
+        floor = release.as_floor("v0.2.1")
+        assert floor is not None
+        for following in ("0.2.2", "0.3.0", "1.0.0"):
+            assert release.parse(following) > release.parse(floor)
 
 
 class TestTheVersionInThePackage:
@@ -84,9 +102,9 @@ class TestTheVersionInThePackage:
         path.write_text('"""Docstring."""\n\n__version__ = "0.2.0"\n', encoding="utf-8")
         monkeypatch.setattr(release, "INIT", path)
 
-        release.write_version("0.3.0.dev0")
+        release.write_version("0.2.0+dev")
 
-        assert release.read_version() == "0.3.0.dev0"
+        assert release.read_version() == "0.2.0+dev"
         assert path.read_text(encoding="utf-8").startswith('"""Docstring."""')
 
     def test_a_file_without_a_declaration_stops_the_release(

@@ -7,7 +7,7 @@ development version that follows belongs on `next`, where nobody downloads it
 and the number never faces a teacher.
 
     python tools/release.py 0.3.0     # on main: version, changelog, tag
-    python tools/release.py --next    # on next: open 0.4.0.dev0
+    python tools/release.py --next    # on next: label the branch 0.3.0+dev
 
 Neither mode pushes: `git push --follow-tags` stays a deliberate act.
 """
@@ -36,29 +36,43 @@ UNRELEASED = "## [Не выпущено]"
 VERSION_LINE = re.compile(r'^__version__ = "([^"]+)"$', re.M)
 #: Only stable numbers are published: no prereleases before 1.0 (docs/contribute.md).
 RELEASE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
-DEV = re.compile(r"^(\d+)\.(\d+)\.(\d+)\.dev(\d+)$")
+#: The label `next` carries between releases: «after this release, not a
+#: release itself». A local version by PEP 440 — deliberately **not**
+#: `X.Y.Z.devN`, which would name the next release and force a choice between
+#: patch and minor at the one moment nobody can make it: the cycle is opened
+#: before the work that decides its size exists.
+CYCLE = re.compile(r"^(\d+)\.(\d+)\.(\d+)\+dev$")
+CYCLE_SUFFIX = "+dev"
 
 
 # --- version numbers ----------------------------------------------------
 
 
-def parse(version: str) -> tuple[int, int, int, int, int]:
-    """Sort key: a development version precedes the release it leads to."""
+def parse(version: str) -> tuple[int, int, int, int]:
+    """Sort key: a cycle label follows the release it is based on.
+
+    `0.2.1 < 0.2.1+dev < 0.2.2` — the label says "past 0.2.1" and claims
+    nothing about what comes next, which is why it never bounds a release
+    (see `release`).
+    """
     if match := RELEASE.match(version):
         major, minor, patch = (int(part) for part in match.groups())
-        return (major, minor, patch, 1, 0)
-    if match := DEV.match(version):
-        major, minor, patch, serial = (int(part) for part in match.groups())
-        return (major, minor, patch, 0, serial)
-    raise SystemExit(f"версия {version} не вида X.Y.Z или X.Y.Z.devN")
+        return (major, minor, patch, 0)
+    if match := CYCLE.match(version):
+        major, minor, patch = (int(part) for part in match.groups())
+        return (major, minor, patch, 1)
+    raise SystemExit(f"версия {version} не вида X.Y.Z или X.Y.Z{CYCLE_SUFFIX}")
 
 
-def next_cycle(version: str, patch: bool = False) -> str:
-    """The development version that follows a release."""
-    major, minor, level, _, _ = parse(version)
-    if patch:
-        return f"{major}.{minor}.{level + 1}.dev0"
-    return f"{major}.{minor + 1}.0.dev0"
+def next_cycle(version: str) -> str:
+    """The label that follows a release.
+
+    Takes no size: the next release may be a patch, a minor or a major, and
+    that is decided by the argument to a release — once, when the notes under
+    «Не выпущено» are already written.
+    """
+    major, minor, patch, _ = parse(version)
+    return f"{major}.{minor}.{patch}{CYCLE_SUFFIX}"
 
 
 def as_floor(tag: str) -> str | None:
@@ -173,8 +187,10 @@ def release(version: str, dry_run: bool) -> None:
         raise SystemExit(f"тег v{version} уже существует")
 
     # Against the last tag, not against the number in the working tree: that
-    # one is the development label carried over from `next`, and comparing to
-    # it would let an opened cycle decide the size of the next release.
+    # one is the cycle label carried over from `next`, and comparing to it
+    # would let an opened cycle decide the size of the next release. The label
+    # no longer names a size at all, and this stays the guarantee that it
+    # cannot: a patch is available from `0.9.0+dev` exactly as a major is.
     current = read_version()
     previous = last_release()
     if previous and parse(version) <= parse(previous):
@@ -199,7 +215,7 @@ def release(version: str, dry_run: bool) -> None:
     print("Дальше: git push --follow-tags, затем влить main в next и release.py --next")
 
 
-def open_next(patch: bool, dry_run: bool) -> None:
+def open_next(dry_run: bool) -> None:
     require_branch("next")
     require_clean()
     require_merged("main")
@@ -207,7 +223,7 @@ def open_next(patch: bool, dry_run: bool) -> None:
     current = read_version()
     if not RELEASE.match(current):
         raise SystemExit(f"версия {current} уже не выпуск — цикл открыт")
-    following = next_cycle(current, patch)
+    following = next_cycle(current)
 
     if dry_run:
         print(f"{current} -> {following}")
@@ -227,19 +243,14 @@ def main() -> None:
         action="store_true",
         help="открыть следующий цикл разработки (делается на ветке next)",
     )
-    parser.add_argument(
-        "--patch", action="store_true", help="с --next: патчевый цикл вместо минорного"
-    )
     parser.add_argument("--dry-run", action="store_true", help="показать правки, но не делать их")
     args = parser.parse_args()
 
     if args.open_next == bool(args.version):
         parser.error("нужен либо номер выпуска, либо --next")
-    if args.patch and not args.open_next:
-        parser.error("--patch работает только вместе с --next")
 
     if args.open_next:
-        open_next(args.patch, args.dry_run)
+        open_next(args.dry_run)
     else:
         release(args.version, args.dry_run)
 

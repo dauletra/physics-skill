@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.document.answers import Answer, Inline
+from physics_svg.document.domain import Domain
 from physics_svg.document.html import list_html
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import LETTERS, t
@@ -29,7 +31,14 @@ class ChoiceSpec:
     id: Optional[str] = None
     explanation: Optional[str] = None
 
+    @property
+    def domain(self) -> Domain:
+        """The options themselves: printed as а), б), в), the wrong ones are
+        the distractors."""
+        return Domain([option.text for option in self.options], "options", lettered=True)
+
     def check(self) -> None:
+        self.domain.check()
         correct = sum(1 for option in self.options if option.correct)
         if self.select == "single" and correct != 1:
             raise Invalid(
@@ -54,13 +63,18 @@ def body(model: ChoiceSpec) -> str:
     return options
 
 
-def answer(model: ChoiceSpec) -> str:
+def answer(model: ChoiceSpec) -> Answer:
     # The same а)/б) actually printed as list markers: one source of letters.
     letters = [LETTERS[i] for i, option in enumerate(model.options) if option.correct]
-    return esc(", ".join(letters))
+    return Inline(esc(", ".join(letters)))
 
 
 register(
-    tag="choice", title="Выбор варианта", model=ChoiceSpec, body=body, answer=answer,
+    tag="choice",
+    title="Выбор варианта",
+    model=ChoiceSpec,
+    body=body,
+    answer=answer,
+    order=20,
     module=__name__,
 )

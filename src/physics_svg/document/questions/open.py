@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.document.answers import Inline, MaybeAnswer
 from physics_svg.document.questions.registry import register
 from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
@@ -43,10 +44,17 @@ def body(model: OpenSpec) -> str:
     return ""
 
 
-def answer(model: OpenSpec) -> str:
-    return esc(model.answer) if model.answer else ""
+def answer(model: OpenSpec) -> MaybeAnswer:
+    # `None`, not an empty line: a question asked aloud gets no row at all.
+    return Inline(esc(model.answer)) if model.answer else None
 
 
 register(
-    tag="open", title="Открытый вопрос", model=OpenSpec, body=body, answer=answer, module=__name__
+    tag="open",
+    title="Открытый вопрос",
+    model=OpenSpec,
+    body=body,
+    answer=answer,
+    order=10,
+    module=__name__,
 )

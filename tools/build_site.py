@@ -42,7 +42,6 @@ EXAMPLE = REPO / "examples" / "kinematics-9th-grade"
 #: can be scoped under one wrapper and dropped straight into a themed page.
 PREVIEW_CLASS = "doc-preview"
 
-JSON_BLOCK = re.compile(r"```json\n(.*?)\n```", re.S)
 _RULE = re.compile(r"([^{}]+)\{([^}]*)\}", re.S)
 
 
@@ -138,55 +137,41 @@ def _write_questions() -> None:
     """One page with every task kind, each shown as it will be printed."""
     parts = [
         "# Виды заданий\n",
-        "Девять видов, из которых собираются задания. Ниже — как каждый "
-        "выглядит на листе и что сказать Claude, чтобы получить такой.\n",
+        "Ниже — все виды, из которых собираются задания: как каждый выглядит "
+        "на листе и что сказать Claude, чтобы получить такой.\n",
         "Правильные ответы в теле задания не печатаются никогда: рендерер "
         "собирает их в раздел «Ответы» в конце документа, а раздаточный "
         "вариант печатается вообще без него.\n",
+        "Там, где ученик выбирает из готового набора — варианты теста, правый "
+        "столбец, группы, слова для пропусков, — можно оставить лишние: они "
+        "работают одинаково во всех таких заданиях. «Добавь пару лишних "
+        "вариантов», «пусть одна группа останется пустой» — угадать станет "
+        "нельзя.\n",
         f"<style>{_scoped_css()}</style>\n",
     ]
     for entry in load_questions().values():
         card = entry.card.read_text(encoding="utf-8").strip()
         parts.append(re.sub(r"^# ", "## ", card, flags=re.M))
         parts.append("")
-        parts.append(_preview(entry))
-        parts.append("")
+        parts.extend(_previews(entry))
     (DOCS / "questions.md").write_text("\n".join(parts), encoding="utf-8")
     print(f"  questions.md ({len(load_questions())} видов)")
 
 
-def _preview(entry: QuestionType) -> str:
-    """Render the kind's documented example through the real renderer.
+def _previews(entry: QuestionType) -> list[str]:
+    """Render the kind's documented tasks through the real renderer.
 
-    The same JSON the reference shows and the tests exercise, so a picture on
-    this page cannot show something the skill would not produce.
+    The same tasks the reference shows and the tests exercise — statement,
+    question and place to write included — so a sheet on this page cannot
+    show something the skill would not produce.
     """
-    match = JSON_BLOCK.search(entry.doc.read_text(encoding="utf-8"))
-    if match is None:
-        raise SystemExit(f"в {entry.doc} нет примера в блоке ```json")
-    task = {
-        "type": "task",
-        "blocks": [
-            {"type": "text", "body": _STATEMENTS[entry.tag]},
-            json.loads(match.group(1)),
-        ],
-    }
-    html = build_document(parse_document({}), [parse_block(task, entry.tag)])
-    body = html.split("<body>\n", 1)[1].split("\n</body>", 1)[0]
-    return f'<div class="{PREVIEW_CLASS}" markdown="0">\n{body}\n</div>'
-
-
-_STATEMENTS = {
-    "open": "Автомобиль движется равномерно со скоростью υ = 72 км/ч. Какой путь он пройдёт за 15 минут?",
-    "choice": "Как меняется скорость при равноускоренном движении?",
-    "match": "Сопоставьте величины и единицы их измерения.",
-    "fill_text": "Вставьте пропущенные слова.",
-    "fill_table": "Заполните пропуски в таблице.",
-    "plot": "Постройте график скорости от времени.",
-    "true_false": "Отметьте, верны ли утверждения.",
-    "rank": "Расставьте события в правильном порядке.",
-    "classify": "Распределите величины по группам.",
-}
+    parts = []
+    for task in entry.examples:
+        html = build_document(parse_document({}), [parse_block(task, entry.tag)])
+        body = html.split("<body>\n", 1)[1].split("\n</body>", 1)[0]
+        parts.append(f'<div class="{PREVIEW_CLASS}" markdown="0">\n{body}\n</div>')
+        parts.append("")
+    return parts
 
 
 def _scoped_css() -> str:
@@ -194,21 +179,25 @@ def _scoped_css() -> str:
 
     Everything the renderer emits is class-based, so prefixing each selector
     is enough; the page-level rules become rules of the wrapper.
+
+    Comments go first, before anything is split into rules: a comma inside a
+    comment used to leave its tail glued to the next selector, and a browser
+    drops a whole rule whose selector list it cannot parse — silently, so the
+    previews stopped matching the printed sheet without failing the build.
     """
     scoped = []
-    for match in _RULE.finditer(BASE_CSS):
+    for match in _RULE.finditer(re.sub(r"/\*.*?\*/", "", BASE_CSS, flags=re.S)):
         selectors = [s.strip() for s in match.group(1).split(",") if s.strip()]
         body = match.group(2).strip()
         rewritten = []
         for selector in selectors:
-            if selector.startswith(("/*", "@")):
+            if selector.startswith("@"):
                 continue
-            selector = re.sub(r"/\*.*?\*/", "", selector, flags=re.S).strip()
-            if not selector:
-                continue
-            if selector in (":root", "*", "html", "body"):
-                rewritten.append(f".{PREVIEW_CLASS}" if selector in ("body", ":root") else
-                                 f".{PREVIEW_CLASS} *")
+            if selector in (":root", "html", "body"):
+                # Page-level rules describe the sheet itself — the wrapper.
+                rewritten.append(f".{PREVIEW_CLASS}")
+            elif selector == "*":
+                rewritten.append(f".{PREVIEW_CLASS} *")
             else:
                 rewritten.append(f".{PREVIEW_CLASS} {selector}")
         if rewritten and body:

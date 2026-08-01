@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.document.answers import Answer, Inline
+from physics_svg.document.domain import Domain
 from physics_svg.document.html import list_html
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import LETTERS
 from physics_svg.draw import esc
-from physics_svg.schema import Invalid, field, spec
+from physics_svg.schema import field, spec
 
 
 @spec
@@ -37,22 +39,16 @@ class MatchSpec:
     id: Optional[str] = None
     explanation: Optional[str] = None
 
+    @property
+    def domain(self) -> Domain:
+        """The right column: printed as а), б), в), addressed by explicit id;
+        an item nothing points at is a distractor."""
+        return Domain([item.id for item in self.right], "right", lettered=True)
+
     def check(self) -> None:
-        ids = [item.id for item in self.right]
-        if len(set(ids)) != len(ids):
-            raise Invalid(f"id в правом столбце должны быть уникальны, получено {ids}", field="right")
-        if len(self.right) > len(LETTERS):
-            raise Invalid(
-                f"в правом столбце не больше {len(LETTERS)} пунктов (буквенные маркеры), "
-                f"получено {len(self.right)}",
-                field="right",
-            )
+        self.domain.check()
         for i, item in enumerate(self.left):
-            if item.match not in set(ids):
-                raise Invalid(
-                    f"left[{i}].match = '{item.match}' не найден среди id правого столбца {ids}",
-                    field="left",
-                )
+            self.domain.check_member(item.match, field="left", index=i, attr="match")
 
 
 def body(model: MatchSpec) -> str:
@@ -63,13 +59,19 @@ def body(model: MatchSpec) -> str:
     return f'<div class="match-columns">{left}{right}</div>'
 
 
-def answer(model: MatchSpec) -> str:
+def answer(model: MatchSpec) -> Answer:
     letters = {item.id: LETTERS[i] for i, item in enumerate(model.right)}
-    return esc(
-        ", ".join(f"{i + 1}-{letters[item.match]}" for i, item in enumerate(model.left))
+    return Inline(
+        esc(", ".join(f"{i + 1}-{letters[item.match]}" for i, item in enumerate(model.left)))
     )
 
 
 register(
-    tag="match", title="Сопоставление", model=MatchSpec, body=body, answer=answer, module=__name__
+    tag="match",
+    title="Сопоставление",
+    model=MatchSpec,
+    body=body,
+    answer=answer,
+    order=40,
+    module=__name__,
 )

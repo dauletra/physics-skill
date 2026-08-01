@@ -30,14 +30,36 @@ class SeriesSpec:
 
 
 @spec
-class GraphSpec:
-    """График с осями."""
+class GraphAxes:
+    """The plane a graph is drawn on: what is measured, over what range, how
+    densely ruled.
 
-    type: Literal["graph"]
+    A field group, not a block — it has no `type`, so it is never a member of
+    a union and never parsed on its own. It exists because two blocks are drawn
+    on the same plane: the `graph` component and the `plot` question, whose axes
+    are given and whose curve is the answer. One declaration means the two
+    cannot drift: a new visual field here reaches both, and `plot` cannot
+    quietly lack it.
+
+    Declared with `@spec` rather than a bare dataclass so that its fields are
+    the same kind of thing as everywhere else — constraints, `doc`, frozen.
+    """
+
     x_label: str = field(doc="Подпись оси X, обычно с единицей: «t, с»")
     y_label: str = field(doc="Подпись оси Y, обычно с единицей: «υ, м/с»")
     x_range: tuple[Number, Number] = field(doc="Диапазон оси X: [min, max]")
     y_range: tuple[Number, Number] = field(doc="Диапазон оси Y: [min, max]")
+
+    def check_axes(self) -> None:
+        check_range("x_range", self.x_range)
+        check_range("y_range", self.y_range)
+
+
+@spec
+class GraphSpec(GraphAxes):
+    """График с осями."""
+
+    type: Literal["graph"]
     id: Optional[str] = None
     chart_type: ChartType = "line"
     grid: Grid = "ticks"
@@ -46,8 +68,7 @@ class GraphSpec:
     )
 
     def check(self) -> None:
-        check_range("x_range", self.x_range)
-        check_range("y_range", self.y_range)
+        self.check_axes()
         if self.chart_type == "bar":
             check_bar(self.y_range, len(self.series), "series")
 

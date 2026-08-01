@@ -1,37 +1,40 @@
 """Plot the graph — axes are given, the curve is the answer.
 
-The payload is the `graph` component's own fields plus two sets of series:
-`given` (already drawn for the student) and `answer` (drawn in the answers
-section). Both renderers build a real `GraphSpec`, so a plotting question and
-an illustration can never drift apart visually.
+The payload is literally the `graph` component's plane (`GraphAxes`, shared
+declaration) plus two sets of series: `given` (already drawn for the student)
+and `answer` (drawn in the answers section). Both renderers build a real
+`GraphSpec`, so a plotting question and an illustration can never drift apart
+visually.
+
+Why the drawing surface lives inside the question here, when a place to write
+is normally a neighbouring component: the axes are not blank space, they fix
+the scale the student must plot in, and the answer is geometry that means
+nothing outside them. See принцип 3 in docs/schema-design-principles.md.
 """
 
 from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.document.answers import Answer, Block
 from physics_svg.document.questions.registry import register
-from physics_svg.schema import Number, field, spec
+from physics_svg.schema import field, spec
 from physics_svg.visuals import build_svg
 from physics_svg.visuals.graph.model import (
     ChartType,
+    GraphAxes,
     GraphSpec,
     Grid,
     SeriesSpec,
     check_bar,
-    check_range,
 )
 
 
 @spec
-class PlotSpec:
+class PlotSpec(GraphAxes):
     """Построение графика по данным."""
 
     type: Literal["plot"]
-    x_label: str = field(doc="Подпись оси X")
-    y_label: str = field(doc="Подпись оси Y")
-    x_range: tuple[Number, Number] = field(doc="Диапазон оси X: [min, max]")
-    y_range: tuple[Number, Number] = field(doc="Диапазон оси Y: [min, max]")
     answer: list[SeriesSpec] = field(min_items=1, doc="Правильные серии — в секцию «Ответы»")
     id: Optional[str] = None
     explanation: Optional[str] = None
@@ -42,8 +45,7 @@ class PlotSpec:
     )
 
     def check(self) -> None:
-        check_range("x_range", self.x_range)
-        check_range("y_range", self.y_range)
+        self.check_axes()
         if self.chart_type == "bar":
             check_bar(self.y_range, max(len(self.answer), len(self.given or [])), "answer")
 
@@ -64,12 +66,21 @@ def body(model: PlotSpec) -> str:
     return build_svg(model.as_graph(model.given or []), scope=f"plot-{model.id or 'q'}")
 
 
-def answer(model: PlotSpec) -> str:
-    """The correct graph, on the same axes as the body."""
-    return build_svg(model.as_graph(model.answer), scope=f"plot-{model.id or 'q'}-a")
+def answer(model: PlotSpec) -> Answer:
+    """The correct graph, on the same axes as the body.
+
+    A `Block`, not a compact line: the answers section gives a drawing its own
+    room instead of squeezing it into the slot that holds «б».
+    """
+    return Block(build_svg(model.as_graph(model.answer), scope=f"plot-{model.id or 'q'}-a"))
 
 
 register(
-    tag="plot", title="Построение графика", model=PlotSpec, body=body, answer=answer,
+    tag="plot",
+    title="Построение графика",
+    model=PlotSpec,
+    body=body,
+    answer=answer,
+    order=90,
     module=__name__,
 )

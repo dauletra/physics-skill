@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable, Optional
 
+from physics_svg.document.answers import MaybeAnswer, Rows
 from physics_svg.document.assets import BASE_CSS, KATEX_HEAD
 from physics_svg.document.components import (
     AnswerLineSpec,
@@ -127,10 +128,10 @@ class Renderer:
         for number, task in numbered_tasks:
             for label, question in _task_answers(task):
                 answer = render_answer(question)
-                if not answer and not question.explanation:
+                if answer is None and not question.explanation:
                     continue
                 caption = f"{number}." + (f" {esc(label)})" if label else "")
-                body = answer
+                body = _answer_html(answer)
                 if question.explanation:
                     body += div(
                         "answers-explanation",
@@ -147,6 +148,20 @@ class Renderer:
             "answers-section",
             div("answers-title", t("answers_title")) + "".join(items),
         )
+
+
+def _answer_html(answer: MaybeAnswer) -> str:
+    """The one place an answer's shape becomes markup.
+
+    A kind says what it has — a line, a line per element, a drawing — and the
+    section decides how it looks, so answers of different kinds stay
+    consistent on the sheet and no kind has to know the section's markup.
+    """
+    if answer is None:
+        return ""
+    if isinstance(answer, Rows):
+        return div("answers-rows", "".join(f"<div>{row}</div>" for row in answer.rows))
+    return answer.html  # Inline and Block both carry ready markup
 
 
 def _task_answers(task: TaskSpec) -> list[tuple[str, Any]]:

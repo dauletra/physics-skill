@@ -4,10 +4,16 @@
 
 ```json
 {
-  "type": "true_false",
-  "statements": [
-    { "text": "Скорость — векторная величина", "answer": true },
-    { "text": "Путь может быть отрицательным", "answer": false }
+  "type": "task",
+  "blocks": [
+    { "type": "text", "body": "Отметьте, верны ли утверждения." },
+    {
+      "type": "true_false",
+      "statements": [
+        { "text": "Скорость — векторная величина", "answer": true },
+        { "text": "Путь может быть отрицательным", "answer": false }
+      ]
+    }
   ]
 }
 ```

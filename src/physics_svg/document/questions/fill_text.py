@@ -5,8 +5,11 @@ from __future__ import annotations
 import re
 from typing import Literal, Optional
 
+from physics_svg.document.answers import Answer, Inline
+from physics_svg.document.domain import Domain
 from physics_svg.document.html import bank_list, blank_cell
 from physics_svg.document.questions.registry import register
+from physics_svg.document.strings import t
 from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
 
@@ -26,6 +29,12 @@ class FillTextSpec:
     explanation: Optional[str] = None
     bank: Optional[list[str]] = field(default=None, doc="Слова для выбора, если нужен банк")
 
+    @property
+    def domain(self) -> Optional[Domain]:
+        """The word bank, when there is one: printed above the text, extra
+        words are the distractors."""
+        return None if self.bank is None else Domain(self.bank, "bank")
+
     def check(self) -> None:
         placeholders = set(BLANK_RE.findall(self.template))
         if not placeholders:
@@ -41,6 +50,12 @@ class FillTextSpec:
                 f"{sorted(self.blanks)}",
                 field="blanks",
             )
+        # A bank that misses a correct word makes the task unsolvable, and
+        # nothing on the sheet gives that away.
+        if self.domain is not None:
+            self.domain.check()
+            for name, value in self.blanks.items():
+                self.domain.check_member(value, field="blanks", attr=name)
 
 
 def body(model: FillTextSpec) -> str:
@@ -52,16 +67,21 @@ def body(model: FillTextSpec) -> str:
         last = found.end()
     pieces.append(esc(model.template[last:]))
     text = f'<p>{"".join(pieces)}</p>'
-    return bank_list(model.bank) + text if model.bank else text
+    return bank_list(model.bank, t("bank_label")) + text if model.bank else text
 
 
-def answer(model: FillTextSpec) -> str:
+def answer(model: FillTextSpec) -> Answer:
     # Values in the order the gaps appear in the sentence.
     values = [model.blanks[found.group(1)] for found in BLANK_RE.finditer(model.template)]
-    return esc("; ".join(values))
+    return Inline(esc("; ".join(values)))
 
 
 register(
-    tag="fill_text", title="Пропуски в тексте", model=FillTextSpec, body=body, answer=answer,
+    tag="fill_text",
+    title="Пропуски в тексте",
+    model=FillTextSpec,
+    body=body,
+    answer=answer,
+    order=70,
     module=__name__,
 )

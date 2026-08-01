@@ -64,7 +64,6 @@ body {
 .list-row { display: flex; align-items: baseline; gap: 8px; padding: 5px 8px; }
 .list-marker { font-weight: bold; flex: 0 0 auto; }
 .list-content { flex: 1 1 auto; min-width: 0; }
-.list-component.cols-single .list-row:nth-child(even) { background: #f2f2f2; }
 .list-component.cols-two { display: block; column-count: 2; column-gap: 30px; }
 .list-component.cols-two .list-row { display: block; margin-bottom: 6px; break-inside: avoid-column; }
 .list-component.cols-inline { display: block; }
@@ -88,8 +87,8 @@ body {
     display: inline-block; min-width: 68px; border-bottom: 1px solid #000;
     margin: 0 4px; text-align: center;
 }
-/* Answers section: separated by a rule, one line per question — the task
-   number (and subtask letter) on the left, the compact answer on the right.
+/* Answers section: separated by a rule, one item per question — the task
+   number (and subtask letter) on the left, the answer on the right.
    flex-start rather than baseline: a plotted answer's first baseline is deep
    inside the picture, and the number would slide down with it. */
 .answers-section { margin-top: 34px; border-top: 1.5px solid #000; padding-top: 15px; }
@@ -97,6 +96,10 @@ body {
 .answers-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; font-size: 11pt; }
 .answers-num { font-weight: bold; flex: 0 0 auto; }
 .answers-body { flex: 1 1 auto; min-width: 0; }
+/* An answer with one line per element — ranked items, groups. Tighter than a
+   list in a task body: this is a column of short lines, not a question. */
+.answers-rows > div { margin-bottom: 2px; }
+.answers-rows > div:last-child { margin-bottom: 0; }
 .answers-explanation { font-style: italic; color: #333; }
 /* Blocks of a task stack down the column; the only way to put blocks side by
    side is the `row` container. */

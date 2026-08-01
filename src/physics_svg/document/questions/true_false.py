@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.document.answers import Answer, Inline
 from physics_svg.document.html import list_html, statement_row
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import t
@@ -46,15 +47,21 @@ def body(model: TrueFalseSpec) -> str:
     return list_html(rows)
 
 
-def answer(model: TrueFalseSpec) -> str:
+def answer(model: TrueFalseSpec) -> Answer:
+    # One line: a verdict is two words, and six of them still read as a line.
     verdicts = [
         f"{i + 1} — {t('true_label') if statement.answer else t('false_label')}"
         for i, statement in enumerate(model.statements)
     ]
-    return esc(", ".join(verdicts))
+    return Inline(esc(", ".join(verdicts)))
 
 
 register(
-    tag="true_false", title="Верно/неверно", model=TrueFalseSpec, body=body, answer=answer,
+    tag="true_false",
+    title="Верно/неверно",
+    model=TrueFalseSpec,
+    body=body,
+    answer=answer,
+    order=30,
     module=__name__,
 )

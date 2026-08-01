@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.document.answers import Answer, Rows
 from physics_svg.document.html import list_html, statement_row
 from physics_svg.document.questions.registry import register
 from physics_svg.draw import esc
@@ -46,12 +47,24 @@ def body(model: RankSpec) -> str:
     return list_html(rows)
 
 
-def answer(model: RankSpec) -> str:
-    # Item numbers, as shown, in the correct order.
-    order = sorted(range(len(model.items)), key=lambda i: model.items[i].position)
-    return esc(", ".join(str(i + 1) for i in order))
+def answer(model: RankSpec) -> Answer:
+    """Position and item, one line each, in the correct order.
+
+    Not the item numbers alone (`2, 3, 1`): the items carry no printed
+    numbers, so counting rows is the only way to read such a line — and it
+    reads just as well as "item 1 goes second", which is a different and
+    wrong answer. A line per position cannot be misread.
+    """
+    ordered = sorted(model.items, key=lambda item: item.position)
+    return Rows([esc(f"{item.position} — {item.text}") for item in ordered])
 
 
 register(
-    tag="rank", title="Упорядочивание", model=RankSpec, body=body, answer=answer, module=__name__
+    tag="rank",
+    title="Упорядочивание",
+    model=RankSpec,
+    body=body,
+    answer=answer,
+    order=50,
+    module=__name__,
 )

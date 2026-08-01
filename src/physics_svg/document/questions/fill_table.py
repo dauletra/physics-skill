@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from typing import Literal, Optional, Union
 
+from physics_svg.document.answers import Answer, Inline
+from physics_svg.document.domain import Domain
 from physics_svg.document.html import bank_list, blank_cell, table_html
 from physics_svg.document.questions.registry import register
+from physics_svg.document.strings import t
 from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
 
@@ -38,6 +41,12 @@ class FillTableSpec:
     explanation: Optional[str] = None
     bank: Optional[list[str]] = field(default=None, doc="Слова для выбора, если нужен банк")
 
+    @property
+    def domain(self) -> Optional[Domain]:
+        """The word bank, when there is one — the same vocabulary `fill_text`
+        offers, printed by the same line."""
+        return None if self.bank is None else Domain(self.bank, "bank")
+
     def check(self) -> None:
         has_blank = False
         for i, row in enumerate(self.rows):
@@ -50,6 +59,13 @@ class FillTableSpec:
             raise Invalid(
                 "хотя бы одна ячейка должна быть пропуском {\"answer\": …}", field="rows"
             )
+        # A bank that misses a correct value makes the table unfillable.
+        if self.domain is not None:
+            self.domain.check()
+            for i, row in enumerate(self.rows):
+                for cell in row:
+                    if not isinstance(cell, str):
+                        self.domain.check_member(cell.answer, field="rows", index=i)
 
 
 def body(model: FillTableSpec) -> str:
@@ -58,18 +74,23 @@ def body(model: FillTableSpec) -> str:
         for row in model.rows
     ]
     table = table_html([esc(header) for header in model.headers], rows)
-    return bank_list(model.bank) + table if model.bank else table
+    return bank_list(model.bank, t("bank_label")) + table if model.bank else table
 
 
-def answer(model: FillTableSpec) -> str:
+def answer(model: FillTableSpec) -> Answer:
     # Blank values in reading order.
     values = [
         cell.answer for row in model.rows for cell in row if not isinstance(cell, str)
     ]
-    return esc("; ".join(values))
+    return Inline(esc("; ".join(values)))
 
 
 register(
-    tag="fill_table", title="Пропуски в таблице", model=FillTableSpec, body=body, answer=answer,
+    tag="fill_table",
+    title="Пропуски в таблице",
+    model=FillTableSpec,
+    body=body,
+    answer=answer,
+    order=80,
     module=__name__,
 )

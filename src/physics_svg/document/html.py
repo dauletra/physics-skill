@@ -13,7 +13,7 @@ showing a series of things.
 
 from __future__ import annotations
 
-from physics_svg.document.strings import LETTERS, t
+from physics_svg.document.strings import LETTERS
 from physics_svg.draw import esc
 
 
@@ -61,10 +61,14 @@ def blank_cell() -> str:
     return '<span class="fill-blank"></span>'
 
 
-def bank_list(items: list[str]) -> str:
-    """"Words to choose from: …" for `fill_text` and `fill_table`."""
+def bank_list(items: list[str], label: str) -> str:
+    """A row of things to choose from, above the content they belong to.
+
+    The same line serves a word bank for a gap and the group names for
+    `classify` — one visual language, two labels from `strings`.
+    """
     joined = ", ".join(esc(item) for item in items)
-    return f'<div class="bank-list"><strong>{t("bank_label")}</strong> {joined}</div>'
+    return f'<div class="bank-list"><strong>{label}</strong> {joined}</div>'
 
 
 def statement_row(text: str, control: str) -> str:

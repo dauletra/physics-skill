@@ -1,20 +1,114 @@
 {
   "type": "task",
   "id": "task-01",
-  "points": 2,
+  "points": 3,
   "blocks": [
     {
       "type": "text",
-      "body": "Автомобиль движется равномерно со скоростью υ = 72 км/ч. Какой путь он пройдёт за t = 15 мин?"
+      "body": "Выразите величины в единицах СИ."
     },
     {
-      "type": "open",
-      "answer": "υ = 20 м/с, t = 900 с, s = υt = 20 * 900 = 18000 м = 18 км"
-    },
-    {
-      "type": "paper",
-      "ruling": "lines",
-      "rows": 4
+      "type": "row",
+      "columns": 2,
+      "blocks": [
+        {
+          "type": "part",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "72 км/ч = "
+            },
+            {
+              "type": "open",
+              "answer": "20 м/с",
+              "explanation": "Разделить на 3,6 — это и есть «умножить на 1000 метров и разделить на 3600 секунд»."
+            },
+            {
+              "type": "answer_line"
+            }
+          ]
+        },
+        {
+          "type": "part",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "36 км/ч = "
+            },
+            {
+              "type": "open",
+              "answer": "10 м/с"
+            },
+            {
+              "type": "answer_line"
+            }
+          ]
+        },
+        {
+          "type": "part",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "90 км/ч = "
+            },
+            {
+              "type": "open",
+              "answer": "25 м/с"
+            },
+            {
+              "type": "answer_line"
+            }
+          ]
+        },
+        {
+          "type": "part",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "15 мин = "
+            },
+            {
+              "type": "open",
+              "answer": "900 с"
+            },
+            {
+              "type": "answer_line"
+            }
+          ]
+        },
+        {
+          "type": "part",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "2 ч = "
+            },
+            {
+              "type": "open",
+              "answer": "7200 с"
+            },
+            {
+              "type": "answer_line"
+            }
+          ]
+        },
+        {
+          "type": "part",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "5 км = "
+            },
+            {
+              "type": "open",
+              "answer": "5000 м"
+            },
+            {
+              "type": "answer_line"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

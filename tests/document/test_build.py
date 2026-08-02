@@ -209,6 +209,42 @@ def _draft(root: Path, manifest: dict, blocks: dict) -> None:
         )
 
 
+class TestRowColumns:
+    def test_the_column_count_reaches_the_markup(self) -> None:
+        html = document(
+            task(
+                TEXT,
+                {
+                    "type": "row",
+                    "columns": 2,
+                    "blocks": [{"type": "part", "blocks": [OPEN]} for _ in range(4)],
+                },
+            )
+        )
+        assert html.count('class="task-row cols-2"') == 1
+        assert html.count('class="task-col"') == 4
+
+    def test_a_row_without_a_count_renders_as_before(self) -> None:
+        html = document(task(TEXT, {"type": "row", "blocks": [TEXT, TEXT]}))
+        assert 'class="task-row"' in html
+
+    def test_the_fold_is_counted_not_balanced(self) -> None:
+        """Columns fill downwards, so which item ends the left column is a
+        promise: it is the row count that says so, not the items' height."""
+        html = document(
+            task(
+                TEXT,
+                {
+                    "type": "row",
+                    "columns": 2,
+                    "blocks": [{"type": "part", "blocks": [OPEN]} for _ in range(7)],
+                },
+            )
+        )
+        assert 'style="grid-template-rows: repeat(4, auto);"' in html
+        assert re.findall(r'class="subtask-label">(\w)\)', html) == list("абвгдеж")
+
+
 class TestGolden:
     def test_the_worked_example_matches_its_golden(self) -> None:
         workspace = load_workspace(EXAMPLE)

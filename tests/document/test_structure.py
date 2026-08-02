@@ -119,6 +119,46 @@ class TestRowIsTransparent:
         assert sorted(task_part_labels(block).values()) == ["а", "б"]
 
 
+class TestRowColumns:
+    """An explicit column count is a wrapping instruction: the children stay a
+    flat list, and only their geometry changes."""
+
+    def test_more_columns_than_children(self) -> None:
+        rejects(
+            task(TEXT, {"type": "row", "columns": 3, "blocks": [TEXT, TEXT]}),
+            "лишние останутся пустыми",
+        )
+
+    def test_one_column_is_not_a_row(self) -> None:
+        rejects(task(TEXT, {"type": "row", "columns": 1, "blocks": [TEXT, TEXT]}), "columns")
+
+    def test_the_page_is_too_narrow_for_five(self) -> None:
+        rejects(
+            task(TEXT, {"type": "row", "columns": 5, "blocks": [TEXT] * 5}),
+            "columns",
+        )
+
+    def test_letters_of_a_wrapped_row_still_follow_the_file(self) -> None:
+        from physics_svg.document import task_part_labels
+
+        block = parse_block(
+            task(
+                TEXT,
+                {
+                    "type": "row",
+                    "columns": 2,
+                    "blocks": [{"type": "part", "blocks": [OPEN]} for _ in range(4)],
+                },
+            ),
+            "t",
+        )
+        assert list(task_part_labels(block).values()) == ["а", "б", "в", "г"]
+
+    def test_a_top_level_row_takes_columns_too(self) -> None:
+        assert parse_block({"type": "row", "columns": 2, "blocks": [TEXT, TEXT]}, "r") is not None
+        rejects({"type": "row", "columns": 3, "blocks": [TEXT, TEXT]}, "лишние останутся пустыми")
+
+
 class TestLettering:
     def test_letters_follow_the_order_of_parts(self) -> None:
         parts = [PartSpec(type="part", blocks=[OPEN]) for _ in range(3)]

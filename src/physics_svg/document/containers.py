@@ -23,18 +23,45 @@ from physics_svg.document.questions import is_question
 from physics_svg.document.strings import LETTERS
 from physics_svg.schema import Invalid, Number, field, spec
 
+#: More than four columns on an A4 page leaves nothing but hyphenation.
+MAX_COLUMNS = 4
+
+#: The doc is shared: `row` means the same thing at both levels, so the field
+#: it is documented by has to read identically in both tables.
+COLUMNS_DOC = (
+    "Сколько колонок; по умолчанию — по одной на каждого ребёнка. "
+    "Дети заполняют колонки сверху вниз: при восьми детях и двух колонках "
+    "первые четыре встанут слева, остальные справа"
+)
+
+
+def check_columns(columns: Optional[int], blocks: list) -> None:
+    """Explicit columns are a wrapping instruction, not a table width.
+
+    Asking for more columns than there are children would print empty ones,
+    which reads as a rendering bug rather than as the author's intent.
+    """
+    if columns is not None and columns > len(blocks):
+        raise Invalid(
+            f"колонок {columns}, а детей {len(blocks)} — лишние останутся пустыми",
+            field="columns",
+        )
+
 
 @spec
 class RowSpec:
-    """Layout-контейнер: дети стоят в одну строку и делят её поровну."""
+    """Layout-контейнер: дети делят строку поровну; с `columns` — переносятся
+    по колонкам."""
 
     type: Literal["row"]
     blocks: list[TASK_BLOCK] = field(min_items=1)
     id: Optional[str] = None
+    columns: Optional[int] = field(default=None, ge=2, le=MAX_COLUMNS, doc=COLUMNS_DOC)
 
     def check(self) -> None:
         if any(isinstance(block, RowSpec) for block in self.blocks):
             raise Invalid("строку нельзя вложить в строку", field="blocks")
+        check_columns(self.columns, self.blocks)
 
 
 @spec
@@ -159,12 +186,16 @@ class TaskSpec:
 
 @spec
 class DocRowSpec:
-    """Верхнеуровневая строка документа: те же равные колонки, но дети —
-    только компоненты и подзаголовки."""
+    """Верхнеуровневая строка документа: те же колонки, но дети — только
+    компоненты и подзаголовки."""
 
     type: Literal["row"]
     blocks: list[DOC_ROW_CHILD] = field(min_items=1)
     id: Optional[str] = None
+    columns: Optional[int] = field(default=None, ge=2, le=MAX_COLUMNS, doc=COLUMNS_DOC)
+
+    def check(self) -> None:
+        check_columns(self.columns, self.blocks)
 
 
 # --- walking the tree ---------------------------------------------------

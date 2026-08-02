@@ -17,8 +17,22 @@ from physics_svg.document.strings import LETTERS
 from physics_svg.draw import esc
 
 
-def div(class_name: str, content: str) -> str:
-    return f'<div class="{class_name}">{content}</div>'
+def div(class_name: str, content: str, style: str = "") -> str:
+    attrs = f' style="{style}"' if style else ""
+    return f'<div class="{class_name}"{attrs}>{content}</div>'
+
+
+def column_rows(count: int, columns: int) -> str:
+    """The grid rows that make `count` items fill `columns` top to bottom.
+
+    Filling columns downwards is a promise about which item lands where, so the
+    number of rows has to be exact — `column-count` balances by height instead
+    and would move an item across the fold as soon as one of them wraps to a
+    second line. The count comes from the content, which is why it is an inline
+    style and not a class: a stylesheet cannot know it.
+    """
+    rows = -(-count // columns)
+    return f"grid-template-rows: repeat({rows}, auto);"
 
 
 def list_html(items: list[str], marker: str = "none", columns: str = "single") -> str:
@@ -36,7 +50,8 @@ def list_html(items: list[str], marker: str = "none", columns: str = "single") -
         f'<span class="list-content">{item}</span></div>'
         for i, item in enumerate(items)
     )
-    return f'<div class="list-component cols-{columns}">{rows}</div>'
+    style = column_rows(len(items), 2) if columns == "two" else ""
+    return div(f"list-component cols-{columns}", rows, style)
 
 
 def table_html(headers: list[str], rows: list[list[str]]) -> str:

@@ -37,7 +37,7 @@ from physics_svg.document.containers import (
     iter_flat,
     task_part_labels,
 )
-from physics_svg.document.html import div
+from physics_svg.document.html import column_rows, div
 from physics_svg.document.manifest import DocumentSpec
 from physics_svg.document.questions import is_question, render_answer, render_body
 from physics_svg.document.strings import t
@@ -93,7 +93,8 @@ class Renderer:
             columns = "".join(
                 div("task-col", self.task_block(child, labels)) for child in model.blocks
             )
-            return div("task-row", columns)
+            class_name, style = _row_layout(model)
+            return div(class_name, columns, style)
         if isinstance(model, PartSpec):
             header = _label_line(labels.get(id(model)), model.points)
             inner = "".join(self.task_block(child, labels) for child in model.blocks)
@@ -114,7 +115,8 @@ class Renderer:
             return render_heading(model)
         if isinstance(model, DocRowSpec):
             columns = "".join(div("task-col", self.doc_block(child)) for child in model.blocks)
-            return div("task-row", columns)
+            class_name, style = _row_layout(model)
+            return div(class_name, columns, style)
         return div("task-block", self.component(model))
 
     # --- answers ---
@@ -148,6 +150,17 @@ class Renderer:
             "answers-section",
             div("answers-title", t("answers_title")) + "".join(items),
         )
+
+
+def _row_layout(model: RowSpec | DocRowSpec) -> tuple[str, str]:
+    """Class and style of a row: without an explicit count every child claims a
+    column of its own, which is what the bare grid already does."""
+    if model.columns is None:
+        return "task-row", ""
+    return (
+        f"task-row cols-{model.columns}",
+        column_rows(len(model.blocks), model.columns),
+    )
 
 
 def _answer_html(answer: MaybeAnswer) -> str:

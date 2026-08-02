@@ -64,8 +64,13 @@ body {
 .list-row { display: flex; align-items: baseline; gap: 8px; padding: 5px 8px; }
 .list-marker { font-weight: bold; flex: 0 0 auto; }
 .list-content { flex: 1 1 auto; min-width: 0; }
-.list-component.cols-two { display: block; column-count: 2; column-gap: 30px; }
-.list-component.cols-two .list-row { display: block; margin-bottom: 6px; break-inside: avoid-column; }
+/* Two columns are the same grid as a wrapped `row`, not `column-count`: the
+   items fill the left column first either way, but multi-column decides where
+   the fold falls by balancing height, and the grid is told the row count
+   outright — so item 4 is the last one on the left whatever it wraps to. */
+.list-component.cols-two {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; column-gap: 30px;
+}
 .list-component.cols-inline { display: block; }
 .list-component.cols-inline .list-row { display: inline-block; margin-right: 23px; }
 /* "Statement on the left, control on the right" inside a list row — shared
@@ -119,6 +124,13 @@ svg.visual-svg:not(.visual-fluid) { height: auto; }
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
     gap: 23px; align-items: start; margin-bottom: 8px;
 }
+/* An explicit column count: the children wrap instead of each claiming a
+   column of its own. The flow is already by column, so all a wrapped row needs
+   is the exact number of rows — it arrives as an inline style, because only the
+   content knows it. A wrapped row is dense on purpose, so the vertical step
+   between its items is the document's usual step between blocks, not the wide
+   gap that separates columns. */
+.task-row.cols-2, .task-row.cols-3, .task-row.cols-4 { row-gap: 8px; }
 .task-row:last-child { margin-bottom: 0; }
 .task-col { min-width: 0; }
 .task-col .task-part { margin-left: 0; }</style>

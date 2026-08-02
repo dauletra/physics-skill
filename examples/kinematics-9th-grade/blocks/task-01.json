@@ -14,16 +14,12 @@
           "type": "part",
           "blocks": [
             {
-              "type": "text",
-              "body": "72 км/ч = "
-            },
-            {
-              "type": "open",
-              "answer": "20 м/с",
+              "type": "fill_text",
+              "template": "72 км/ч = ___v___ м/с",
+              "blanks": {
+                "v": "20"
+              },
               "explanation": "Разделить на 3,6 — это и есть «умножить на 1000 метров и разделить на 3600 секунд»."
-            },
-            {
-              "type": "answer_line"
             }
           ]
         },
@@ -31,15 +27,11 @@
           "type": "part",
           "blocks": [
             {
-              "type": "text",
-              "body": "36 км/ч = "
-            },
-            {
-              "type": "open",
-              "answer": "10 м/с"
-            },
-            {
-              "type": "answer_line"
+              "type": "fill_text",
+              "template": "36 км/ч = ___v___ м/с",
+              "blanks": {
+                "v": "10"
+              }
             }
           ]
         },
@@ -47,15 +39,11 @@
           "type": "part",
           "blocks": [
             {
-              "type": "text",
-              "body": "90 км/ч = "
-            },
-            {
-              "type": "open",
-              "answer": "25 м/с"
-            },
-            {
-              "type": "answer_line"
+              "type": "fill_text",
+              "template": "90 км/ч = ___v___ м/с",
+              "blanks": {
+                "v": "25"
+              }
             }
           ]
         },
@@ -63,15 +51,11 @@
           "type": "part",
           "blocks": [
             {
-              "type": "text",
-              "body": "15 мин = "
-            },
-            {
-              "type": "open",
-              "answer": "900 с"
-            },
-            {
-              "type": "answer_line"
+              "type": "fill_text",
+              "template": "15 мин = ___t___ с",
+              "blanks": {
+                "t": "900"
+              }
             }
           ]
         },
@@ -79,15 +63,11 @@
           "type": "part",
           "blocks": [
             {
-              "type": "text",
-              "body": "2 ч = "
-            },
-            {
-              "type": "open",
-              "answer": "7200 с"
-            },
-            {
-              "type": "answer_line"
+              "type": "fill_text",
+              "template": "2 ч = ___t___ с",
+              "blanks": {
+                "t": "7200"
+              }
             }
           ]
         },
@@ -95,15 +75,11 @@
           "type": "part",
           "blocks": [
             {
-              "type": "text",
-              "body": "5 км = "
-            },
-            {
-              "type": "open",
-              "answer": "5000 м"
-            },
-            {
-              "type": "answer_line"
+              "type": "fill_text",
+              "template": "5 км = ___s___ м",
+              "blanks": {
+                "s": "5000"
+              }
             }
           ]
         }

@@ -42,10 +42,19 @@ body {
 /* Section subheading (`heading`). Inside a task there are no headings — the
    hierarchy there is drawn by the task number and the subtask letters. */
 .doc-heading { font-size: 13.5pt; font-weight: bold; margin: 20px 0 8px 0; }
+/* The number stands beside the task, not on top of its first block: a task is
+   a rectangle in the margin's gutter, and its wording, picture and ruling are
+   equally "task 3". The gutter is as wide as the number itself — a sheet with
+   `1.` and one with `16.` should not both pay for the longer one.
+   flex-start rather than baseline: the first block can be a picture, and its
+   baseline is deep inside the drawing — the number would sink with it. */
+.task, .task-part { display: flex; align-items: flex-start; gap: 8px; }
 .task { margin: 0 0 26px 0; }
-.task-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .task-num { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
 .subtask-label { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
+/* The stack of blocks the number stands beside — `min-width` lets a wide table
+   or picture shrink instead of pushing the gutter off the page. */
+.task-blocks { flex: 1 1 auto; min-width: 0; }
 .answer-line {
     display: inline-block; min-width: 150px; border-bottom: 1px solid #000; margin-left: 8px;
 }
@@ -106,9 +115,12 @@ body {
 .answers-rows > div:last-child { margin-bottom: 0; }
 .answers-explanation { font-style: italic; color: #333; }
 /* Blocks of a task stack down the column; the only way to put blocks side by
-   side is the `row` container. */
-.task-block { margin-bottom: 8px; }
+   side is the `row` container. The gap between them is this margin and nothing
+   else: a paragraph keeps the browser's own `1em` otherwise, and the first line
+   of the block would then start below the number standing beside it. */
+.task-block { margin-bottom: 11px; }
 .task-block:last-child { margin-bottom: 0; }
+.task-block p { margin: 0; }
 /* Illustrations carry their own width and height in pixels — the frame is
    known exactly — so the page only has to keep them inside a narrow column.
    A stretched ruling is the exception: it has no intrinsic ratio, and its
@@ -135,6 +147,6 @@ svg.visual-svg:not(.visual-fluid) { height: auto; }
 .task-col .task-part { margin-left: 0; }</style>
 </head>
 <body>
-<div class="sheet-header"><div class="sheet-title">Смешанный документ</div></div><div class="doc-heading">Теория</div><div class="task-block"><p>Условие.</p></div><div class="task"><div class="task-blocks"><div class="task-header"><span class="task-num">1.</span></div><div class="task-block"><p>Условие.</p></div><div class="task-block"><div>Ответ: <span class="answer-line" style="min-width:150px;"></span></div></div></div></div><div class="task-row"><div class="task-col"><div class="task-block"><p>Условие.</p></div></div><div class="task-col"><div class="task-block"><div class="list-component cols-single"><div class="list-row"><span class="list-content">раз</span></div><div class="list-row"><span class="list-content">два</span></div></div></div></div></div><div class="task"><div class="task-blocks"><div class="task-header"><span class="task-num">2.</span></div><div class="task-block"><p>Условие.</p></div><div class="task-part"><div class="task-header"><span class="subtask-label">а)</span></div><div class="task-block"><p>а</p></div></div><div class="task-part"><div class="task-header"><span class="subtask-label">б)</span></div><div class="task-block"><p>б</p></div><div class="task-block"><svg class="visual-svg visual-fluid" xmlns="http://www.w3.org/2000/svg" viewBox="-0.5 -0.5 491 37" font-family="PT Sans, Segoe UI, Verdana, Arial, sans-serif" width="100%" height="55.5" preserveAspectRatio="none"><line x1="0" y1="18" x2="490" y2="18" fill="none" stroke="#000" stroke-width="1" stroke-dasharray="1,3" vector-effect="non-scaling-stroke"/><line x1="0" y1="36" x2="490" y2="36" fill="none" stroke="#000" stroke-width="1" stroke-dasharray="1,3" vector-effect="non-scaling-stroke"/><rect x="0" y="0" width="490" height="36" fill="none" stroke="#888" stroke-width="1" vector-effect="non-scaling-stroke"/></svg></div></div></div></div><div class="answers-section"><div class="answers-title">Ответы</div><div class="answers-item"><span class="answers-num">1.</span><div class="answers-body">42</div></div><div class="answers-item"><span class="answers-num">2. а)</span><div class="answers-body">42</div></div><div class="answers-item"><span class="answers-num">2. б)</span><div class="answers-body">42</div></div></div>
+<div class="sheet-header"><div class="sheet-title">Смешанный документ</div></div><div class="doc-heading">Теория</div><div class="task-block"><p>Условие.</p></div><div class="task"><span class="task-num">1.</span><div class="task-blocks"><div class="task-block"><p>Условие.</p></div><div class="task-block"><div>Ответ: <span class="answer-line" style="min-width:150px;"></span></div></div></div></div><div class="task-row"><div class="task-col"><div class="task-block"><p>Условие.</p></div></div><div class="task-col"><div class="task-block"><div class="list-component cols-single"><div class="list-row"><span class="list-content">раз</span></div><div class="list-row"><span class="list-content">два</span></div></div></div></div></div><div class="task"><span class="task-num">2.</span><div class="task-blocks"><div class="task-block"><p>Условие.</p></div><div class="task-part"><span class="subtask-label">а)</span><div class="task-blocks"><div class="task-block"><p>а</p></div></div></div><div class="task-part"><span class="subtask-label">б)</span><div class="task-blocks"><div class="task-block"><p>б</p></div><div class="task-block"><svg class="visual-svg visual-fluid" xmlns="http://www.w3.org/2000/svg" viewBox="-0.5 -0.5 491 37" font-family="PT Sans, Segoe UI, Verdana, Arial, sans-serif" width="100%" height="55.5" preserveAspectRatio="none"><line x1="0" y1="18" x2="490" y2="18" fill="none" stroke="#000" stroke-width="1" stroke-dasharray="1,3" vector-effect="non-scaling-stroke"/><line x1="0" y1="36" x2="490" y2="36" fill="none" stroke="#000" stroke-width="1" stroke-dasharray="1,3" vector-effect="non-scaling-stroke"/><rect x="0" y="0" width="490" height="36" fill="none" stroke="#888" stroke-width="1" vector-effect="non-scaling-stroke"/></svg></div></div></div></div></div><div class="answers-section"><div class="answers-title">Ответы</div><div class="answers-item"><span class="answers-num">1.</span><div class="answers-body">42</div></div><div class="answers-item"><span class="answers-num">2. а)</span><div class="answers-body">42</div></div><div class="answers-item"><span class="answers-num">2. б)</span><div class="answers-body">42</div></div></div>
 </body>
 </html>

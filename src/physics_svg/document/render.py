@@ -96,16 +96,14 @@ class Renderer:
             class_name, style = _row_layout(model)
             return div(class_name, columns, style)
         if isinstance(model, PartSpec):
-            header = _label_line(labels.get(id(model)))
-            inner = "".join(self.task_block(child, labels) for child in model.blocks)
-            return div("task-part", header + inner)
+            body = "".join(self.task_block(child, labels) for child in model.blocks)
+            return div("task-part", _label_line(labels.get(id(model))) + div("task-blocks", body))
         return self.leaf(model)
 
     def task(self, number: int, model: TaskSpec) -> str:
         labels = task_part_labels(model)
-        parts = [_number_line(number)]
-        parts += [self.task_block(block, labels) for block in model.blocks]
-        return div("task", div("task-blocks", "".join(parts)))
+        body = "".join(self.task_block(block, labels) for block in model.blocks)
+        return div("task", _number_line(number) + div("task-blocks", body))
 
     def doc_block(self, model: Any, number: Optional[int] = None) -> str:
         if isinstance(model, TaskSpec):
@@ -193,15 +191,16 @@ def _task_answers(task: TaskSpec) -> list[tuple[str, Any]]:
 
 
 def _number_line(number: int) -> str:
-    # The task number is always a line of its own. The wording of the task is
-    # not part of it: that is an ordinary `text` block among the children.
-    return div("task-header", f'<span class="task-num">{number}.</span>')
+    # The number stands beside the whole task, in a gutter of its own: the
+    # wording, the picture and the ruling are all equally "task 3", and a
+    # number sitting on top of the first block would claim only that block.
+    return f'<span class="task-num">{number}.</span>'
 
 
 def _label_line(label: Optional[str]) -> str:
     if not label:
         return ""
-    return div("task-header", f'<span class="subtask-label">{esc(label)})</span>')
+    return f'<span class="subtask-label">{esc(label)})</span>'
 
 
 def render_header(doc: DocumentSpec) -> str:

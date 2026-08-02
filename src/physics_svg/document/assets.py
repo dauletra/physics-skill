@@ -58,10 +58,19 @@ body {
 /* Section subheading (`heading`). Inside a task there are no headings — the
    hierarchy there is drawn by the task number and the subtask letters. */
 .doc-heading { font-size: 13.5pt; font-weight: bold; margin: 20px 0 8px 0; }
+/* The number stands beside the task, not on top of its first block: a task is
+   a rectangle in the margin's gutter, and its wording, picture and ruling are
+   equally "task 3". The gutter is as wide as the number itself — a sheet with
+   `1.` and one with `16.` should not both pay for the longer one.
+   flex-start rather than baseline: the first block can be a picture, and its
+   baseline is deep inside the drawing — the number would sink with it. */
+.task, .task-part { display: flex; align-items: flex-start; gap: 8px; }
 .task { margin: 0 0 26px 0; }
-.task-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .task-num { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
 .subtask-label { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
+/* The stack of blocks the number stands beside — `min-width` lets a wide table
+   or picture shrink instead of pushing the gutter off the page. */
+.task-blocks { flex: 1 1 auto; min-width: 0; }
 .answer-line {
     display: inline-block; min-width: 150px; border-bottom: 1px solid #000; margin-left: 8px;
 }
@@ -122,9 +131,12 @@ body {
 .answers-rows > div:last-child { margin-bottom: 0; }
 .answers-explanation { font-style: italic; color: #333; }
 /* Blocks of a task stack down the column; the only way to put blocks side by
-   side is the `row` container. */
-.task-block { margin-bottom: 8px; }
+   side is the `row` container. The gap between them is this margin and nothing
+   else: a paragraph keeps the browser's own `1em` otherwise, and the first line
+   of the block would then start below the number standing beside it. */
+.task-block { margin-bottom: 11px; }
 .task-block:last-child { margin-bottom: 0; }
+.task-block p { margin: 0; }
 /* Illustrations carry their own width and height in pixels — the frame is
    known exactly — so the page only has to keep them inside a narrow column.
    A stretched ruling is the exception: it has no intrinsic ratio, and its

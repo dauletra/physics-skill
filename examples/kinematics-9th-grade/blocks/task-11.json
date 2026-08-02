@@ -1,7 +1,6 @@
 {
   "type": "task",
   "id": "task-11",
-  "points": 5,
   "blocks": [
     {
       "type": "text",
@@ -38,7 +37,6 @@
     },
     {
       "type": "part",
-      "points": 2,
       "blocks": [
         {
           "type": "text",
@@ -57,7 +55,6 @@
     },
     {
       "type": "part",
-      "points": 3,
       "blocks": [
         {
           "type": "text",

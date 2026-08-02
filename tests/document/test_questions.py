@@ -56,11 +56,11 @@ class TestRegistry:
         assert kind.type.model.__name__ in schema["$defs"]
 
     def test_carries_the_standard_envelope(self, kind) -> None:
-        # Numbering and points are container metadata and must not leak into
-        # a question; id and explanation are the whole of the envelope.
+        # Numbering is container metadata and must not leak into a question;
+        # id and explanation are the whole of the envelope.
         fields = spec_meta(kind.type.model).fields
         assert "id" in fields and "explanation" in fields
-        assert "label" not in fields and "points" not in fields
+        assert "label" not in fields
 
     def test_has_a_place_in_the_reading_order(self, kind) -> None:
         # The site page and the reference index are ordered by this, so it is

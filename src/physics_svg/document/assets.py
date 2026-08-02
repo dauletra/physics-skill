@@ -62,7 +62,6 @@ body {
 .task-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .task-num { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
 .subtask-label { font-weight: bold; font-size: 12pt; flex: 0 0 auto; }
-.task-points { font-size: 9pt; color: #333; }
 .answer-line {
     display: inline-block; min-width: 150px; border-bottom: 1px solid #000; margin-left: 8px;
 }

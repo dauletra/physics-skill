@@ -92,7 +92,6 @@ kinematics-9th-grade/
 {
   "type": "task",
   "id": "task-01",
-  "points": 2,
   "blocks": [
     { "type": "text", "body": "Какой путь пройдёт автомобиль за 15 минут?" },
     { "type": "open", "answer": "18 км" },
@@ -112,12 +111,12 @@ kinematics-9th-grade/
     { "type": "graph", "x_label": "t, с", "y_label": "υ, м/с",
       "x_range": [0, 4], "y_range": [0, 10],
       "series": [{ "points": [[0, 0], [4, 8]] }] },
-    { "type": "part", "points": 2, "blocks": [
+    { "type": "part", "blocks": [
       { "type": "text", "body": "Найдите ускорение." },
       { "type": "open", "answer": "a = 2 м/с²" },
       { "type": "answer_line" }
     ]},
-    { "type": "part", "points": 3, "blocks": [
+    { "type": "part", "blocks": [
       { "type": "text", "body": "Найдите путь за 4 с." },
       { "type": "open", "answer": "s = 16 м" },
       { "type": "paper", "ruling": "lines", "rows": 3 }
@@ -209,8 +208,9 @@ kinematics-9th-grade/
 
 Общее у всех видов: `type`, необязательный `id`, необязательный
 `explanation` — пояснение к ответу, печатается в секции «Ответы» под ним.
-Нумерация и баллы на вопросе не живут: это поля контейнеров (`task.points`,
-`part.label`, `part.points`).
+Нумерация на вопросе не живёт: номер задания даёт порядок в документе, букву
+подзадания — контейнер (`part.label`). Баллов в документе нет вовсе: лист
+печатается без них, поля для оценки не существует.
 
 Поля каждого вида и примеры — в `questions.md`.
 

@@ -265,7 +265,6 @@ class TestGolden:
                 {"type": "part", "blocks": [{"type": "text", "body": "б"},
                                             {"type": "paper", "ruling": "lines", "rows": 2},
                                             OPEN]},
-                points=4,
             ),
             title="Смешанный документ",
         )

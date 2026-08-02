@@ -96,14 +96,14 @@ class Renderer:
             class_name, style = _row_layout(model)
             return div(class_name, columns, style)
         if isinstance(model, PartSpec):
-            header = _label_line(labels.get(id(model)), model.points)
+            header = _label_line(labels.get(id(model)))
             inner = "".join(self.task_block(child, labels) for child in model.blocks)
             return div("task-part", header + inner)
         return self.leaf(model)
 
     def task(self, number: int, model: TaskSpec) -> str:
         labels = task_part_labels(model)
-        parts = [_number_line(number, model.points)]
+        parts = [_number_line(number)]
         parts += [self.task_block(block, labels) for block in model.blocks]
         return div("task", div("task-blocks", "".join(parts)))
 
@@ -192,24 +192,16 @@ def _task_answers(task: TaskSpec) -> list[tuple[str, Any]]:
     return pairs
 
 
-def _points(points: Optional[float]) -> str:
-    if not points:
-        return ""
-    return f' <span class="task-points">({esc(points)} {t("points_suffix")})</span>'
-
-
-def _number_line(number: int, points: Optional[float]) -> str:
+def _number_line(number: int) -> str:
     # The task number is always a line of its own. The wording of the task is
     # not part of it: that is an ordinary `text` block among the children.
-    return div("task-header", f'<span class="task-num">{number}.</span>{_points(points)}')
+    return div("task-header", f'<span class="task-num">{number}.</span>')
 
 
-def _label_line(label: Optional[str], points: Optional[float]) -> str:
-    label_html = f'<span class="subtask-label">{esc(label)})</span>' if label else ""
-    points_html = _points(points)
-    if not label_html and not points_html:
+def _label_line(label: Optional[str]) -> str:
+    if not label:
         return ""
-    return div("task-header", label_html + points_html)
+    return div("task-header", f'<span class="subtask-label">{esc(label)})</span>')
 
 
 def render_header(doc: DocumentSpec) -> str:

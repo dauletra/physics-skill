@@ -1,7 +1,6 @@
 {
   "type": "task",
   "id": "task-01",
-  "points": 3,
   "blocks": [
     {
       "type": "text",

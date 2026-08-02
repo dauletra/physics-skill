@@ -23,7 +23,6 @@ STRINGS = {
     "choice_multiple_hint": "Отметьте все подходящие варианты.",
     "true_label": "Верно",
     "false_label": "Неверно",
-    "points_suffix": "б.",
     "default_title": "Документ",
 }
 

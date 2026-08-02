@@ -21,7 +21,7 @@ from physics_svg.document.blocks import DOC_ROW_CHILD, TASK_BLOCK
 from physics_svg.document.components import TextSpec
 from physics_svg.document.questions import is_question
 from physics_svg.document.strings import LETTERS
-from physics_svg.schema import Invalid, Number, field, spec
+from physics_svg.schema import Invalid, field, spec
 
 #: More than four columns on an A4 page leaves nothing but hyphenation.
 MAX_COLUMNS = 4
@@ -72,7 +72,6 @@ class PartSpec:
     blocks: list[TASK_BLOCK] = field(min_items=1)
     id: Optional[str] = None
     label: Optional[str] = field(default=None, doc="Явная буква; иначе выдаётся по порядку")
-    points: Optional[Number] = field(default=None, gt=0, doc="Баллы за подзадание")
 
     def check(self) -> None:
         if self.label is not None and not (len(self.label) == 1 and self.label in LETTERS):
@@ -104,7 +103,6 @@ class TaskSpec:
     type: Literal["task"]
     blocks: list[TASK_BLOCK] = field(min_items=1)
     id: Optional[str] = None
-    points: Optional[Number] = field(default=None, gt=0, doc="Баллы за задание")
 
     def check(self) -> None:
         flat = list(iter_flat(self.blocks))

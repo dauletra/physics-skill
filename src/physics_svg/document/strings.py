@@ -11,10 +11,6 @@ label the same in the body of a task and in the answers section.
 from __future__ import annotations
 
 STRINGS = {
-    "school_class": "Школа/класс:",
-    "date": "Дата:",
-    "full_name": "Фамилия Имя:",
-    "grade_suffix": "класс",
     "answer_label": "Ответ:",
     "answers_title": "Ответы",
     "explanation_label": "Пояснение:",

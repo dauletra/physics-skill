@@ -71,6 +71,16 @@ def blank(width_px: int = 150) -> str:
     return f'<span class="answer-line" style="min-width:{width_px}px;"></span>'
 
 
+def inline_blank(width_ch: int) -> str:
+    """A ruled space inside a line of text, as wide as it was typed.
+
+    Ruling the paper, not asking a question: it carries no answer and never
+    reaches the answers section. The width comes from the author's own run of
+    underscores, so it is an inline style — the stylesheet cannot know it.
+    """
+    return f'<span class="blank" style="width:{width_ch}ch;"></span>'
+
+
 def blank_cell() -> str:
     """A gap inside a table — the same visual language as a gap in text."""
     return '<span class="fill-blank"></span>'

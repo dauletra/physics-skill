@@ -1,7 +1,8 @@
 """The document manifest — `document.json`.
 
-Title, an optional questionnaire header and the order of the top-level
-blocks. The blocks themselves live one per file in `blocks/<id>.json`, so a
+The title of the page and the order of the top-level blocks, and nothing
+else: everything that shows on the sheet is a block, the questionnaire header
+included. The blocks themselves live one per file in `blocks/<id>.json`, so a
 targeted edit touches one small file instead of the whole document.
 """
 
@@ -14,27 +15,13 @@ from physics_svg.schema import Invalid, field, parse, spec
 
 
 @spec
-class HeaderSpec:
-    """Анкета-шапка: только раздаточной работе на несколько заданий.
-
-    Пустые поля просто не печатаются — «Школа/класс … Дата …» собирается
-    только из заполненного.
-    """
-
-    school: str = ""
-    date: str = ""
-    subject: str = field(default="", doc="Предмет — в подзаголовок под названием")
-    grade: str = field(default="", doc="Класс — в подзаголовок, с суффиксом «класс»")
-    instructions: Optional[str] = field(default=None, doc="Строка-инструкция под шапкой")
-
-
-@spec
 class DocumentSpec:
     """Манифест документа."""
 
-    title: str = field(default="", doc="Название документа; одиночному заданию не нужно")
-    header: Optional[HeaderSpec] = field(
-        default=None, doc="Анкета-шапка: только раздаточной работе на несколько заданий"
+    title: str = field(
+        default="",
+        doc="Заголовок вкладки браузера; на листе название печатает блок "
+        "'heading' с level 1",
     )
     order: Optional[list[str]] = field(
         default=None, doc="Порядок блоков: имена файлов из blocks/ без расширения"

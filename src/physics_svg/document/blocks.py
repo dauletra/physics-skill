@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 from physics_svg.document.components import (
     AnswerLineSpec,
+    DividerSpec,
     HeadingSpec,
     ListSpec,
     TableSpec,
@@ -25,7 +26,7 @@ from physics_svg.schema import Deferred
 from physics_svg.visuals import load_all as load_visuals
 
 #: Document-only components — the illustrations join them from the registry.
-TEXT_COMPONENTS = (TextSpec, TableSpec, ListSpec, AnswerLineSpec)
+TEXT_COMPONENTS = (TextSpec, TableSpec, ListSpec, AnswerLineSpec, DividerSpec)
 
 
 def component_models() -> tuple[type, ...]:

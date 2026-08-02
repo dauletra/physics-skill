@@ -37,6 +37,16 @@ class FillTextSpec:
 
     def check(self) -> None:
         placeholders = set(BLANK_RE.findall(self.template))
+        # `_` is a word character, so a long run of underscores would otherwise
+        # parse as a gap named `_` — and the author meant a ruled space, which
+        # is a `text` block's business.
+        underscore_only = sorted(name for name in placeholders if not name.strip("_"))
+        if underscore_only:
+            raise Invalid(
+                "имя пропуска не может состоять из подчёркиваний; место для записи "
+                "без ответа — подчёркивания в блоке 'text'",
+                field="template",
+            )
         if not placeholders:
             # A template with no gaps is not a question: the body prints plain
             # text and the answer line comes out empty. That is a `text` block.

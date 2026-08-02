@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 
 from physics_svg.document import parse_block, part_labels
+from physics_svg.document.components import render_heading, render_text
 from physics_svg.document.containers import PartSpec
 from physics_svg.schema import SchemaError
 
@@ -205,5 +206,37 @@ class TestTopLevel:
 
     def test_components_and_headings_are_top_level_blocks(self) -> None:
         for block in (TEXT, {"type": "heading", "text": "Раздел"},
+                      {"type": "divider"},
                       {"type": "paper", "ruling": "lines", "rows": 3}):
             assert parse_block(block, "b") is not None
+
+
+class TestSheetFurniture:
+    """The header is blocks, so everything it needs is a block's business."""
+
+    def test_a_run_of_underscores_becomes_a_ruled_space(self) -> None:
+        html = render_text(parse_block({"type": "text", "body": "Дата: ______"}, "b"))
+        assert 'class="blank" style="width:6ch;"' in html
+        assert "_" not in html
+
+    def test_two_underscores_are_just_text(self) -> None:
+        html = render_text(parse_block({"type": "text", "body": "a__b"}, "b"))
+        assert "blank" not in html and "a__b" in html
+
+    def test_a_named_gap_belongs_to_a_question(self) -> None:
+        rejects({"type": "text", "body": "Скорость ___v___ постоянна."}, "только в вопросе")
+
+    def test_a_gap_named_with_underscores(self) -> None:
+        # `_` is a word character: without the guard this parses as a gap
+        # named `_` instead of the ruled space the author drew.
+        rejects(
+            {"type": "task", "blocks": [TEXT, {"type": "fill_text",
+             "template": "Дата: _________", "blanks": {"_": "1"}}]},
+            "не может состоять из подчёркиваний",
+        )
+
+    def test_two_heading_levels(self) -> None:
+        for level in (1, 2):
+            block = parse_block({"type": "heading", "text": "Т", "level": level}, "b")
+            assert f"level-{level}" in render_heading(block)
+        rejects({"type": "heading", "text": "Т", "level": 3}, "level")

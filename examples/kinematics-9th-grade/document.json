@@ -1,11 +1,10 @@
 {
   "title": "Кинематика: равномерное и равноускоренное движение",
-  "header": {
-    "subject": "Физика",
-    "grade": "9",
-    "instructions": "Внимательно прочитайте условие каждой задачи. Формулы и промежуточные вычисления записывайте на месте для решения."
-  },
   "order": [
+    "sheet-head",
+    "sheet-title",
+    "sheet-subtitle",
+    "sheet-rule",
     "theory-heading",
     "theory-formulas",
     "task-01",

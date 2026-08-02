@@ -47,17 +47,20 @@ body {
     margin: 0 auto;
     padding: 24px 32px;
 }
-.sheet-header { border-bottom: 1.5px solid #000; padding-bottom: 15px; margin-bottom: 23px; }
-.meta-line { font-size: 11pt; margin-bottom: 11px; }
-.meta-line .blank {
-    display: inline-block; min-width: 105px; border-bottom: 1px solid #000; margin: 0 8px;
+/* A ruled space inside a line of text: the author types underscores, the
+   renderer prints a line to write on. `vertical-align` keeps the rule on the
+   text's own baseline — an empty inline-block would otherwise sit on its own. */
+.blank {
+    display: inline-block; border-bottom: 1px solid #000;
+    margin: 0 4px; vertical-align: baseline;
 }
-.sheet-title { font-size: 16pt; font-weight: bold; margin: 0 0 4px 0; }
-.sheet-subtitle { font-size: 10.5pt; color: #333; margin: 0 0 11px 0; }
-.sheet-instructions { font-style: italic; font-size: 11pt; margin: 8px 0 0 0; }
-/* Section subheading (`heading`). Inside a task there are no headings — the
-   hierarchy there is drawn by the task number and the subtask letters. */
-.doc-heading { font-size: 13.5pt; font-weight: bold; margin: 20px 0 8px 0; }
+/* Two heading levels and no more: the name of the sheet and the name of a
+   section. Inside a task there are no headings at all — the hierarchy there is
+   drawn by the task number and the subtask letters. */
+.doc-heading { font-weight: bold; }
+.doc-heading.level-1 { font-size: 16pt; margin: 0 0 11px 0; }
+.doc-heading.level-2 { font-size: 13.5pt; margin: 20px 0 8px 0; }
+.doc-divider { border: none; border-top: 1.5px solid #000; margin: 15px 0 23px 0; }
 /* The number stands beside the task, not on top of its first block: a task is
    a rectangle in the margin's gutter, and its wording, picture and ruling are
    equally "task 3". The gutter is as wide as the number itself — a sheet with

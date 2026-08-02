@@ -26,7 +26,6 @@ from physics_svg.document.containers import (
 )
 from physics_svg.document.manifest import (
     DocumentSpec,
-    HeaderSpec,
     parse_block,
     parse_document,
 )
@@ -36,7 +35,6 @@ from physics_svg.document.workspace import Workspace, WorkspaceError, load_works
 __all__ = [
     "DocRowSpec",
     "DocumentSpec",
-    "HeaderSpec",
     "PartSpec",
     "RowSpec",
     "TaskSpec",

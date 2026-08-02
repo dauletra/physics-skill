@@ -19,11 +19,13 @@ from physics_svg.document.answers import MaybeAnswer, Rows
 from physics_svg.document.assets import BASE_CSS, KATEX_HEAD
 from physics_svg.document.components import (
     AnswerLineSpec,
+    DividerSpec,
     HeadingSpec,
     ListSpec,
     TableSpec,
     TextSpec,
     render_answer_line,
+    render_divider,
     render_heading,
     render_list,
     render_table,
@@ -50,6 +52,7 @@ _COMPONENT_RENDERERS: dict[type, Callable[[Any], str]] = {
     ListSpec: render_list,
     AnswerLineSpec: render_answer_line,
     HeadingSpec: render_heading,
+    DividerSpec: render_divider,
 }
 
 
@@ -203,38 +206,6 @@ def _label_line(label: Optional[str]) -> str:
     return f'<span class="subtask-label">{esc(label)})</span>'
 
 
-def render_header(doc: DocumentSpec) -> str:
-    """Title always (if set); the questionnaire line, subtitle and
-    instructions only when the manifest carries a `header`."""
-    header = doc.header
-    if not doc.title and header is None:
-        return ""
-    parts = ['<div class="sheet-header">']
-    if header is not None:
-        parts.append(
-            f'<div class="meta-line">{t("school_class")} '
-            f'<span class="blank">{esc(header.school)}</span>'
-            f' {t("date")} <span class="blank">{esc(header.date)}</span>'
-            f' {t("full_name")} <span class="blank" style="min-width:225px;"></span></div>'
-        )
-    if doc.title:
-        parts.append(div("sheet-title", esc(doc.title)))
-    if header is not None:
-        # Built only from what is filled in: empty subject/grade leave no
-        # dangling separator and no stray "класс".
-        bits = []
-        if header.subject:
-            bits.append(esc(header.subject))
-        if header.grade:
-            bits.append(f'{esc(header.grade)} {t("grade_suffix")}')
-        if bits:
-            parts.append(div("sheet-subtitle", " &middot; ".join(bits)))
-        if header.instructions:
-            parts.append(div("sheet-instructions", esc(header.instructions)))
-    parts.append("</div>")
-    return "".join(parts)
-
-
 def render_source(source: dict[str, Any]) -> str:
     """The draft embedded in the page: the finished file *is* the draft, and
     a new session only has to load it back.
@@ -290,8 +261,7 @@ def build_document(
     """
     renderer = Renderer()
     numbered = _numbered(blocks)
-    body = [render_header(doc)]
-    body += [renderer.doc_block(block, number) for block, number in numbered]
+    body = [renderer.doc_block(block, number) for block, number in numbered]
     if with_answers:
         body.append(
             renderer.answers(

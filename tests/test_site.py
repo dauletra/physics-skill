@@ -18,6 +18,7 @@ sys.path.insert(0, str(REPO / "tools"))
 
 import build_site  # noqa: E402
 from physics_svg.document.assets import BASE_CSS  # noqa: E402
+from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 
 RULE = re.compile(r"([^{}]+)\{([^}]*)\}", re.S)
 
@@ -25,6 +26,25 @@ RULE = re.compile(r"([^{}]+)\{([^}]*)\}", re.S)
 def rules() -> list[tuple[str, str]]:
     scoped = build_site._scoped_css()
     return [(m.group(1).strip(), m.group(2).strip()) for m in RULE.finditer(scoped)]
+
+
+class TestGalleryCards:
+    """A card that arranges its own pictures has to arrange all of them.
+
+    Otherwise the page silently splits in two: a tour through cases, and a
+    tail of unexplained examples that the author never noticed appearing.
+    """
+
+    def test_placed_specs_exist_and_cover_the_type(self) -> None:
+        for entry in load_visuals().values():
+            card = entry.doc("card.md").read_text(encoding="utf-8")
+            placed = [match.group(1).strip() for match in build_site.SPEC_FENCE.finditer(card)]
+            if not placed:
+                continue  # a plain card: the page lists the specs itself
+            assert sorted(placed) == sorted(path.stem for path in entry.specs), (
+                f"{entry.tag}/card.md расставляет {sorted(placed)}, "
+                f"а спеки — {sorted(path.stem for path in entry.specs)}"
+            )
 
 
 class TestScopedStylesheet:

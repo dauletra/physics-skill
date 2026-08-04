@@ -1,0 +1,18 @@
+{
+  "type": "graph",
+  "x_label": "t, с",
+  "y_label": "υ, м/с",
+  "x_range": [
+    0,
+    10
+  ],
+  "y_range": [
+    0,
+    50
+  ],
+  "x_step": 1,
+  "x_label_step": 2,
+  "y_step": 5,
+  "y_label_step": 10,
+  "grid": "fine"
+}

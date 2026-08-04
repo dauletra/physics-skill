@@ -30,7 +30,7 @@ from physics_svg.document import build_document, parse_block, parse_document  # 
 from physics_svg.document.assets import BASE_CSS  # noqa: E402
 from physics_svg.document.questions import QuestionType  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
-from physics_svg.visuals import build_svg, parse_visual  # noqa: E402
+from physics_svg.visuals import VisualType, build_svg, parse_visual  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 
 DOCS = REPO / "docs"
@@ -43,6 +43,11 @@ EXAMPLE = REPO / "examples" / "kinematics-9th-grade"
 PREVIEW_CLASS = "doc-preview"
 
 _RULE = re.compile(r"([^{}]+)\{([^}]*)\}", re.S)
+
+#: How a gallery card pins a picture into its text: a fenced block naming an
+#: example spec by file stem. The same convention as the question references,
+#: where a fenced block is the machine-readable part of a human page.
+SPEC_FENCE = re.compile(r"^```spec\n(.+?)\n```[ \t]*$", re.M)
 
 
 def main() -> None:
@@ -105,24 +110,51 @@ def _write_example() -> None:
 def _write_gallery() -> list[str]:
     pages = []
     for entry in load_visuals().values():
-        parts = [entry.doc("card.md").read_text(encoding="utf-8").rstrip(), ""]
-        for spec_path in entry.specs:
-            raw = json.loads(spec_path.read_text(encoding="utf-8"))
-            model = parse_visual(raw, spec_path.name)
-            name = f"{entry.tag}-{spec_path.stem}.svg"
-            (DOCS / "assets" / name).write_text(
-                build_svg(model, scope=spec_path.stem, standalone=True), encoding="utf-8"
-            )
-            parts.append(
-                f"### {spec_path.stem}\n\n"
-                f"![{spec_path.stem}](../assets/{name})\n\n"
-                f'??? note "Как это записано"\n\n'
-                f"    ```json\n{_indent(raw)}\n    ```\n"
-            )
-        (DOCS / "gallery" / f"{entry.tag}.md").write_text("\n".join(parts), encoding="utf-8")
+        (DOCS / "gallery" / f"{entry.tag}.md").write_text(_gallery_page(entry), encoding="utf-8")
         pages.append(entry.tag)
         print(f"  gallery/{entry.tag}.md ({len(entry.specs)} шт.)")
     return pages
+
+
+def _gallery_page(entry: VisualType) -> str:
+    """The teacher's card, with each spec drawn where the card asks for it.
+
+    A card may place its own pictures — `SPEC_FENCE` marks the spot — and then
+    the page is a tour through cases instead of a list of files. That is worth
+    the parsing for a type used as often as `graph`; a card that places
+    nothing keeps the plain listing, and one that places some of them still
+    shows the rest, so a spec cannot go missing from the site.
+    """
+    card = entry.doc("card.md").read_text(encoding="utf-8").rstrip()
+    drawn = {path.stem: _spec_block(entry, path) for path in entry.specs}
+    parts: list[str] = []
+    cursor = 0
+    for match in SPEC_FENCE.finditer(card):
+        stem = match.group(1).strip()
+        if stem not in drawn:
+            raise SystemExit(
+                f"{entry.tag}/card.md: спеки '{stem}' нет; есть {', '.join(sorted(drawn))}"
+            )
+        parts += [card[cursor : match.start()], drawn.pop(stem)]
+        cursor = match.end()
+    parts.append(card[cursor:])
+    parts += [f"\n### {stem}\n\n{block}" for stem, block in drawn.items()]
+    return "\n".join(parts)
+
+
+def _spec_block(entry: VisualType, spec_path: Path) -> str:
+    """One rendered example: the picture, and the JSON behind it folded away."""
+    raw = json.loads(spec_path.read_text(encoding="utf-8"))
+    model = parse_visual(raw, spec_path.name)
+    name = f"{entry.tag}-{spec_path.stem}.svg"
+    (DOCS / "assets" / name).write_text(
+        build_svg(model, scope=spec_path.stem, standalone=True), encoding="utf-8"
+    )
+    return (
+        f"![{spec_path.stem}](../assets/{name})\n\n"
+        f'??? note "Как это записано"\n\n'
+        f"    ```json\n{_indent(raw)}\n    ```\n"
+    )
 
 
 def _indent(raw: object) -> str:

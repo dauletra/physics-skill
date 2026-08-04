@@ -29,11 +29,12 @@ PLOT_HEIGHT = 92.0
 
 #: Closest two marks may sit and still read as two, in user units: ticks are
 #: short strokes and tolerate crowding, numbers do not. On X the numbers
-#: stand side by side and need room for their digits; on Y they only have to
-#: clear each other's line.
+#: stand side by side and need room for their digits; on Y they need white
+#: between the lines — a gap of one glyph height means they touch, so the
+#: floor is a third of a line more than that.
 MIN_TICK_GAP = 2.0
 MIN_LABEL_GAP_X = 14.0
-MIN_LABEL_GAP_Y = 9.0
+MIN_LABEL_GAP_Y = 12.0
 
 #: Tolerance for "is this value a whole multiple of that one" on data that
 #: arrived as JSON floats.

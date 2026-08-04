@@ -1,0 +1,32 @@
+{
+  "type": "graph",
+  "x_label": "T, К",
+  "y_label": "p, кПа",
+  "x_range": [
+    250,
+    400
+  ],
+  "y_range": [
+    80,
+    160
+  ],
+  "x_step": 10,
+  "x_label_step": 50,
+  "y_step": 5,
+  "y_label_step": 20,
+  "grid": "fine",
+  "series": [
+    {
+      "points": [
+        [
+          250,
+          100
+        ],
+        [
+          400,
+          160
+        ]
+      ]
+    }
+  ]
+}

@@ -20,6 +20,7 @@ is pasted.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Callable, Sequence
 
 from physics_svg.draw import (
@@ -54,8 +55,6 @@ from physics_svg.elements import (
     ticks_at,
 )
 from physics_svg.visuals.graph.model import (
-    MIN_LABEL_GAP_X,
-    MIN_LABEL_GAP_Y,
     PLOT_HEIGHT,
     PLOT_WIDTH,
     GraphSpec,
@@ -93,11 +92,14 @@ _AXIS_HEAD = 5.5
 #: Gap between the tip of an axis and the quantity named after it.
 _CAPTION_GAP = 3.0
 
-#: Densest numbering the renderer will choose on its own when the author pins
-#: the division but not the labels. The limit is legibility, the same one the
-#: model validates a pinned label step against.
-_MAX_LABELS_X = int(PLOT_WIDTH // MIN_LABEL_GAP_X) + 1
-_MAX_LABELS_Y = int(PLOT_HEIGHT // MIN_LABEL_GAP_Y) + 1
+#: How many numbers the renderer prints along an axis when nobody pinned the
+#: label step. Not the same as how finely the axis is divided: divisions carry
+#: ticks, and a tick without a number is normal — it is what a student counts
+#: cells by. The two budgets differ because numbers stack up the y axis with
+#: only their own line height between them, while along the x axis they stand
+#: apart; nine of them read comfortably across 174 units and crowd down 92.
+_AUTO_LABELS_X = 9
+_AUTO_LABELS_Y = 7
 
 #: Marker shapes cycle per series: a scatter plot distinguishes series by
 #: marker, not by line, because there is no line to dash.
@@ -106,6 +108,11 @@ MARKER_SHAPES = ("circle", "cross", "triangle")
 _SERIES_LINE = Style(stroke=BLACK, width=2.0, fill="none")
 _BAR = Style(stroke=BLACK, width=1.3, fill=WHITE)
 _LABEL = Style(fill=BLACK)
+
+#: A copy of a number drawn underneath it in white, thickened into a halo:
+#: the glyphs clear whatever they are printed over. On white paper behind
+#: nothing it is invisible, so every number carries one.
+_HALO = Style(fill=WHITE, stroke=WHITE, width=2.4)
 
 
 def render(model: GraphSpec, canvas: Canvas) -> Layout:
@@ -118,8 +125,8 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
     def sy(y: float) -> float:
         return PLOT_HEIGHT - (y - y0) / (y1 - y0) * PLOT_HEIGHT
 
-    x_ticks, x_fine = axis_divisions(x0, x1, model.x_step, model.x_label_step, _MAX_LABELS_X)
-    y_ticks, y_fine = axis_divisions(y0, y1, model.y_step, model.y_label_step, _MAX_LABELS_Y)
+    x_ticks, x_fine = axis_divisions(x0, x1, model.x_step, model.x_label_step, _AUTO_LABELS_X)
+    y_ticks, y_fine = axis_divisions(y0, y1, model.y_step, model.y_label_step, _AUTO_LABELS_Y)
 
     if model.grid != "none":
         x_minor, x_major = _grid_values(x_ticks, x_fine, model.grid)
@@ -134,11 +141,29 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
         for y in y_major:
             canvas.add(Line(Pt(0, sy(y)), Pt(PLOT_WIDTH, sy(y)), GRID))
 
-    canvas.extend(_axes(model))
-    canvas.extend(_ticks_and_numbers(x_ticks, y_ticks))
+    # An axis stands at the other one's zero when the range crosses it, and at
+    # the edge of the plot otherwise. A range that starts at zero — nearly
+    # every graph — is the same picture either way; a range that spans zero
+    # becomes a coordinate plane instead of a framed chart, which is what
+    # F(x) = -kx has to be drawn on.
+    crossing = Pt(0 if x0 < 0 < x1 else x0, 0 if y0 < 0 < y1 else y0)
+    corner = Pt(sx(crossing.x), sy(crossing.y))
+
+    canvas.extend(_axes(model, corner))
+    # Where the axes meet at the origin, both would print a zero of their own.
+    # It is one point and it gets one number, from the y axis.
+    marks = _ticks_and_numbers(x_ticks, y_ticks, corner, shared_zero=crossing == Pt(0, 0))
+    canvas.extend([node for node in marks if not isinstance(node, Text)])
 
     for index, series in enumerate(model.series):
         canvas.extend(_series_nodes(model, series, index, sx, sy))
+
+    # The numbers go on top of the data, each on a white halo. On a coordinate
+    # plane they stand inside the field — a line through the origin would
+    # strike through them, and a value struck through is a value not read.
+    for node in marks:
+        if isinstance(node, Text):
+            canvas.add(replace(node, style=_HALO), node)
 
     if any(series.label for series in model.series):
         canvas.extend(_legend(model, PLOT_HEIGHT + 26))
@@ -156,28 +181,31 @@ def axis_divisions(
 
     Three cases, and the author picks how far into them to go:
 
-    * nothing pinned — the renderer chooses a round division and numbers all
-      of them, as it always has;
-    * only the division pinned — the numbers are thinned off it, densest that
-      still reads;
+    * nothing pinned — the renderer chooses a round division and numbers as
+      many of them as `max_labels` allows;
+    * only the division pinned — same thinning, off the author's division;
     * both pinned — the author is obeyed, the model having checked that the
       numbers land on divisions.
+
+    Dividing and numbering are separate questions on purpose. Nine divisions
+    down the y axis are cells to count; nine numbers down it are a column of
+    digits with no air between them. An unnumbered division keeps its tick.
 
     The second value is the extra sub-division a fine grid needs when every
     division is numbered: with no unnumbered division to rule, "a line inside
     the cell" has to be invented, and graph paper invents it by fifths.
     """
-    if step is not None:
-        values = division_values(low, high, step)
-        every = (
-            round(label_step / step)
-            if label_step is not None
-            else label_every(step, len(values) - 1, max_labels)
-        )
+    if step is None and label_step is not None:
+        # Numbers pinned, divisions not: then the numbers are the divisions.
+        values, every = division_values(low, high, label_step), 1
     else:
-        # Without a division of their own, the numbers are the divisions.
-        values = division_values(low, high, label_step) if label_step else nice_ticks(low, high)
-        every = 1
+        values = division_values(low, high, step) if step is not None else nice_ticks(low, high)
+        division = values[1] - values[0] if len(values) > 1 else high - low
+        every = (
+            round(label_step / division)
+            if label_step is not None
+            else label_every(division, len(values) - 1, max_labels)
+        )
     ticks = ticks_at(values, low, high, label_every=every)
     return ticks, subdivisions(values, low, high) if every == 1 else []
 
@@ -197,23 +225,27 @@ def _grid_values(
     return [tick.value for tick in ticks if not tick.labeled] + list(fine), major
 
 
-def _axes(model: GraphSpec) -> list[Node]:
+def _axes(model: GraphSpec, corner: Pt) -> list[Node]:
     """Both axes, each running past the last division into an arrow, and the
     quantity each measures named in line with its own numbers.
+
+    `corner` is where the two cross — the bottom left of the plot, or the
+    origin when the ranges span it. Each axis still starts at the edge of the
+    plot: an axis that began at the crossing would leave the negative half of
+    the plane unruled.
 
     The captions used to stand inside the plot, where a bar or a rising line
     ran straight through them. Outside they extend the frame instead: the row
     of numbers under the x axis continues into «t, с», the column beside the y
-    axis into «υ, м/с», and the plot area is left to the data.
+    axis into «υ, м/с».
     """
-    origin = Pt(0, PLOT_HEIGHT)
-    x_tip = Pt(PLOT_WIDTH + _OVERSHOOT_X, PLOT_HEIGHT)
-    y_tip = Pt(0, -_OVERSHOOT_Y)
+    x_tip = Pt(PLOT_WIDTH + _OVERSHOOT_X, corner.y)
+    y_tip = Pt(corner.x, -_OVERSHOOT_Y)
     return [
-        *arrow(origin, x_tip, HEAVY, _AXIS_HEAD),
-        *arrow(origin, y_tip, HEAVY, _AXIS_HEAD),
+        *arrow(Pt(0, corner.y), x_tip, HEAVY, _AXIS_HEAD),
+        *arrow(Pt(corner.x, PLOT_HEIGHT), y_tip, HEAVY, _AXIS_HEAD),
         Text(
-            Pt(x_tip.x + _CAPTION_GAP, PLOT_HEIGHT + _LABEL_DISTANCE_X),
+            Pt(x_tip.x + _CAPTION_GAP, corner.y + _LABEL_DISTANCE_X),
             model.x_label,
             _AXIS_LABEL_SIZE,
             "start",
@@ -221,7 +253,7 @@ def _axes(model: GraphSpec) -> list[Node]:
         ),
         Text(
             # Level with the tip, like a number is level with its tick.
-            Pt(-_LABEL_DISTANCE_Y, y_tip.y + _LABEL_SHIFT_Y),
+            Pt(corner.x - _LABEL_DISTANCE_Y, y_tip.y + _LABEL_SHIFT_Y),
             model.y_label,
             _AXIS_LABEL_SIZE,
             "end",
@@ -230,16 +262,22 @@ def _axes(model: GraphSpec) -> list[Node]:
     ]
 
 
-def _ticks_and_numbers(x_ticks: Sequence[Tick], y_ticks: Sequence[Tick]) -> list[Node]:
+def _ticks_and_numbers(
+    x_ticks: Sequence[Tick], y_ticks: Sequence[Tick], corner: Pt, *, shared_zero: bool
+) -> list[Node]:
     """Ticks on both axes with their numbers, drawn outwards from the corner.
 
-    Both axes start at the origin so that a tick's fraction runs the way its
-    values do: rightwards on X, upwards on Y.
+    Both axes start at the edge the values start from, so that a tick's
+    fraction runs the way its values do: rightwards on X, upwards on Y.
+
+    `shared_zero` drops the x axis' zero: its tick would be drawn along the y
+    axis, invisible, and its number would repeat the one the y axis prints a
+    few units away.
     """
-    origin = Pt(0, PLOT_HEIGHT)
     nodes = scale_marks(
-        LinearAxis(origin, Pt(PLOT_WIDTH, PLOT_HEIGHT), Pt(0, 1)),
+        LinearAxis(Pt(0, corner.y), Pt(PLOT_WIDTH, corner.y), Pt(0, 1)),
         x_ticks,
+        skip=[i for i, tick in enumerate(x_ticks) if shared_zero and tick.value == 0],
         major_length=_TICK_MAJOR,
         minor_length=_TICK_MINOR,
         label_distance=_LABEL_DISTANCE_X,
@@ -248,7 +286,7 @@ def _ticks_and_numbers(x_ticks: Sequence[Tick], y_ticks: Sequence[Tick]) -> list
     )
     nodes.extend(
         scale_marks(
-            LinearAxis(origin, Pt(0, 0), Pt(-1, 0)),
+            LinearAxis(Pt(corner.x, PLOT_HEIGHT), Pt(corner.x, 0), Pt(-1, 0)),
             y_ticks,
             major_length=_TICK_MAJOR,
             minor_length=_TICK_MINOR,

@@ -8,10 +8,22 @@ so "ticks every 5, numbers every 10" has to come out exactly that way.
 
 from __future__ import annotations
 
-from physics_svg.draw import Line, Polyline, Text, num
+from library import EXAMPLES
+from physics_svg.draw import Line, Polyline, Pt, Text, num
 from physics_svg.visuals import build_svg, parse_visual
-from physics_svg.visuals.graph.model import PLOT_WIDTH, GraphSpec
-from physics_svg.visuals.graph.render import _axes, axis_divisions
+from physics_svg.visuals.graph.model import (
+    MIN_LABEL_GAP_Y,
+    PLOT_HEIGHT,
+    PLOT_WIDTH,
+    GraphSpec,
+)
+from physics_svg.visuals.graph.render import (
+    _AUTO_LABELS_X,
+    _AUTO_LABELS_Y,
+    _LABEL_DISTANCE_X,
+    _axes,
+    axis_divisions,
+)
 
 BASE = {
     "type": "graph",
@@ -33,12 +45,26 @@ def values(ticks: object, *, labeled: bool) -> list[float]:
 
 
 class TestAxisDivisions:
-    def test_nothing_pinned_numbers_every_division(self) -> None:
+    def test_nothing_pinned_numbers_what_fits(self) -> None:
         ticks, fine = axis_divisions(0, 40, None, None, max_labels=13)
         assert values(ticks, labeled=True) == [0, 5, 10, 15, 20, 25, 30, 35, 40]
         assert values(ticks, labeled=False) == []
         # With no unnumbered division to rule, a fine grid needs invented ones.
         assert fine
+
+    def test_a_tight_budget_thins_the_numbers_and_keeps_the_divisions(self) -> None:
+        """The same range, numbered as sparsely as the y axis needs it.
+
+        The divisions do not move: an unnumbered one keeps its tick, and a
+        student counts cells by them.
+        """
+        ticks, fine = axis_divisions(0, 40, None, None, max_labels=7)
+        assert values(ticks, labeled=True) == [0, 10, 20, 30, 40]
+        assert values(ticks, labeled=False) == [5, 15, 25, 35]
+        assert [tick.value for tick in ticks] == [0, 5, 10, 15, 20, 25, 30, 35, 40]
+        # There are unnumbered divisions now, so a fine grid rules those
+        # instead of inventing a finer step.
+        assert fine == []
 
     def test_both_pinned_are_obeyed(self) -> None:
         ticks, fine = axis_divisions(0, 40, 5, 10, max_labels=13)
@@ -63,11 +89,17 @@ class TestAxisDivisions:
         assert values(ticks, labeled=True)[:2] == [250, 300]
 
 
+CORNER = Pt(0, PLOT_HEIGHT)
+
+#: Both ranges spanning zero: a coordinate plane, not a framed chart.
+QUADRANTS = {"x_range": [-4, 4], "y_range": [-8, 8]}
+
+
 class TestAxes:
     """Everything about an axis lives outside the rectangle the data fills."""
 
     def test_the_quantities_stand_clear_of_the_plot(self) -> None:
-        captions = [node for node in _axes(graph()) if isinstance(node, Text)]
+        captions = [node for node in _axes(graph(), CORNER) if isinstance(node, Text)]
         assert len(captions) == 2
         for caption in captions:
             box = caption.bbox()
@@ -76,7 +108,9 @@ class TestAxes:
             assert box.x0 > PLOT_WIDTH or box.y1 < 0, caption.content
 
     def test_the_quantity_keeps_the_row_of_its_own_numbers(self) -> None:
-        captions = {node.content: node for node in _axes(graph()) if isinstance(node, Text)}
+        captions = {
+            node.content: node for node in _axes(graph(), CORNER) if isinstance(node, Text)
+        }
         x_numbers = build_svg(graph(), scope="t")
         # Same baseline as the numbers under the x axis, same right edge as
         # the column beside the y axis.
@@ -84,13 +118,105 @@ class TestAxes:
         assert f'x="{num(captions["s, м"].at.x)}"' in x_numbers
 
     def test_each_axis_ends_in_an_arrow(self) -> None:
-        heads = [node for node in _axes(graph()) if isinstance(node, Polyline)]
+        heads = [node for node in _axes(graph(), CORNER) if isinstance(node, Polyline)]
         assert len(heads) == 2
 
     def test_each_axis_runs_past_its_last_division(self) -> None:
-        shafts = [node for node in _axes(graph()) if isinstance(node, Line)]
+        shafts = [node for node in _axes(graph(), CORNER) if isinstance(node, Line)]
         assert max(shaft.b.x for shaft in shafts) > PLOT_WIDTH
         assert min(shaft.b.y for shaft in shafts) < 0
+
+
+class TestLabelDensity:
+    """Numbers stack up the y axis and stand apart along the x axis, so the
+    two axes cannot share one budget."""
+
+    def test_the_vertical_budget_is_the_tighter_one(self) -> None:
+        assert _AUTO_LABELS_Y < _AUTO_LABELS_X
+
+    def test_numbers_down_the_y_axis_keep_their_air(self) -> None:
+        """Every case in the library, measured: a number and the next one.
+
+        Half a line of white between them is the point of the budget; the
+        assertion is on the gap, not on a count, so a new spec is covered.
+        """
+        for example in EXAMPLES:
+            if example.type.tag != "graph":
+                continue
+            model = example.model
+            ticks, _ = axis_divisions(
+                *model.y_range, model.y_step, model.y_label_step, _AUTO_LABELS_Y
+            )
+            numbered = sum(1 for tick in ticks if tick.labeled)
+            gap = PLOT_HEIGHT / (numbered - 1)
+            assert gap >= MIN_LABEL_GAP_Y, f"{example.name}: {numbered} подписей, шаг {gap:.1f}"
+
+    def test_the_horizontal_choice_is_untouched(self) -> None:
+        # The x axis was never crowded; these are the counts it has always had.
+        for (low, high), expected in {(0, 6): 7, (0, 10): 6, (250, 650): 9}.items():
+            ticks, _ = axis_divisions(low, high, None, None, _AUTO_LABELS_X)
+            assert sum(1 for tick in ticks if tick.labeled) == expected
+
+
+class TestSharedZero:
+    def test_the_origin_is_numbered_once(self) -> None:
+        svg = build_svg(graph(), scope="t")
+        assert svg.count(">0</text>") == 2  # one number, one white halo under it
+
+    def test_a_corner_that_is_not_the_origin_keeps_both_numbers(self) -> None:
+        svg = build_svg(graph(x_range=[250, 650], y_range=[0, 250]), scope="t")
+        assert ">250</text>" in svg and ">0</text>" in svg
+
+
+class TestNegativeRanges:
+    """A range that spans zero makes a coordinate plane: the axes cross at the
+    origin instead of framing the data from the outside."""
+
+    def test_the_axes_cross_at_the_origin(self) -> None:
+        svg = build_svg(graph(**QUADRANTS), scope="t")
+        # Midway across and midway down: x = 0 and y = 0 sit in the middle of
+        # both ranges, and the heavy lines are drawn there.
+        assert f'x1="{num(PLOT_WIDTH / 2)}" y1="{num(PLOT_HEIGHT)}"' in svg
+        assert f'x1="0" y1="{num(PLOT_HEIGHT / 2)}"' in svg
+
+    def test_the_edges_carry_no_axis(self) -> None:
+        # The old picture drew the x axis along the bottom of the plot, which
+        # for these ranges is the line F = -8 Н, not the abscissa.
+        heavy = _heavy_lines(graph(**QUADRANTS))
+        assert all(line.a.y != PLOT_HEIGHT or line.b.y != PLOT_HEIGHT for line in heavy)
+
+    def test_a_range_starting_at_zero_is_drawn_as_before(self) -> None:
+        heavy = _heavy_lines(graph())
+        assert any(line.a.y == line.b.y == PLOT_HEIGHT for line in heavy)
+        assert any(line.a.x == line.b.x == 0 for line in heavy)
+
+    def test_a_range_that_never_reaches_zero_keeps_its_axes_at_the_edges(self) -> None:
+        # Both scales starting away from zero (250 К, 90 кПа): there is no
+        # origin inside the plot to move the axes to.
+        model = graph(
+            x_range=[250, 400], x_step=10, x_label_step=50,
+            y_range=[90, 160], y_step=5, y_label_step=10,
+        )
+        svg = build_svg(model, scope="t")
+        assert f'x1="0" y1="{num(PLOT_HEIGHT)}" x2="{num(PLOT_WIDTH)}"' in svg
+        # The first number at the corner is the start of the range, not zero.
+        assert ">250</text>" in svg and ">90</text>" in svg
+        assert ">0</text>" not in svg
+
+    def test_the_numbers_follow_their_axis(self) -> None:
+        svg = build_svg(graph(**QUADRANTS), scope="t")
+        # Negative numbers are printed, and the row of x numbers sits under
+        # the axis in the middle, not under the bottom edge of the plot.
+        assert ">-4</text>" in svg and ">-8</text>" in svg
+        assert f'y="{num(PLOT_HEIGHT / 2 + _LABEL_DISTANCE_X)}"' in svg
+
+
+def _heavy_lines(model: GraphSpec) -> list[Line]:
+    corner = Pt(
+        PLOT_WIDTH / 2 if model.x_range[0] < 0 else 0.0,
+        PLOT_HEIGHT / 2 if model.y_range[0] < 0 else PLOT_HEIGHT,
+    )
+    return [node for node in _axes(model, corner) if isinstance(node, Line)]
 
 
 class TestGrid:
@@ -102,7 +228,9 @@ class TestGrid:
 
     def test_a_numbered_tick_is_longer(self) -> None:
         svg = build_svg(graph(x_step=5, x_label_step=10), scope="t")
-        assert svg.count('y2="96"') == 5
+        # Four of the five numbered divisions: the one at the origin is left
+        # to the y axis, which stands on it.
+        assert svg.count('y2="96"') == 4
         assert svg.count('y2="94.5"') == 4
 
     def test_grid_none_rules_nothing(self) -> None:

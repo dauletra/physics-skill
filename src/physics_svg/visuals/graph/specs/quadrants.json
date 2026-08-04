@@ -1,0 +1,32 @@
+{
+  "type": "graph",
+  "x_label": "x, см",
+  "y_label": "F, Н",
+  "x_range": [
+    -4,
+    4
+  ],
+  "y_range": [
+    -8,
+    8
+  ],
+  "x_step": 0.5,
+  "x_label_step": 1,
+  "y_step": 1,
+  "y_label_step": 4,
+  "grid": "fine",
+  "series": [
+    {
+      "points": [
+        [
+          -4,
+          8
+        ],
+        [
+          4,
+          -8
+        ]
+      ]
+    }
+  ]
+}

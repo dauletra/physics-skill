@@ -58,6 +58,36 @@ class TestGraph:
         assert parse_visual(GRAPH).series == []
 
 
+class TestGraphDivisions:
+    """A pinned scale: the author's numbers must land on the axis and stay
+    readable. Nothing is checked while the renderer chooses for itself."""
+
+    def test_step_must_divide_the_range(self) -> None:
+        rejects({**GRAPH, "x_step": 3}, "укладываться в диапазон")
+
+    def test_label_step_must_divide_the_range(self) -> None:
+        rejects({**GRAPH, "y_range": [0, 25], "y_label_step": 10}, "укладываться в диапазон")
+
+    def test_label_step_must_land_on_a_tick(self) -> None:
+        rejects({**GRAPH, "x_step": 2, "x_label_step": 3}, "кратен цене деления")
+
+    def test_ticks_too_dense_to_read(self) -> None:
+        rejects({**GRAPH, "x_step": 0.05}, "засечки сольются")
+
+    def test_labels_too_dense_to_read(self) -> None:
+        rejects({**GRAPH, "y_range": [0, 20], "y_label_step": 1}, "налезут друг на друга")
+
+    def test_pinned_scale_is_kept(self) -> None:
+        model = parse_visual({**GRAPH, "x_range": [0, 40], "x_step": 5, "x_label_step": 10})
+        assert (model.x_step, model.x_label_step) == (5, 10)
+
+    def test_a_step_alone_is_enough(self) -> None:
+        assert parse_visual({**GRAPH, "x_step": 2}).x_label_step is None
+
+    def test_grid_can_be_switched_off(self) -> None:
+        assert parse_visual({**GRAPH, "grid": "none"}).grid == "none"
+
+
 class TestInstrumentScale:
     def test_step_must_divide_the_range(self) -> None:
         rejects({**RULER, "step": 0.3}, "укладываться в шкалу нацело")

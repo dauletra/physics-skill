@@ -26,11 +26,13 @@ from physics_svg.elements.scale import (
     LinearAxis,
     Tick,
     division_count,
+    division_values,
     label_every,
     nice_ticks,
     scale_marks,
     subdivisions,
     tick_layout,
+    ticks_at,
 )
 
 __all__ = [
@@ -48,6 +50,7 @@ __all__ = [
     "angle_mark",
     "arrow",
     "division_count",
+    "division_values",
     "hatch",
     "label_every",
     "label_near",
@@ -57,5 +60,6 @@ __all__ = [
     "signed_angle_span",
     "subdivisions",
     "tick_layout",
+    "ticks_at",
     "vector_sum",
 ]

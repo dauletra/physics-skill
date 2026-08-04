@@ -124,6 +124,32 @@ def label_every(step: float, divisions: int, max_labels: int) -> int:
     return min(fitting, key=rank)
 
 
+def division_values(minimum: float, maximum: float, step: float) -> list[float]:
+    """Every division of `step` counted from `minimum`, the far end included.
+
+    Counted from the start of the scale rather than from round multiples of
+    the step: an author who pins the step means "cells of this size, from
+    where my axis begins".
+    """
+    return [minimum + i * step for i in range(division_count(minimum, maximum, step) + 1)]
+
+
+def ticks_at(
+    values: Sequence[float], low: float, high: float, *, label_every: int = 1
+) -> tuple[Tick, ...]:
+    """Place scale values on the interval [low, high], numbering every k-th.
+
+    Unlike `tick_layout`, the fraction is measured against the interval and
+    not against the ticks themselves: a graph axis carries divisions that
+    need not reach its ends, and each must still land where its value is.
+    """
+    span = high - low
+    return tuple(
+        Tick(value, (value - low) / span, i % label_every == 0)
+        for i, value in enumerate(values)
+    )
+
+
 def tick_layout(
     minimum: float,
     maximum: float,

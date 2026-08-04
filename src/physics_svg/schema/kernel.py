@@ -145,15 +145,20 @@ class Deferred:
         return self.resolve()
 
 
-@dataclass_transform(field_specifiers=(field,))
+@dataclass_transform(field_specifiers=(field,), kw_only_default=True)
 def spec(cls: type[T]) -> type[T]:
     """Turn a class into an immutable, validatable spec.
 
     `dataclass_transform` is what lets a type checker see the generated
     `__init__` — without it every construction of a spec in normal code looks
     like an error.
+
+    Keyword-only, because a spec is a JSON object: nothing about it is
+    positional. It also frees a base spec to carry optional fields — without
+    it, `GraphAxes` gaining a default would make the required `type` of every
+    heir "a non-default argument after a default one".
     """
-    frozen = dataclasses.dataclass(frozen=True)(cls)
+    frozen = dataclasses.dataclass(frozen=True, kw_only=True)(cls)
     setattr(frozen, "__is_spec__", True)
     return frozen
 

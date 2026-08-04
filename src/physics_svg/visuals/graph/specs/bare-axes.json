@@ -1,0 +1,36 @@
+{
+  "type": "graph",
+  "x_label": "t, мин",
+  "y_label": "T, °C",
+  "x_range": [
+    0,
+    12
+  ],
+  "y_range": [
+    0,
+    100
+  ],
+  "x_step": 1,
+  "x_label_step": 3,
+  "y_step": 10,
+  "y_label_step": 20,
+  "grid": "none",
+  "series": [
+    {
+      "points": [
+        [
+          0,
+          20
+        ],
+        [
+          4,
+          100
+        ],
+        [
+          12,
+          100
+        ]
+      ]
+    }
+  ]
+}

@@ -208,6 +208,38 @@ class TestAnswers:
             assert callable(entry.body) and callable(entry.answer)
 
 
+class TestPlotSharesTheGraphPlane:
+    """`plot` renders by building a real `GraphSpec` out of the plane it
+    inherits. A field of that plane it forgets to carry over would go silently
+    dead on plotting questions while still working on illustrations."""
+
+    def test_every_field_of_the_plane_reaches_the_graph(self) -> None:
+        from physics_svg.document.questions.plot import PlotSpec
+        from physics_svg.schema import parse
+        from physics_svg.visuals.graph.model import GraphAxes
+
+        question = parse(
+            PlotSpec,
+            {
+                "type": "plot",
+                "x_label": "t, с",
+                "y_label": "s, м",
+                "x_range": [0, 40],
+                "y_range": [0, 30],
+                "x_step": 5,
+                "x_label_step": 10,
+                "y_step": 5,
+                "y_label_step": 10,
+                "grid": "fine",
+                "answer": [{"points": [[0, 0], [40, 30]]}],
+            },
+            name="plot",
+        )
+        graph = question.as_graph([])
+        for name in spec_meta(GraphAxes).fields:
+            assert getattr(graph, name) == getattr(question, name), name
+
+
 @EACH_KIND
 class TestAnswerShape:
     def test_the_answer_is_a_shape_and_not_markup(self, kind) -> None:

@@ -15,6 +15,7 @@ from physics_svg.elements import (
     ArcAxis,
     LinearAxis,
     division_count,
+    division_values,
     hatch,
     label_every,
     liquid,
@@ -22,6 +23,7 @@ from physics_svg.elements import (
     scale_marks,
     subdivisions,
     tick_layout,
+    ticks_at,
 )
 
 
@@ -135,6 +137,34 @@ class TestContinuousTicks:
 
     def test_subdivisions_of_a_degenerate_grid(self) -> None:
         assert subdivisions([5.0], 0, 10) == []
+
+
+class TestPinnedDivisions:
+    """Divisions an author pinned, as opposed to ones the renderer chose."""
+
+    def test_counted_from_the_start_of_the_scale(self) -> None:
+        assert division_values(0, 40, 5) == [0, 5, 10, 15, 20, 25, 30, 35, 40]
+
+    def test_the_far_end_is_included(self) -> None:
+        assert division_values(250, 650, 100)[-1] == 650
+
+    def test_a_negative_start(self) -> None:
+        assert division_values(-2, 2, 1) == [-2, -1, 0, 1, 2]
+
+    def test_ticks_land_where_their_value_is(self) -> None:
+        ticks = ticks_at([0, 5, 10], 0, 20)
+        assert [tick.fraction for tick in ticks] == [0, 0.25, 0.5]
+
+    def test_values_need_not_reach_the_ends(self) -> None:
+        # A graph axis is numbered inside its own range: 300 on [250, 650]
+        # sits an eighth of the way along, not at the very start.
+        ticks = ticks_at(nice_ticks(250, 650), 250, 650)
+        assert ticks[0].fraction == pytest.approx(0)
+        assert all(0 <= tick.fraction <= 1 for tick in ticks)
+
+    def test_every_kth_value_is_numbered(self) -> None:
+        ticks = ticks_at(division_values(0, 40, 5), 0, 40, label_every=2)
+        assert [tick.value for tick in ticks if tick.labeled] == [0, 10, 20, 30, 40]
 
 
 class TestScaleMarks:

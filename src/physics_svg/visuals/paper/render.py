@@ -6,10 +6,16 @@ repeated for every field on the page. Patterns need element ids, which used
 to be a reason to avoid them — `canvas.define()` scopes ids per block, so
 two fields on one page can no longer collide.
 
+**Only `plain` is framed.** A writing area is ruling, not a box drawn on the
+sheet, so nothing is outlined: lines and dots end where the ruling ends, and
+squares close their own last cell. `plain` is the exception because there the
+border is the whole content — an empty field says how far to draw only by
+being bounded.
+
 Lines and plain fields have no horizontal geometry, so without `cols` they
 stretch to the column width. A stretched field is scaled anisotropically,
-which would make the vertical sides of its frame a different weight from the
-horizontal ones — hence the non-scaling stroke on exactly those rulings.
+which would make the vertical sides of a frame a different weight from the
+horizontal ones — hence the non-scaling stroke on the fluid `plain`.
 """
 
 from __future__ import annotations
@@ -40,9 +46,13 @@ _FRAME_FLUID = Style(stroke=GREY_STRONG, width=1.0, fill="none", non_scaling=Tru
 _WRITING_LINE = Style(
     stroke="#000", width=1.0, dash="1,3", fill="none", non_scaling=True
 )
+#: The weights the squared rulings close themselves with — the line of the
+#: cell itself, so the edge of the field is not heavier than what is inside it.
+_GRID_EDGE = Style(stroke=GREY, width=0.5, fill="none")
+_MM_EDGE = Style(stroke=GREY_STRONG, width=0.8, fill="none")
 
-#: Half a unit of slack: the frame sits on the edge of the field, and its
-#: stroke would be cut in half by the frame of the SVG without it.
+#: Half a unit of slack: the outermost line sits on the edge of the field, and
+#: its stroke would be cut in half by the frame of the SVG without it.
 _PADDING = 0.5
 
 
@@ -67,11 +77,14 @@ def _paint_lines(model: PaperSpec, canvas: Canvas, width: float, height: float) 
     step = STEPS["lines"]
     for i in range(1, round(height / step) + 1):
         canvas.add(Line(Pt(0, step * i), Pt(width, step * i), _WRITING_LINE))
-    canvas.add(_frame(width, height, fluid=model.cols is None))
 
 
 def _paint_plain(model: PaperSpec, canvas: Canvas, width: float, height: float) -> None:
-    """An empty framed field — room for a drawing, a diagram, free writing."""
+    """An empty framed field — room for a drawing, a diagram, free writing.
+
+    The one ruling that keeps its border: with no lines of its own, an empty
+    field says how far the drawing may go only by being bounded.
+    """
     canvas.add(_frame(width, height, fluid=model.cols is None))
 
 
@@ -87,13 +100,13 @@ def _paint_grid(model: PaperSpec, canvas: Canvas, width: float, height: float) -
             'stroke-width="0.5"/></pattern>'
         ),
     )
-    canvas.add(_filled(width, height, pattern), _frame(width, height))
+    canvas.add(_filled(width, height, pattern), *_closing_edges(width, height, _GRID_EDGE))
 
 
 def _paint_dots(model: PaperSpec, canvas: Canvas, width: float, height: float) -> None:
     """Dots at the lattice nodes — the same grid, but not crossing out the
     construction drawn over it. The dot sits at the centre of the pattern
-    cell so the frame does not clip it in half at the edge."""
+    cell, so the lattice ends whole and needs nothing to close it."""
     step = STEPS["dots"]
     half = num(step / 2)
     pattern = canvas.define(
@@ -104,7 +117,7 @@ def _paint_dots(model: PaperSpec, canvas: Canvas, width: float, height: float) -
             f'<circle cx="{half}" cy="{half}" r="0.8" fill="{GREY}"/></pattern>'
         ),
     )
-    canvas.add(_filled(width, height, pattern), _frame(width, height))
+    canvas.add(_filled(width, height, pattern))
 
 
 def _paint_mm(model: PaperSpec, canvas: Canvas, width: float, height: float) -> None:
@@ -135,11 +148,25 @@ def _paint_mm(model: PaperSpec, canvas: Canvas, width: float, height: float) -> 
             'stroke-width="0.8"/></pattern>'
         ),
     )
-    canvas.add(_filled(width, height, pattern), _frame(width, height))
+    canvas.add(_filled(width, height, pattern), *_closing_edges(width, height, _MM_EDGE))
 
 
 def _filled(width: float, height: float, pattern_id: str) -> Node:
     return Rect(Pt(0, 0), width, height, Style(fill=f"url(#{pattern_id})"))
+
+
+def _closing_edges(width: float, height: float, style: Style) -> tuple[Node, Node]:
+    """The last cell of a squared ruling, closed.
+
+    A pattern cell is drawn along its top and left, so the far right and the
+    foot of the field are the two lines no tile ever paints. They are drawn in
+    the weight of the ruling itself: this finishes the squares, it does not
+    put a border around the writing area.
+    """
+    return (
+        Line(Pt(width, 0), Pt(width, height), style),
+        Line(Pt(0, height), Pt(width, height), style),
+    )
 
 
 def _frame(width: float, height: float, fluid: bool = False) -> Node:

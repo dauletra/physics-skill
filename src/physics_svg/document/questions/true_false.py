@@ -7,9 +7,9 @@ from typing import Literal, Optional
 from physics_svg.document.answers import Answer, Inline
 from physics_svg.document.html import list_html, statement_row
 from physics_svg.document.questions.registry import register
-from physics_svg.document.strings import t
+from physics_svg.document.strings import LETTERS, t
 from physics_svg.draw import esc
-from physics_svg.schema import field, spec
+from physics_svg.schema import Invalid, field, spec
 
 
 @spec
@@ -29,6 +29,14 @@ class TrueFalseSpec:
     id: Optional[str] = None
     explanation: Optional[str] = None
 
+    def check(self) -> None:
+        if len(self.statements) > len(LETTERS):
+            raise Invalid(
+                f"не больше {len(LETTERS)} утверждений — они печатаются буквами, "
+                f"получено {len(self.statements)}",
+                field="statements",
+            )
+
 
 def _square() -> str:
     return '<span class="tf-square"></span>'
@@ -44,13 +52,16 @@ def body(model: TrueFalseSpec) -> str:
         )
         for statement in model.statements
     ]
-    return list_html(rows)
+    # Lettered, so a verdict has something to name — and lettered rather than
+    # numbered because a sheet already enumerates with а)/б): subtasks, options.
+    return list_html(rows, marker="letter")
 
 
 def answer(model: TrueFalseSpec) -> Answer:
     # One line: a verdict is two words, and six of them still read as a line.
+    # The same а)/б) actually printed as list markers: one source of letters.
     verdicts = [
-        f"{i + 1} — {t('true_label') if statement.answer else t('false_label')}"
+        f"{LETTERS[i]} — {t('true_label') if statement.answer else t('false_label')}"
         for i, statement in enumerate(model.statements)
     ]
     return Inline(esc(", ".join(verdicts)))

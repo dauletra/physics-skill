@@ -261,6 +261,46 @@ def _answer_of(kind) -> Any:
     return render_answer(next(b for b in task.blocks if is_question(b)))
 
 
+class TestLetteredStatements:
+    """`true_false` prints а)/б)/в) beside its statements and names them by the
+    same letters in the answers section — so it, too, ends where the alphabet
+    does. Not a `Domain`: the student judges the statements, does not pick
+    among them."""
+
+    def test_statements_cannot_outgrow_the_alphabet(self) -> None:
+        with pytest.raises(SchemaError, match="печатаются буквами"):
+            parse_block(
+                {
+                    "type": "task",
+                    "blocks": [
+                        {"type": "text", "body": "Отметьте, верны ли утверждения."},
+                        {
+                            "type": "true_false",
+                            "statements": [
+                                {"text": f"Утверждение {i}", "answer": i % 2 == 0}
+                                for i in range(len(LETTERS) + 1)
+                            ],
+                        },
+                    ],
+                },
+                "t",
+            )
+
+    def test_the_answer_names_the_printed_letters(self) -> None:
+        # The failure this guards: letters on the sheet, numbers in the answers.
+        from physics_svg.document.questions.true_false import StatementSpec, TrueFalseSpec
+
+        model = TrueFalseSpec(
+            type="true_false",
+            statements=[
+                StatementSpec(text="Скорость — вектор", answer=True),
+                StatementSpec(text="Путь бывает отрицательным", answer=False),
+            ],
+        )
+        assert render_answer(model) == Inline("а — Верно, б — Неверно")
+        assert '<span class="list-marker">а)</span>' in render_body(model)
+
+
 class TestDomain:
     """The vocabulary a student chooses from, checked the same way everywhere."""
 

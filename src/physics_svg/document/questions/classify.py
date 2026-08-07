@@ -6,10 +6,10 @@ from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Rows
 from physics_svg.document.domain import Domain
-from physics_svg.document.inline import parse_inline
 from physics_svg.document.layout import Bank, Bullets, Item, Slot, Stack, Statement
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import t
+from physics_svg.inline import parse_inline
 from physics_svg.schema import field, spec
 
 #: The line beside a group name: short, because the answer is one word.

@@ -23,8 +23,8 @@ import pytest
 from physics_svg.document import build_document, build_docx, parse_block, parse_document
 from physics_svg.document.emit.docx.omml import Delim, Frac, Rad, Row, Scripts, Sym, convert, parse
 from physics_svg.document.emit.html import inline as html_inline
-from physics_svg.document.inline import parse_inline
 from physics_svg.document.layout import Math, Run
+from physics_svg.inline import parse_inline
 from physics_svg.schema import SchemaError
 
 DOC = parse_document({"title": "Проба"})

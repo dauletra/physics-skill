@@ -17,7 +17,6 @@ from __future__ import annotations
 import re
 from typing import Literal, Optional
 
-from physics_svg.document.inline import parse_inline
 from physics_svg.document.layout import (
     Bullets,
     Grid,
@@ -30,6 +29,7 @@ from physics_svg.document.layout import (
     Slot,
 )
 from physics_svg.document.strings import LETTERS, t
+from physics_svg.inline import parse_inline
 from physics_svg.schema import Invalid, field, spec
 
 #: The `fill_text` gap, recognised here only in order to be refused.

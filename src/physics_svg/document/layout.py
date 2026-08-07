@@ -18,9 +18,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Union
 
-#: Where a run sits relative to the baseline. Authors type `<sup>`/`<sub>`
-#: in any text field; `inline.parse_inline` turns those into runs.
-Script = Literal["", "sup", "sub"]
+# Runs of author text are one vocabulary for the whole skill, so they live
+# above the genres, in `physics_svg.inline`. Re-exported here because to the
+# document they are inline content like any other — a backend never cares
+# where a piece was declared.
+from physics_svg.inline import Blank as Blank
+from physics_svg.inline import Math as Math
+from physics_svg.inline import Run as Run
+from physics_svg.inline import Script as Script
 
 #: What a list puts in front of an item.
 Marker = Literal["none", "number", "letter"]
@@ -30,26 +35,6 @@ ColumnMode = Literal["single", "two", "inline"]
 
 
 # --- inline -------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class Run:
-    """A stretch of author text. Raw, unescaped — escaping is a backend's
-    job, which is what keeps the same string printable as HTML and as XML."""
-
-    text: str
-    script: Script = ""
-
-
-@dataclass(frozen=True)
-class Blank:
-    """A ruled space inside a line of text, as wide as the author typed it.
-
-    Carries no answer and never reaches the answers section: it is ruling the
-    paper, not asking a question.
-    """
-
-    width_ch: int
 
 
 @dataclass(frozen=True)
@@ -73,20 +58,6 @@ class Square:
 class Verdict:
     """«☐ Верно ☐ Неверно» — one widget, because the two boxes are one
     choice; a backend prints it whole rather than assembling it again."""
-
-
-@dataclass(frozen=True)
-class Math:
-    """A formula, carried as the LaTeX the author typed.
-
-    Raw, like `Run.text`, and for the same reason: the two backends need
-    different things from it. HTML prints the delimiters back and lets KaTeX
-    typeset in the browser; Word translates a subset of LaTeX into OMML.
-    `display` is `$$…$$` — a formula on a line of its own.
-    """
-
-    latex: str
-    display: bool = False
 
 
 Inline = Union[Run, Blank, Gap, Slot, Square, Verdict, Math]

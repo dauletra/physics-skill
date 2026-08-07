@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.document.answers import Inline, MaybeAnswer
-from physics_svg.document.inline import parse_inline
 from physics_svg.document.layout import NOTHING, Block
 from physics_svg.document.questions.registry import register
+from physics_svg.inline import parse_inline
 from physics_svg.schema import Invalid, field, spec
 
 

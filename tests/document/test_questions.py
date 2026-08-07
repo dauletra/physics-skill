@@ -16,11 +16,11 @@ from physics_svg.document import build_document, parse_block, parse_document
 from physics_svg.document.answers import Block, Inline, Rows
 from physics_svg.document.blocks import doc_block_annotation
 from physics_svg.document.emit.html import block as block_html
-from physics_svg.document.inline import parse_inline
 from physics_svg.document.layout import Run, is_empty
 from physics_svg.document.questions import is_question, load_all, render_answer, render_body
 from physics_svg.document.strings import LETTERS
 from physics_svg.draw import esc
+from physics_svg.inline import parse_inline
 from physics_svg.schema import SchemaError, emit_schema, is_spec, spec_meta
 
 PAYLOAD = '<script>alert("x")</script> & "кавычки"'

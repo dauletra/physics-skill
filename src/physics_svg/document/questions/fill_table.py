@@ -11,10 +11,10 @@ from typing import Literal, Optional, Union
 
 from physics_svg.document.answers import Answer, Inline
 from physics_svg.document.domain import Domain
-from physics_svg.document.inline import parse_inline
 from physics_svg.document.layout import Bank, Block, Gap, Grid, Stack, Text
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import t
+from physics_svg.inline import parse_inline
 from physics_svg.schema import Invalid, field, spec
 
 

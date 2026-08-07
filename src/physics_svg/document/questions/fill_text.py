@@ -7,11 +7,11 @@ from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Inline
 from physics_svg.document.domain import Domain
-from physics_svg.document.inline import math_spans, parse_inline
 from physics_svg.document.layout import Bank, Block, Gap, Para, Stack
 from physics_svg.document.layout import Inline as InlinePart
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import t
+from physics_svg.inline import math_spans, parse_inline
 from physics_svg.schema import Invalid, field, spec
 
 #: A placeholder in the template: `___имя___`. The name is the key in

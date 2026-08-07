@@ -45,7 +45,6 @@ from physics_svg.document.containers import (
     task_part_labels,
 )
 from physics_svg.document.emit import docx, html, render_source  # noqa: F401  (re-exported)
-from physics_svg.document.inline import parse_inline
 from physics_svg.document.layout import (
     AnswerRow,
     Answers,
@@ -62,6 +61,7 @@ from physics_svg.document.layout import (
 )
 from physics_svg.document.manifest import DocumentSpec
 from physics_svg.document.questions import is_question, render_answer, render_body
+from physics_svg.inline import parse_inline
 
 _COMPONENT_BUILDERS: dict[type, Callable[[Any], Block]] = {
     TextSpec: build_text,

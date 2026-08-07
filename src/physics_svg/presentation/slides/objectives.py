@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.presentation.emit import runs
 from physics_svg.presentation.slides.registry import register
 from physics_svg.schema import field, spec
 
@@ -17,10 +18,15 @@ class ObjectivesSpec:
     id: Optional[str] = None
 
 
+def emit(model: ObjectivesSpec, scope: str) -> dict[str, object]:
+    return {"type": "objectives", "items": [runs(item) for item in model.items]}
+
+
 register(
     tag="objectives",
     title="Цели урока",
     model=ObjectivesSpec,
+    emit=emit,
     order=20,
     module=__name__,
 )

@@ -8,7 +8,10 @@ derived from the registry.
 
 What a slide type does **not** declare: a renderer. Slides are rendered by
 the player, in the browser, from the emitted JSON — Python never writes
-slide markup. That is the boundary that lets the player move to a server
+slide markup. What a type does declare is **emit**: which of its fields are
+author text to be parsed into runs, and which are visuals — serialisation
+to the wire, markup-free by construction because the vocabulary it writes
+into is JSON. That is the boundary that lets the player move to a server
 later without the data noticing (docs/presentation.md §3).
 """
 
@@ -20,10 +23,15 @@ import pkgutil
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 from physics_svg.schema import Deferred
 from physics_svg.visuals import visual_annotation
+
+#: The slide's payload as wire data: parsed runs for author text, an emitted
+#: visual for an illustration. The second argument is the id scope for the
+#: slide's SVG — unique per slide, so two graphs on one page cannot collide.
+Emitter = Callable[[Any, str], dict[str, Any]]
 
 #: The worked examples live in the fragment, in fenced JSON blocks.
 _JSON_BLOCK = re.compile(r"```json\n(.*?)\n```", re.S)
@@ -43,6 +51,8 @@ class SlideType:
     #: Human name for the generated reference.
     title: str
     model: type
+    #: Serialisation to the wire — data, never markup.
+    emit: Emitter
     #: Place in everything a human reads — the reference index, the site —
     #: by where a slide sits in a lesson, not by its latin tag. Multiples of
     #: ten, so a new kind slots in without renumbering.
@@ -84,14 +94,16 @@ _REGISTRY: dict[str, SlideType] = {}
 _LOADED = False
 
 
-def register(*, tag: str, title: str, model: type, order: int, module: str) -> None:
+def register(
+    *, tag: str, title: str, model: type, emit: Emitter, order: int, module: str
+) -> None:
     if tag in _REGISTRY:
         raise RuntimeError(f"slide type {tag!r} is already registered")
     taken = {entry.order: entry.tag for entry in _REGISTRY.values()}
     if order in taken:
         raise RuntimeError(f"order {order} is already taken by {taken[order]!r}")
     directory = Path(importlib.import_module(module).__file__ or "").parent
-    _REGISTRY[tag] = SlideType(tag, title, model, order, directory)
+    _REGISTRY[tag] = SlideType(tag, title, model, emit, order, directory)
 
 
 def load_all() -> dict[str, SlideType]:

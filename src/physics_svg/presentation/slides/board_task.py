@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import field, spec
 
@@ -27,10 +28,20 @@ class BoardTaskSpec:
     id: Optional[str] = None
 
 
+def emit(model: BoardTaskSpec, scope: str) -> dict[str, object]:
+    data: dict[str, object] = {"type": "board_task", "text": runs(model.text)}
+    if model.visual is not None:
+        data["visual"] = emit_visual(model.visual, scope)
+    if model.answer is not None:
+        data["answer"] = runs(model.answer)
+    return data
+
+
 register(
     tag="board_task",
     title="Задача у доски",
     model=BoardTaskSpec,
+    emit=emit,
     order=40,
     module=__name__,
 )

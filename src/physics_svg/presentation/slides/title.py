@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.presentation.emit import runs
 from physics_svg.presentation.slides.registry import register
 from physics_svg.schema import field, spec
 
@@ -18,10 +19,18 @@ class TitleSpec:
     id: Optional[str] = None
 
 
+def emit(model: TitleSpec, scope: str) -> dict[str, object]:
+    data: dict[str, object] = {"type": "title", "text": runs(model.text)}
+    if model.subtitle is not None:
+        data["subtitle"] = runs(model.subtitle)
+    return data
+
+
 register(
     tag="title",
     title="Титульный слайд",
     model=TitleSpec,
+    emit=emit,
     order=10,
     module=__name__,
 )

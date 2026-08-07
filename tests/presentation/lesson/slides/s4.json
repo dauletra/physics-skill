@@ -1,0 +1,16 @@
+{
+  "id": "s4",
+  "type": "board_task",
+  "text": "По графику найдите путь тела за первые 4 секунды.",
+  "visual": {
+    "type": "graph",
+    "x_label": "t, с",
+    "y_label": "υ, м/с",
+    "x_range": [0, 6],
+    "y_range": [0, 8],
+    "series": [
+      { "label": "υ(t)", "points": [[0, 0], [4, 6], [6, 6]] }
+    ]
+  },
+  "answer": "12 м"
+}

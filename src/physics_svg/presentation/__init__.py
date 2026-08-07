@@ -11,6 +11,13 @@ HTML-JS player in the browser. That boundary is what lets the player move
 to a server later without the data noticing.
 """
 
+from physics_svg.presentation.emit import (
+    FORMAT,
+    build_data,
+    build_page,
+    data_json,
+    extract_data,
+)
 from physics_svg.presentation.manifest import (
     PresentationSpec,
     parse_presentation,
@@ -20,9 +27,14 @@ from physics_svg.presentation.slides import slide_annotation
 from physics_svg.presentation.workspace import Workspace, WorkspaceError, load_workspace
 
 __all__ = [
+    "FORMAT",
     "PresentationSpec",
     "Workspace",
     "WorkspaceError",
+    "build_data",
+    "build_page",
+    "data_json",
+    "extract_data",
     "load_workspace",
     "parse_presentation",
     "parse_slide",

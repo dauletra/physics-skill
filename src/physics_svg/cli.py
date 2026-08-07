@@ -4,6 +4,7 @@
     physics-svg build <draft> --handout  the same document without answers
     physics-svg build <draft> --format docx   the same document as a Word file
     physics-svg build <draft> --block ID a preview of one block
+    physics-svg present <draft>          presentation.html (player) + presentation.json
     physics-svg visual <spec.json>       one standalone SVG
     physics-svg schema                   the published JSON Schema
 
@@ -30,6 +31,9 @@ from physics_svg.document import (
 from physics_svg.document.blocks import doc_block_annotation
 from physics_svg.document.emit.docx import Unsupported
 from physics_svg.draw import SCREEN_SCALE
+from physics_svg.presentation import WorkspaceError as PresentationError
+from physics_svg.presentation import build_data, build_page, data_json
+from physics_svg.presentation import load_workspace as load_presentation
 from physics_svg.schema import SchemaError, emit_schema
 from physics_svg.visuals import build_svg, parse_visual, visual_annotation
 
@@ -61,6 +65,14 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--block", help="собрать превью одного блока по его id")
     build.add_argument("-o", "--out", help="куда положить результат (по умолчанию <draft>/output)")
 
+    present = commands.add_parser(
+        "present", help="собрать презентацию урока (HTML-плеер и JSON) из папки-черновика"
+    )
+    present.add_argument("draft", help="папка с presentation.json и slides/")
+    present.add_argument(
+        "-o", "--out", help="куда положить результат (по умолчанию <draft>/output)"
+    )
+
     visual = commands.add_parser("visual", help="отрисовать одну иллюстрацию в самодостаточный SVG")
     visual.add_argument("spec", help="JSON-спека одного визуального блока")
     visual.add_argument("-o", "--out", help="выходной .svg (по умолчанию рядом со спекой)")
@@ -73,10 +85,10 @@ def main(argv: list[str] | None = None) -> int:
     schema.add_argument("-o", "--out", help="файл вместо стандартного вывода")
 
     args = parser.parse_args(argv)
-    handlers = {"build": _build, "visual": _visual, "schema": _schema}
+    handlers = {"build": _build, "present": _present, "visual": _visual, "schema": _schema}
     try:
         return handlers[args.command](args)
-    except (WorkspaceError, SchemaError) as error:
+    except (WorkspaceError, PresentationError, SchemaError) as error:
         print(str(error), file=sys.stderr)
         return 1
 
@@ -156,6 +168,17 @@ def _report(notes: tuple[str, ...]) -> None:
     print("Формулы, которые Word не понял (вставлены текстом):", file=sys.stderr)
     for note in notes:
         print(f"  {note}", file=sys.stderr)
+
+
+def _present(args: argparse.Namespace) -> int:
+    draft = Path(args.draft)
+    workspace = load_presentation(draft)
+    data = build_data(workspace.presentation, workspace.slides)
+    output_dir = Path(args.out) if args.out else draft / "output"
+    # The JSON beside the page is the same data the page embeds — the canon
+    # a future server receives, written out so nothing has to dig it out.
+    status = _write(output_dir / "presentation.json", data_json(data))
+    return _write(output_dir / "presentation.html", build_page(data)) or status
 
 
 def _visual(args: argparse.Namespace) -> int:

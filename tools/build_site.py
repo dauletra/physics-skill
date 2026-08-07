@@ -35,6 +35,9 @@ from physics_svg.document import (  # noqa: E402
 from physics_svg.document.assets import BASE_CSS  # noqa: E402
 from physics_svg.document.questions import QuestionType  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
+from physics_svg.presentation import build_data, build_page  # noqa: E402
+from physics_svg.presentation import load_workspace as load_lesson  # noqa: E402
+from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.visuals import VisualType, build_svg, parse_visual  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 
@@ -66,6 +69,7 @@ def main() -> None:
     _write_example()
     families = _write_gallery()
     _write_questions()
+    _write_slides()
     pages = _mirror_reference()
     _check_nav(families)
     print(f"Готово: галерея ({len(families)}), справочники ({len(pages)}), примеры")
@@ -78,11 +82,12 @@ def _check_nav(families: list[str]) -> None:
     site is generated; failing here points at the file to edit.
     """
     nav = (REPO / "zensical.toml").read_text(encoding="utf-8")
-    missing = [tag for tag in families if f'"gallery/{tag}.md"' not in nav]
+    pages = [f"gallery/{tag}.md" for tag in families] + ["questions.md", "slides.md"]
+    missing = [page for page in pages if f'"{page}"' not in nav]
     if missing:
         raise SystemExit(
-            "страницы галереи не перечислены в nav (zensical.toml): "
-            + ", ".join(f"gallery/{tag}.md" for tag in missing)
+            "сгенерированные страницы не перечислены в nav (zensical.toml): "
+            + ", ".join(missing)
         )
 
 
@@ -115,6 +120,13 @@ def _write_example() -> None:
     )
     (DOCS / "assets" / "example-document.docx").write_bytes(
         build_docx(workspace.document, workspace.blocks).data
+    )
+    # The lesson's second draft, built by the same command a teacher runs.
+    # Nothing on the site describes what a slide looks like — the page links
+    # to the presentation itself, and the player draws it.
+    lesson = load_lesson(EXAMPLE)
+    (DOCS / "assets" / "example-presentation.html").write_text(
+        build_page(build_data(lesson.presentation, lesson.slides)), encoding="utf-8"
     )
 
 
@@ -202,6 +214,41 @@ def _write_questions() -> None:
         parts.extend(_previews(entry))
     (DOCS / "questions.md").write_text("\n".join(parts), encoding="utf-8")
     print(f"  questions.md ({len(load_questions())} видов)")
+
+
+def _write_slides() -> None:
+    (DOCS / "slides.md").write_text(_slides_page(), encoding="utf-8")
+    print(f"  slides.md ({len(load_slides())} видов)")
+
+
+def _slides_page() -> str:
+    """One page with every kind of slide — and the presentation itself.
+
+    Here the site has to break its own habit: everything else on it is
+    rendered by the code that renders what a teacher gets, but a slide is
+    drawn by the player, in a browser, and a second renderer in Python is the
+    one thing the design forbids. So the page shows the cards and opens the
+    real built example instead of a picture of it.
+    """
+    parts = [
+        "# Слайды презентации\n",
+        "Презентация к уроку — то, что учитель показывает классу с проектора: "
+        "тема, цели, объяснение, разбор задачи, задачи для доски, рефлексия. "
+        "Это отдельный материал, а не лист на экране: содержимое у них разное, "
+        "общие только иллюстрации.\n",
+        "Презентация приходит одним файлом, который открывается двойным щелчком "
+        "и листается стрелками. Шаги разбора и ответы к задачам спрятаны и "
+        "открываются той же стрелкой, `Esc` показывает этапы урока.\n",
+        "[Открыть пример презентации](assets/example-presentation.html)"
+        "{ .md-button .md-button--primary }\n",
+        "Ниже — виды слайдов, из которых она собирается, и что сказать Claude, "
+        "чтобы получить такой.\n",
+    ]
+    for entry in load_slides().values():
+        card = entry.card.read_text(encoding="utf-8").strip()
+        parts.append(re.sub(r"^# ", "## ", card, flags=re.M))
+        parts.append("")
+    return "\n".join(parts)
 
 
 def _previews(entry: QuestionType) -> list[str]:

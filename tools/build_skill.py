@@ -34,6 +34,7 @@ from physics_svg.document.components import (  # noqa: E402
     TextSpec,
 )
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
+from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.schema import emit_schema  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 from physics_svg.visuals import visual_annotation  # noqa: E402
@@ -112,6 +113,17 @@ def _write_references(directory: Path) -> None:
         ),
         encoding="utf-8",
     )
+    (directory / "slides.md").write_text(
+        _concatenate(
+            "Виды слайдов",
+            "Презентация сверху — плоский список слайдов; порядок в списке и есть "
+            "порядок показа. У каждого вида свои поля, общее — `type` и "
+            "необязательный `id`. Раскладку слайд не задаёт: где встанет "
+            "картинка и когда откроется ответ, решает плеер.",
+            [entry.doc for entry in load_slides().values()],
+        ),
+        encoding="utf-8",
+    )
     (directory / "visuals.md").write_text(
         _concatenate(
             "Иллюстрации",
@@ -186,6 +198,7 @@ def _write_skill_md(destination: Path) -> None:
             "VERSION": __version__,
             "QUESTION_COUNT": str(len(load_questions())),
             "VISUAL_COUNT": str(len(load_visuals())),
+            "SLIDE_COUNT": str(len(load_slides())),
         },
     )
     _check_description(text)

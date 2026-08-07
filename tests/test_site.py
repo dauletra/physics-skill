@@ -18,6 +18,9 @@ sys.path.insert(0, str(REPO / "tools"))
 
 import build_site  # noqa: E402
 from physics_svg.document.assets import BASE_CSS  # noqa: E402
+from physics_svg.presentation import build_data, build_page  # noqa: E402
+from physics_svg.presentation import load_workspace as load_lesson  # noqa: E402
+from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 
 RULE = re.compile(r"([^{}]+)\{([^}]*)\}", re.S)
@@ -45,6 +48,29 @@ class TestGalleryCards:
                 f"{entry.tag}/card.md расставляет {sorted(placed)}, "
                 f"а спеки — {sorted(path.stem for path in entry.specs)}"
             )
+
+
+class TestSlidesPage:
+    """The one page the site cannot render for itself.
+
+    Everything else in the showcase is produced by the renderer a teacher's
+    files go through; a slide is drawn by the player, in a browser. So the
+    page's whole job is to carry every card and open the real presentation —
+    and that is what is checked here.
+    """
+
+    def test_every_kind_reaches_the_page(self) -> None:
+        page = build_site._slides_page()
+        for entry in load_slides().values():
+            heading = entry.card.read_text(encoding="utf-8").splitlines()[0].lstrip("# ")
+            assert f"## {heading}" in page, f"карточка вида '{entry.tag}' не попала на страницу"
+
+    def test_it_opens_a_presentation_that_builds(self) -> None:
+        assert "assets/example-presentation.html" in build_site._slides_page()
+        # The link is only worth anything if the lesson behind it still builds.
+        lesson = load_lesson(build_site.EXAMPLE)
+        page = build_page(build_data(lesson.presentation, lesson.slides))
+        assert 'id="presentation-data"' in page
 
 
 class TestScopedStylesheet:

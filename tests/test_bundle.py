@@ -11,6 +11,7 @@ machine that has never seen this project.
 from __future__ import annotations
 
 import ast
+import json
 import os
 import re
 import subprocess
@@ -25,6 +26,7 @@ sys.path.insert(0, str(REPO / "tools"))
 import build_skill  # noqa: E402
 from physics_svg.cli import FORMATS  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
+from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 
 
@@ -40,9 +42,16 @@ class TestContents:
         assert (bundle / "scripts" / "render.py").exists()
         assert (bundle / "physics_svg" / "cli.py").exists()
 
-    def test_all_four_references_are_generated(self, bundle: Path) -> None:
+    def test_every_reference_is_generated(self, bundle: Path) -> None:
         names = {path.name for path in (bundle / "references").glob("*.md")}
-        assert names == {"document.md", "questions.md", "symbols.md", "visuals.md"}
+        assert names == {"document.md", "questions.md", "slides.md", "symbols.md", "visuals.md"}
+
+    def test_the_player_ships(self, bundle: Path) -> None:
+        # The player is the only data file the package cannot work without,
+        # and the only one the stdlib-imports test would not miss: `present`
+        # fails at the last step if the copy rules ever swallow it.
+        player = bundle / "physics_svg" / "presentation" / "player" / "player.html"
+        assert player.exists() and "__PRESENTATION_DATA__" in player.read_text(encoding="utf-8")
 
     def test_the_spec_library_ships(self, bundle: Path) -> None:
         for entry in load_visuals().values():
@@ -50,7 +59,12 @@ class TestContents:
             assert len(shipped) == len(entry.specs), f"библиотека '{entry.tag}' неполная"
 
     def test_the_worked_example_ships(self, bundle: Path) -> None:
-        assert (bundle / "examples" / "kinematics-9th-grade" / "document.json").exists()
+        lesson = bundle / "examples" / "kinematics-9th-grade"
+        assert (lesson / "document.json").exists()
+        # One lesson, two drafts side by side — the example teaches the folder
+        # shape as much as the content.
+        assert (lesson / "presentation.json").exists()
+        assert list((lesson / "slides").glob("*.json"))
 
     def test_the_schema_and_version_ship(self, bundle: Path) -> None:
         assert (bundle / "schema.json").exists()
@@ -74,6 +88,7 @@ class TestSkillMd:
         text = (bundle / "SKILL.md").read_text(encoding="utf-8")
         assert f"все {len(load_questions())} видов" in text
         assert f"все {len(load_visuals())} типов" in text
+        assert f"все {len(load_slides())} видов слайдов" in text
 
     def test_it_promises_only_formats_the_cli_has(self, bundle: Path) -> None:
         """The command table is the model's whole knowledge of the surface.
@@ -105,6 +120,11 @@ class TestReferencesFollowTheRegistries:
         text = (bundle / "references" / "visuals.md").read_text(encoding="utf-8")
         for tag in load_visuals():
             assert f"`{tag}`" in text, f"тип '{tag}' не попал в справочник"
+
+    def test_every_slide_kind_is_documented(self, bundle: Path) -> None:
+        text = (bundle / "references" / "slides.md").read_text(encoding="utf-8")
+        for tag in load_slides():
+            assert f"`{tag}`" in text, f"вид слайда '{tag}' не попал в справочник"
 
     def test_the_index_in_document_md_lists_them_too(self, bundle: Path) -> None:
         text = (bundle / "references" / "document.md").read_text(encoding="utf-8")
@@ -209,6 +229,31 @@ class TestEndToEnd:
         assert result.returncode == 0, result.stderr
         data = (tmp_path / "out" / "document.docx").read_bytes()
         assert data[:2] == b"PK"
+
+    def test_it_builds_the_shipped_lesson_presentation(
+        self, bundle: Path, clean_env: dict[str, str], tmp_path: Path
+    ) -> None:
+        """The third artefact, end to end: the player template has to travel
+        with the package and the page has to come out whole — a picture drawn
+        offline, formulas parsed, data extractable."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(bundle / "scripts" / "render.py"),
+                "present",
+                str(bundle / "examples" / "kinematics-9th-grade"),
+                "-o",
+                str(tmp_path / "out"),
+            ],
+            capture_output=True, text=True, encoding="utf-8", env=clean_env, cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        page = (tmp_path / "out" / "presentation.html").read_text(encoding="utf-8")
+        assert 'id="presentation-data"' in page
+        assert "__PRESENTATION_DATA__" not in page
+        assert "<svg" in page, "иллюстрация не дошла до слайда"
+        data = json.loads((tmp_path / "out" / "presentation.json").read_text(encoding="utf-8"))
+        assert data["format"] >= 1 and len(data["slides"]) > 1
 
     def test_it_draws_a_library_spec(
         self, bundle: Path, clean_env: dict[str, str], tmp_path: Path

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+from xml.etree import ElementTree
 
 import pytest
 
@@ -31,9 +32,22 @@ VIEWBOX = re.compile(r'viewBox="(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)"')
 #: when it is drawn as shapes.
 COLUMN_EMU = 9638 * 635
 
-#: Injected into every free-text field. If any of it reaches the markup
-#: unescaped, a worksheet can carry active content.
-PAYLOAD = '<script>alert("x")</script> & <sub>i</sub>'
+#: Enough of the drawing namespaces to parse a group on its own.
+_NAMESPACES = " ".join(
+    f'xmlns:{prefix}="{uri}"'
+    for prefix, uri in (
+        ("wpg", "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"),
+        ("wps", "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"),
+        ("a", "http://schemas.openxmlformats.org/drawingml/2006/main"),
+        ("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main"),
+    )
+)
+
+#: Injected into every free-text field. Markup, because unescaped it would
+#: let a worksheet carry active content; and a bell character, because XML
+#: cannot hold one at all — a single one of them makes the picture unopenable
+#: rather than merely wrong.
+PAYLOAD = '<script>alert("x")</script> & <sub>i</sub> '
 
 
 @EACH_TYPE
@@ -132,6 +146,12 @@ class TestExamples:
                 continue  # a closed vocabulary, not free text
             svg = build_svg(model, scope="t")
             assert "<script>" not in svg, f"{example.name}: поле '{key}' не экранировано"
+            # Both serialisers of the same drawing, and both have to survive
+            # the same string: a standalone SVG is XML, and so is a Word
+            # package. Parsing is the check — «looks escaped» is not.
+            ElementTree.fromstring(build_svg(model, standalone=True))
+            group, _cx, _cy = build_shapes(model, width_emu=COLUMN_EMU)
+            ElementTree.fromstring(f"<root {_NAMESPACES}>{group}</root>")
             # Not every free-text field is drawn — a balance never prints its
             # unit, for instance — so appearing at all is not required, only
             # appearing escaped.

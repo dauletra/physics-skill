@@ -224,6 +224,30 @@ class TestEndToEnd:
         svg = output.read_text(encoding="utf-8")
         assert svg.startswith("<svg") and 'fill="#fff"' in svg
 
+    def test_a_preview_refuses_a_format_it_cannot_make(
+        self, bundle: Path, clean_env: dict[str, str], tmp_path: Path
+    ) -> None:
+        """`--block` builds an HTML preview and nothing else. Writing HTML for
+        someone who asked for Word would look like success and be the wrong
+        file — so the combination is refused, as `--handout --block` is."""
+        draft = tmp_path / "draft"
+        (draft / "blocks").mkdir(parents=True)
+        (draft / "document.json").write_text('{"order": ["t"]}', encoding="utf-8")
+        (draft / "blocks" / "t.json").write_text(
+            '{"id": "t", "type": "text", "body": "Текст."}', encoding="utf-8"
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(bundle / "scripts" / "render.py"),
+                "build", str(draft), "--block", "t", "--format", "docx",
+            ],
+            capture_output=True, text=True, encoding="utf-8", env=clean_env, cwd=tmp_path,
+        )
+        assert result.returncode == 2
+        assert "--format" in result.stderr
+        assert not list(draft.glob("*.preview.html"))
+
     def test_a_broken_draft_reports_problems_without_a_traceback(
         self, bundle: Path, clean_env: dict[str, str], tmp_path: Path
     ) -> None:

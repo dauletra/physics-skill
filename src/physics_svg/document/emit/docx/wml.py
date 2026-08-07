@@ -12,22 +12,19 @@ refuse to open the file — silently, with no hint of what is wrong:
   therefore assembled from a fixed list of known names, never from the order
   a caller happened to pass them in — and an unknown name is a bug, raised
   immediately.
-* **Escaping.** `&`, `<`, `>`, and control characters, which XML 1.0 does not
-  allow at all. This is the Word counterpart of `esc()` in the HTML backend:
-  the layout carries raw author text and it is escaped here.
+* **Escaping.** `&`, `<`, `>`, and — through `draw.clean` — the control
+  characters XML 1.0 does not allow at all. This is the Word counterpart of
+  `esc()` in the HTML backend: the layout carries raw author text and it is
+  escaped here.
 * **`xml:space="preserve"`** on every `w:t`. Without it Word eats the space
   before a ruled blank and the line slides into the word.
 """
 
 from __future__ import annotations
 
-import re
 from typing import Iterable, Optional
 
-#: Characters XML 1.0 has no representation for. Author text arrives from
-#: JSON, which can carry them, and a single one of them makes the whole
-#: package unopenable.
-_FORBIDDEN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+from physics_svg.draw import clean
 
 #: The subsets of CT_PPr / CT_RPr / … the backend uses, in schema order.
 P_ORDER = (
@@ -66,8 +63,13 @@ _TC_ORDER = ("w:tcW", "w:tcBorders", "w:shd", "w:tcMar", "w:vAlign")
 
 
 def escape(value: object) -> str:
-    """Author text -> XML text."""
-    text = _FORBIDDEN.sub("", str(value if value is not None else ""))
+    """Author text -> XML text.
+
+    `clean()` first: the characters XML cannot hold are the drawing layer's
+    rule too, and one definition of «what author text may contain» is the
+    point — a node has two serialisers and they must agree.
+    """
+    text = clean(value)
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 

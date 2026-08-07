@@ -28,6 +28,7 @@ from physics_svg.draw.nodes import (
     Raw,
     Rect,
     Text,
+    Unsupported,
     arc,
 )
 from physics_svg.draw.style import (
@@ -52,6 +53,7 @@ from physics_svg.draw.style import (
 )
 from physics_svg.draw.text import (
     FONT_STACK,
+    clean,
     esc,
     fixed,
     num,
@@ -96,11 +98,13 @@ __all__ = [
     "Style",
     "THIN",
     "Text",
+    "Unsupported",
     "Transform",
     "WHITE",
     "angle_between",
     "arc",
     "direction",
+    "clean",
     "esc",
     "fixed",
     "num",

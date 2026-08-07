@@ -45,7 +45,7 @@ from physics_svg.draw.nodes import (
 )
 from physics_svg.draw.pathdata import ArcTo, Close, CurveTo, LineTo, Move, arc_geometry
 from physics_svg.draw.style import DASH, Style
-from physics_svg.draw.text import FONT_STACK, split_scripts, text_width
+from physics_svg.draw.text import FONT_STACK, clean, split_scripts, text_width
 
 #: English Metric Units per CSS pixel at 96 dpi, and per point.
 EMU_PER_PX = 9525
@@ -380,4 +380,6 @@ def _script(script: str) -> str:
 
 
 def _xml_text(value: str) -> str:
-    return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    """The same gate `esc()` is for SVG: markup escaped, and what XML cannot
+    hold at all dropped by the one rule both serialisers share."""
+    return clean(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

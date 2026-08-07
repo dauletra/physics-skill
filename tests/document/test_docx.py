@@ -35,6 +35,7 @@ W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 DOC = parse_document({"title": "Проба"})
 TEXT = {"type": "text", "body": "Условие."}
 OPEN = {"type": "open", "answer": "42"}
+_TABLE = {"headers": ["t, с", "υ, м/с"], "rows": [["0", "5"]]}
 
 
 def task(*blocks: dict, **extra: object) -> dict:
@@ -112,6 +113,29 @@ class TestPackage:
         # `w:sectPr` anywhere but last is a schema violation.
         children = list(body(build(task(TEXT, OPEN))))
         assert children[-1].tag == f"{W}sectPr"
+
+    def test_the_body_never_ends_with_a_table(self) -> None:
+        """Word itself always keeps a paragraph after a trailing table, and a
+        document that does not gets «обнаружены ошибки» on opening.
+
+        Reachable without trying: a summary that ends with a two-column row,
+        or any handout whose last block is one — there is no answers section
+        after it to save the day.
+        """
+        row = {
+            "type": "row",
+            "columns": 2,
+            "blocks": [{"type": "text", "body": str(i)} for i in range(4)],
+        }
+        for data in (build(row, with_answers=False), build({"type": "table", **_TABLE})):
+            children = list(body(data))
+            assert children[-1].tag == f"{W}sectPr"
+            assert children[-2].tag == f"{W}p", "тело кончается таблицей"
+
+    def test_a_document_with_nothing_in_it_still_has_a_paragraph(self) -> None:
+        # A body of `w:sectPr` alone is the same defect with nothing around it.
+        children = list(body(build_docx(DOC, [], with_answers=False).data))
+        assert [child.tag for child in children] == [f"{W}p", f"{W}sectPr"]
 
 
 class TestIndependentReader:
@@ -258,6 +282,29 @@ class TestProperties:
     def test_an_unknown_property_is_refused(self) -> None:
         with pytest.raises(ValueError, match="unknown properties"):
             props("w:pPr", P_ORDER, {"w:outlineLvl": "<w:outlineLvl/>"})
+
+
+class TestRefusal:
+    """A picture the drawing layer cannot serialise has to reach the teacher
+    as a sentence. The two layers have an `Unsupported` each, and only the
+    document's one is caught by the CLI — so the drawing's is translated at
+    the seam rather than escaping as a traceback."""
+
+    def test_a_refusal_from_the_drawing_layer_becomes_the_backends(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from physics_svg.document.emit.docx import emit as emit_module
+        from physics_svg.draw import Unsupported as DrawUnsupported
+
+        def refuse(*_args: object, **_kwargs: object) -> str:
+            raise DrawUnsupported("узел 'Raw' не переводится в фигуры Word")
+
+        monkeypatch.setattr(emit_module, "drawing", refuse)
+        with pytest.raises(emit_module.Unsupported) as info:
+            build(task(TEXT, {"type": "paper", "ruling": "lines", "rows": 2}, OPEN))
+        message = str(info.value)
+        assert "иллюстрация в задании 1" in message
+        assert "Raw" in message
 
 
 class TestPictures:

@@ -102,6 +102,15 @@ def _build(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 2
+        if args.format != "html":
+            # Silently writing HTML to someone who asked for Word is worse
+            # than refusing: the file looks built and is the wrong thing.
+            print(
+                "--format не используется с --block: превью собирается только в HTML. "
+                "Чтобы посмотреть блок в Word, собери документ целиком",
+                file=sys.stderr,
+            )
+            return 2
         try:
             html = build_preview(workspace.document, workspace.blocks, args.block)
         except KeyError:

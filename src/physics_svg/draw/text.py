@@ -6,6 +6,12 @@ escaping happens at the point of interpolation. `esc()` is the HTML gate and
 `svg_text()` the SVG one; both let literal `<sup>`/`<sub>` through, because
 that is how the author writes indices and powers (see references/symbols.md)
 without opening arbitrary markup.
+
+Under both of them sits `clean()`, which drops what XML cannot hold at all.
+Escaping is about markup; this is about characters that have no
+representation, and a single one of them makes a standalone SVG and a Word
+package equally unreadable. One rule, because a node has two serialisers and
+they must not disagree about what author text is allowed to contain.
 """
 
 from __future__ import annotations
@@ -50,9 +56,24 @@ def fixed(value: float, decimals: int) -> str:
     return f"{value:.{decimals}f}"
 
 
+#: Characters XML 1.0 has no representation for — not even escaped. Author
+#: text arrives from JSON, which can carry every one of them.
+_FORBIDDEN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def clean(text: object) -> str:
+    """Author text without the characters XML cannot hold.
+
+    Dropping a byte is not nice, but the alternative is a file that neither a
+    browser nor Word will open — and the author cannot see the difference
+    between a bell character and nothing at all anyway.
+    """
+    return _FORBIDDEN.sub("", str(text if text is not None else ""))
+
+
 def esc(text: object) -> str:
     """Escape author text for HTML, keeping literal `<sup>`/`<sub>`."""
-    escaped = html.escape(str(text if text is not None else ""))
+    escaped = html.escape(clean(text))
     for tag in INLINE_TAGS:
         escaped = escaped.replace(f"&lt;{tag}&gt;", f"<{tag}>")
         escaped = escaped.replace(f"&lt;/{tag}&gt;", f"</{tag}>")

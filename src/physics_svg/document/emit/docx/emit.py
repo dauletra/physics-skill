@@ -62,6 +62,7 @@ from physics_svg.document.layout import (
     column_order,
 )
 from physics_svg.document.strings import LETTERS, t
+from physics_svg.draw import Unsupported as DrawUnsupported
 
 
 class Unsupported(ValueError):
@@ -367,6 +368,22 @@ def _answers(model: Answers, frame: Frame) -> list[Node]:
     return nodes
 
 
+def _drawing(model: Picture, frame: Frame) -> str:
+    """A picture, with the drawing layer's refusal turned into this backend's.
+
+    The two layers have an `Unsupported` each — one is about a node, the other
+    about a block — and only this one reaches the CLI. Without the translation
+    a type that brings a node with no second serialiser (or a `Raw`) would
+    reach a teacher as a traceback instead of a sentence, which is the one
+    thing the refusal exists to prevent.
+    """
+    try:
+        return drawing(model.model, width_twips=frame.width, ids=frame.ids)
+    except DrawUnsupported as error:
+        where = f" в задании {frame.task}" if frame.task is not None else ""
+        raise Unsupported(f"иллюстрация{where} не печатается в Word: {error}") from error
+
+
 def _block(model: Block, frame: Frame) -> list[Node]:
     if isinstance(model, (Para, Phrase, Line)):
         return [Par(inline(model.runs, frame), style=frame.style)]
@@ -392,7 +409,7 @@ def _block(model: Block, frame: Frame) -> list[Node]:
     if isinstance(model, Picture):
         # A drawing is a run, so it needs a paragraph of its own: it stands on
         # the sheet as a block, exactly as it does on the page.
-        return [Par(drawing(model.model, width_twips=frame.width, ids=frame.ids))]
+        return [Par(_drawing(model, frame))]
     if isinstance(model, Spaced):
         return _gap_after(_block(model.block, frame), st.BLOCK_GAP)
     if isinstance(model, Stack):
@@ -464,7 +481,17 @@ def _xml(node: Node) -> str:
 
 def body_xml(blocks: tuple[Block, ...]) -> tuple[str, tuple[str, ...]]:
     """The `w:body` content for a whole document, and what the build has to
-    say about it."""
+    say about it.
+
+    The body always ends with a paragraph. Word itself never writes a table
+    as the last thing before `w:sectPr` — it keeps an empty paragraph there —
+    and a document that does gets «обнаружены ошибки» on opening. The same
+    rule `cell()` follows one level down; a document that ends with a
+    two-column row (a summary, a handout without answers) is exactly where it
+    was missing.
+    """
     frame = Frame()
     nodes = _blocks(blocks, frame)
+    if not nodes or isinstance(nodes[-1], Tbl):
+        nodes.append(Par(""))
     return "".join(_xml(node) for node in nodes) + st.section_xml(), frame.notes.items

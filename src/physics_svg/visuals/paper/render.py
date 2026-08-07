@@ -28,8 +28,10 @@ from physics_svg.draw import (
     GREY_STRONG,
     BBox,
     Canvas,
+    Circle,
     Line,
     Node,
+    Path,
     Pt,
     Rect,
     Style,
@@ -91,16 +93,16 @@ def _paint_plain(model: PaperSpec, canvas: Canvas, width: float, height: float) 
 def _paint_grid(model: PaperSpec, canvas: Canvas, width: float, height: float) -> None:
     """Exercise-book squares: one level of lines."""
     step = STEPS["grid"]
-    pattern = canvas.define(
+    cell = canvas.tiling(
         "grid",
-        lambda pid: (
-            f'<pattern id="{pid}" width="{step}" height="{step}" '
-            f'patternUnits="userSpaceOnUse">'
-            f'<path d="M{step} 0 L0 0 0 {step}" fill="none" stroke="{GREY}" '
-            'stroke-width="0.5"/></pattern>'
-        ),
+        step,
+        step,
+        [Path(f"M{step} 0 L0 0 0 {step}", Style(fill="none", stroke=GREY, width=0.5))],
     )
-    canvas.add(_filled(width, height, pattern), *_closing_edges(width, height, _GRID_EDGE))
+    canvas.add(
+        canvas.fill_tiled(BBox(0, 0, width, height), cell),
+        *_closing_edges(width, height, _GRID_EDGE),
+    )
 
 
 def _paint_dots(model: PaperSpec, canvas: Canvas, width: float, height: float) -> None:
@@ -108,16 +110,11 @@ def _paint_dots(model: PaperSpec, canvas: Canvas, width: float, height: float) -
     construction drawn over it. The dot sits at the centre of the pattern
     cell, so the lattice ends whole and needs nothing to close it."""
     step = STEPS["dots"]
-    half = num(step / 2)
-    pattern = canvas.define(
-        "dots",
-        lambda pid: (
-            f'<pattern id="{pid}" width="{step}" height="{step}" '
-            f'patternUnits="userSpaceOnUse">'
-            f'<circle cx="{half}" cy="{half}" r="0.8" fill="{GREY}"/></pattern>'
-        ),
+    half = step / 2
+    cell = canvas.tiling(
+        "dots", step, step, [Circle(Pt(half, half), 0.8, Style(fill=GREY))]
     )
-    canvas.add(_filled(width, height, pattern))
+    canvas.add(canvas.fill_tiled(BBox(0, 0, width, height), cell))
 
 
 def _paint_mm(model: PaperSpec, canvas: Canvas, width: float, height: float) -> None:
@@ -127,32 +124,37 @@ def _paint_mm(model: PaperSpec, canvas: Canvas, width: float, height: float) -> 
     does not grow with the area of the field."""
     major = STEPS["mm"]
     fine, mid = major / 10, major / 2
-    fine_pattern = canvas.define(
+    millimetres = canvas.tiling(
         "mm-fine",
-        lambda pid: (
-            f'<pattern id="{pid}" width="{num(fine)}" height="{num(fine)}" '
-            f'patternUnits="userSpaceOnUse">'
-            f'<path d="M{num(fine)} 0 L0 0 0 {num(fine)}" fill="none" '
-            f'stroke="{GREY_FAINT}" stroke-width="0.3"/></pattern>'
-        ),
+        fine,
+        fine,
+        [
+            Path(
+                f"M{num(fine)} 0 L0 0 0 {num(fine)}",
+                Style(fill="none", stroke=GREY_FAINT, width=0.3),
+            )
+        ],
     )
-    pattern = canvas.define(
+    centimetres = canvas.tiling(
         "mm",
-        lambda pid: (
-            f'<pattern id="{pid}" width="{major}" height="{major}" '
-            f'patternUnits="userSpaceOnUse">'
-            f'<rect width="{major}" height="{major}" fill="url(#{fine_pattern})"/>'
-            f'<path d="M{num(mid)} 0 L{num(mid)} {major} M0 {num(mid)} '
-            f'L{major} {num(mid)}" fill="none" stroke="{GREY}" stroke-width="0.4"/>'
-            f'<path d="M{major} 0 L0 0 0 {major}" fill="none" stroke="{GREY_STRONG}" '
-            'stroke-width="0.8"/></pattern>'
-        ),
+        major,
+        major,
+        [
+            Path(
+                f"M{num(mid)} 0 L{num(mid)} {major} M0 {num(mid)} L{major} {num(mid)}",
+                Style(fill="none", stroke=GREY, width=0.4),
+            ),
+            Path(
+                f"M{major} 0 L0 0 0 {major}",
+                Style(fill="none", stroke=GREY_STRONG, width=0.8),
+            ),
+        ],
+        base=millimetres,
     )
-    canvas.add(_filled(width, height, pattern), *_closing_edges(width, height, _MM_EDGE))
-
-
-def _filled(width: float, height: float, pattern_id: str) -> Node:
-    return Rect(Pt(0, 0), width, height, Style(fill=f"url(#{pattern_id})"))
+    canvas.add(
+        canvas.fill_tiled(BBox(0, 0, width, height), centimetres),
+        *_closing_edges(width, height, _MM_EDGE),
+    )
 
 
 def _closing_edges(width: float, height: float, style: Style) -> tuple[Node, Node]:

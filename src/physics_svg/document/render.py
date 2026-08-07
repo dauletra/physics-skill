@@ -1,22 +1,27 @@
-"""Assembling the HTML document.
+"""Models -> layout.
 
 One builder for everything the skill produces: a set of exercises, an
 explanation, a lesson summary, or all of them mixed. The genre is a
-combination of blocks, not a mode of the renderer.
+combination of blocks, not a mode of the builder.
+
+What is decided here is what belongs to the document rather than to any one
+format: continuous numbering, subtask letters, which blocks stand beside one
+another, and which answers reach the section at the end. What it looks like
+is a backend's business — see `document/emit/`.
 
 Answers are never printed in the body. Every question type has a pair of
-renderers, and only the second one reaches the answers section at the end —
-so the handout variant is this document *without a section*, not a second
-rendering that could leak.
+renderers, and only the second one reaches the answers section — so the
+handout variant is this document *without a section*, not a second rendering
+that could leak.
 """
 
 from __future__ import annotations
 
-import json
 from typing import Any, Callable, Optional
 
+from physics_svg.document.answers import Block as DrawnAnswer
+from physics_svg.document.answers import Inline as ShortAnswer
 from physics_svg.document.answers import MaybeAnswer, Rows
-from physics_svg.document.assets import BASE_CSS, KATEX_HEAD
 from physics_svg.document.components import (
     AnswerLineSpec,
     DividerSpec,
@@ -24,12 +29,12 @@ from physics_svg.document.components import (
     ListSpec,
     TableSpec,
     TextSpec,
-    render_answer_line,
-    render_divider,
-    render_heading,
-    render_list,
-    render_table,
-    render_text,
+    build_answer_line,
+    build_divider,
+    build_heading,
+    build_list,
+    build_table,
+    build_text,
 )
 from physics_svg.document.containers import (
     DocRowSpec,
@@ -39,25 +44,37 @@ from physics_svg.document.containers import (
     iter_flat,
     task_part_labels,
 )
-from physics_svg.document.html import column_rows, div
+from physics_svg.document.emit import docx, html, render_source  # noqa: F401  (re-exported)
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import (
+    AnswerRow,
+    Answers,
+    Block,
+    Columns,
+    Lettered,
+    Lines,
+    Numbered,
+    Phrase,
+    Picture,
+    Spaced,
+    Stack,
+    is_empty,
+)
 from physics_svg.document.manifest import DocumentSpec
 from physics_svg.document.questions import is_question, render_answer, render_body
-from physics_svg.document.strings import t
-from physics_svg.draw import esc
-from physics_svg.visuals import build_svg
 
-_COMPONENT_RENDERERS: dict[type, Callable[[Any], str]] = {
-    TextSpec: render_text,
-    TableSpec: render_table,
-    ListSpec: render_list,
-    AnswerLineSpec: render_answer_line,
-    HeadingSpec: render_heading,
-    DividerSpec: render_divider,
+_COMPONENT_BUILDERS: dict[type, Callable[[Any], Block]] = {
+    TextSpec: build_text,
+    TableSpec: build_table,
+    ListSpec: build_list,
+    AnswerLineSpec: build_answer_line,
+    HeadingSpec: build_heading,
+    DividerSpec: build_divider,
 }
 
 
-class Renderer:
-    """Renders one document.
+class Builder:
+    """Builds the layout of one document.
 
     It carries a counter because every illustration needs an element id scope
     unique on the page — two rulings on one sheet must not share a pattern id.
@@ -74,108 +91,91 @@ class Renderer:
 
     # --- leaves ---
 
-    def component(self, model: Any) -> str:
-        renderer = _COMPONENT_RENDERERS.get(type(model))
-        if renderer is not None:
-            return renderer(model)
-        return build_svg(model, scope=self._scope())
+    def component(self, model: Any) -> Block:
+        builder = _COMPONENT_BUILDERS.get(type(model))
+        if builder is not None:
+            return builder(model)
+        # Everything else is an illustration, straight from the registry.
+        return Picture(model, self._scope())
 
-    def leaf(self, model: Any) -> str:
+    def leaf(self, model: Any) -> tuple[Block, ...]:
         body = render_body(model) if is_question(model) else self.component(model)
-        if not body:
+        if is_empty(body):
             # `open` prints nothing in the body (its statement and its writing
             # space are neighbours); an empty wrapper would add vertical space
             # around nothing.
-            return ""
-        return div("task-block", body)
+            return ()
+        return (Spaced(body),)
 
     # --- containers ---
 
-    def task_block(self, model: Any, labels: dict[int, str]) -> str:
+    def task_block(self, model: Any, labels: dict[int, str]) -> tuple[Block, ...]:
         if isinstance(model, RowSpec):
-            columns = "".join(
-                div("task-col", self.task_block(child, labels)) for child in model.blocks
+            columns = tuple(
+                Stack(self.task_block(child, labels)) for child in model.blocks
             )
-            class_name, style = _row_layout(model)
-            return div(class_name, columns, style)
+            return (Columns(columns, model.columns),)
         if isinstance(model, PartSpec):
-            body = "".join(self.task_block(child, labels) for child in model.blocks)
-            return div("task-part", _label_line(labels.get(id(model))) + div("task-blocks", body))
+            body: tuple[Block, ...] = ()
+            for child in model.blocks:
+                body += self.task_block(child, labels)
+            return (Lettered(labels.get(id(model)), body),)
         return self.leaf(model)
 
-    def task(self, number: int, model: TaskSpec) -> str:
+    def task(self, number: int, model: TaskSpec) -> Block:
         labels = task_part_labels(model)
-        body = "".join(self.task_block(block, labels) for block in model.blocks)
-        return div("task", _number_line(number) + div("task-blocks", body))
+        body: tuple[Block, ...] = ()
+        for child in model.blocks:
+            body += self.task_block(child, labels)
+        return Numbered(number, body)
 
-    def doc_block(self, model: Any, number: Optional[int] = None) -> str:
+    def doc_block(self, model: Any, number: Optional[int] = None) -> Block:
         if isinstance(model, TaskSpec):
             assert number is not None
             return self.task(number, model)
         if isinstance(model, HeadingSpec):
-            return render_heading(model)
+            return build_heading(model)
         if isinstance(model, DocRowSpec):
-            columns = "".join(div("task-col", self.doc_block(child)) for child in model.blocks)
-            class_name, style = _row_layout(model)
-            return div(class_name, columns, style)
-        return div("task-block", self.component(model))
+            columns = tuple(self.doc_block(child) for child in model.blocks)
+            return Columns(columns, model.columns)
+        return Spaced(self.component(model))
 
     # --- answers ---
 
-    def answers(self, numbered_tasks: list[tuple[int, TaskSpec]]) -> str:
-        """One line per question that has an answer or an explanation ("3." for
+    def answers(self, numbered_tasks: list[tuple[int, TaskSpec]]) -> Answers:
+        """One row per question that has an answer or an explanation ("3." for
         a single question, "3. б)" for a subtask). Tasks with neither are
         skipped, and an empty section is not printed at all — a lesson summary
         simply has none."""
-        items = []
+        rows = []
         for number, task in numbered_tasks:
             for label, question in _task_answers(task):
                 answer = render_answer(question)
                 if answer is None and not question.explanation:
                     continue
-                caption = f"{number}." + (f" {esc(label)})" if label else "")
-                body = _answer_html(answer)
-                if question.explanation:
-                    body += div(
-                        "answers-explanation",
-                        f'<strong>{t("explanation_label")}</strong> '
-                        f"{esc(question.explanation)}",
-                    )
-                items.append(
-                    f'<div class="answers-item"><span class="answers-num">{caption}</span>'
-                    f'{div("answers-body", body)}</div>'
+                caption = f"{number}." + (f" {label})" if label else "")
+                explanation = (
+                    parse_inline(question.explanation) if question.explanation else None
                 )
-        if not items:
-            return ""
-        return div(
-            "answers-section",
-            div("answers-title", t("answers_title")) + "".join(items),
-        )
+                rows.append(AnswerRow(caption, _answer_blocks(answer), explanation))
+        return Answers(tuple(rows))
 
 
-def _row_layout(model: RowSpec | DocRowSpec) -> tuple[str, str]:
-    """Class and style of a row: without an explicit count every child claims a
-    column of its own, which is what the bare grid already does."""
-    if model.columns is None:
-        return "task-row", ""
-    return (
-        f"task-row cols-{model.columns}",
-        column_rows(len(model.blocks), model.columns),
-    )
-
-
-def _answer_html(answer: MaybeAnswer) -> str:
-    """The one place an answer's shape becomes markup.
+def _answer_blocks(answer: MaybeAnswer) -> tuple[Block, ...]:
+    """The one place an answer's shape becomes layout.
 
     A kind says what it has — a line, a line per element, a drawing — and the
-    section decides how it looks, so answers of different kinds stay
+    section decides how that is placed, so answers of different kinds stay
     consistent on the sheet and no kind has to know the section's markup.
     """
     if answer is None:
-        return ""
+        return ()
     if isinstance(answer, Rows):
-        return div("answers-rows", "".join(f"<div>{row}</div>" for row in answer.rows))
-    return answer.html  # Inline and Block both carry ready markup
+        return (Lines(answer.rows),)
+    if isinstance(answer, DrawnAnswer):
+        return (answer.block,)
+    assert isinstance(answer, ShortAnswer)
+    return (Phrase(answer.runs),)
 
 
 def _task_answers(task: TaskSpec) -> list[tuple[str, Any]]:
@@ -193,45 +193,6 @@ def _task_answers(task: TaskSpec) -> list[tuple[str, Any]]:
     return pairs
 
 
-def _number_line(number: int) -> str:
-    # The number stands beside the whole task, in a gutter of its own: the
-    # wording, the picture and the ruling are all equally "task 3", and a
-    # number sitting on top of the first block would claim only that block.
-    return f'<span class="task-num">{number}.</span>'
-
-
-def _label_line(label: Optional[str]) -> str:
-    if not label:
-        return ""
-    return f'<span class="subtask-label">{esc(label)})</span>'
-
-
-def render_source(source: dict[str, Any]) -> str:
-    """The draft embedded in the page: the finished file *is* the draft, and
-    a new session only has to load it back.
-
-    Every `<` becomes `\\u003c` — a valid JSON escape — so that no author text
-    can close the `</script>` tag early.
-    """
-    payload = json.dumps(source, ensure_ascii=False).replace("<", "\\u003c")
-    return f'<script type="application/json" id="document-source">{payload}</script>'
-
-
-def _page(title: str, body: str, source_html: str = "") -> str:
-    return f"""<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<title>{esc(title or t("default_title"))}</title>
-{KATEX_HEAD}
-<style>{BASE_CSS}</style>
-</head>
-<body>
-{body}{source_html}
-</body>
-</html>"""
-
-
 def _numbered(blocks: list[Any]) -> list[tuple[Any, Optional[int]]]:
     """Continuous numbering: tasks get 1..N in order of appearance, and other
     blocks do not shift it."""
@@ -246,6 +207,26 @@ def _numbered(blocks: list[Any]) -> list[tuple[Any, Optional[int]]]:
     return result
 
 
+def build_layout(blocks: list[Any], *, with_answers: bool = True) -> tuple[Block, ...]:
+    """The document as layout — the input of every backend.
+
+    `with_answers` controls only the section at the end.
+    """
+    builder = Builder()
+    numbered = _numbered(blocks)
+    body = tuple(builder.doc_block(block, number) for block, number in numbered)
+    if not with_answers:
+        return body
+    answers = builder.answers(
+        [
+            (number, block)
+            for block, number in numbered
+            if isinstance(block, TaskSpec) and number is not None
+        ]
+    )
+    return body + (answers,)
+
+
 def build_document(
     doc: DocumentSpec,
     blocks: list[Any],
@@ -255,22 +236,25 @@ def build_document(
 ) -> str:
     """The whole document as one HTML file.
 
-    `with_answers` controls only the section at the end. `source` is the raw
-    draft to embed — passed for the full variant only, since in a handout it
-    would reveal the answers through the page source.
+    `source` is the raw draft to embed — passed for the full variant only,
+    since in a handout it would reveal the answers through the page source.
     """
-    renderer = Renderer()
-    numbered = _numbered(blocks)
-    body = [renderer.doc_block(block, number) for block, number in numbered]
-    if with_answers:
-        body.append(
-            renderer.answers(
-                [(number, block) for block, number in numbered
-                 if isinstance(block, TaskSpec) and number is not None]
-            )
-        )
-    source_html = f"\n{render_source(source)}" if source is not None else ""
-    return _page(doc.title, "".join(body), source_html)
+    return html.page(doc.title, build_layout(blocks, with_answers=with_answers), source)
+
+
+def build_docx(
+    doc: DocumentSpec,
+    blocks: list[Any],
+    *,
+    with_answers: bool = True,
+) -> bytes:
+    """The whole document as one .docx file.
+
+    No embedded draft, unlike HTML: Word rewrites the package when the teacher
+    saves, so a promise that the file can be loaded back into a session would
+    be a promise we cannot keep. The HTML file remains the way back.
+    """
+    return docx.document(doc.title, build_layout(blocks, with_answers=with_answers))
 
 
 def build_preview(doc: DocumentSpec, blocks: list[Any], block_id: str) -> str:
@@ -285,8 +269,8 @@ def build_preview(doc: DocumentSpec, blocks: list[Any], block_id: str) -> str:
     if match is None:
         raise KeyError(block_id)
     block, number = match
-    renderer = Renderer()
-    body = renderer.doc_block(block, number)
+    builder = Builder()
+    body: tuple[Block, ...] = (builder.doc_block(block, number),)
     if isinstance(block, TaskSpec) and number is not None:
-        body += renderer.answers([(number, block)])
-    return _page(doc.title, body)
+        body += (builder.answers([(number, block)]),)
+    return html.page(doc.title, body)

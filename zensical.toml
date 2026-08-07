@@ -27,6 +27,7 @@ nav = [
     { "С чего начать" = "contribute.md" },
     { "Архитектура" = "architecture.md" },
     { "Принципы схемы" = "schema-design-principles.md" },
+    { "Выгрузка в Word" = "word-export.md" },
     { "Справочник: документ" = "reference/document.md" },
     { "Справочник: виды заданий" = "reference/questions.md" },
     { "Справочник: иллюстрации" = "reference/visuals.md" },

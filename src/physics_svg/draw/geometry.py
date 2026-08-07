@@ -218,5 +218,32 @@ class Transform:
     def is_identity(self) -> bool:
         return self == IDENTITY
 
+    @property
+    def is_translation(self) -> bool:
+        """Moves without turning or resizing — the case a shape can survive
+        unchanged (an arc stays an arc, a rectangle stays axis-aligned)."""
+        return (self.a, self.b, self.c, self.d) == (1.0, 0.0, 0.0, 1.0)
+
+    @property
+    def is_axis_aligned(self) -> bool:
+        """Scales along the axes without turning: a rectangle stays a
+        rectangle, a circle may become an ellipse."""
+        return self.b == 0.0 and self.c == 0.0
+
+    @property
+    def is_conformal(self) -> bool:
+        """Preserves shape: a circle stays a circle. Rotation and uniform
+        scale, in any combination."""
+        return (
+            math.isclose(self.a * self.a + self.b * self.b, self.c * self.c + self.d * self.d)
+            and math.isclose(self.a * self.c + self.b * self.d, 0.0, abs_tol=1e-12)
+        )
+
+    @property
+    def scale_factor(self) -> float:
+        """Uniform length factor — meaningful when the transform is conformal
+        (a stroke width, a font size)."""
+        return math.sqrt(abs(self.a * self.d - self.b * self.c))
+
 
 IDENTITY = Transform()

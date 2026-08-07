@@ -1,0 +1,11 @@
+{
+  "type": "instrument",
+  "kind": "caliper",
+  "unit": "мм",
+  "min": 0,
+  "max": 40,
+  "step": 1,
+  "vernier": 20,
+  "value": 12.35,
+  "caption": "Штангенциркуль с нониусом 0,05 мм"
+}

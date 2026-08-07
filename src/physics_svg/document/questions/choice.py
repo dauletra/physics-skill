@@ -6,10 +6,10 @@ from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Inline
 from physics_svg.document.domain import Domain
-from physics_svg.document.html import list_html
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import Block, Bullets, Hint, Item, Run, Stack
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import LETTERS, t
-from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
 
 
@@ -52,21 +52,22 @@ class ChoiceSpec:
             )
 
 
-def body(model: ChoiceSpec) -> str:
+def body(model: ChoiceSpec) -> Block:
     """Correctness is not marked in any way here — it is printed as a letter
     in the answers section."""
-    options = list_html([esc(option.text) for option in model.options], marker="letter")
+    items: tuple[Item, ...] = tuple(parse_inline(option.text) for option in model.options)
+    options = Bullets(items, marker="letter")
     if model.select == "multiple":
         # Without the hint a student cannot tell `multiple` from `single`:
         # both render as the same list of options.
-        return f'<div class="choice-hint">{t("choice_multiple_hint")}</div>{options}'
+        return Stack((Hint((Run(t("choice_multiple_hint")),)), options))
     return options
 
 
 def answer(model: ChoiceSpec) -> Answer:
     # The same а)/б) actually printed as list markers: one source of letters.
     letters = [LETTERS[i] for i, option in enumerate(model.options) if option.correct]
-    return Inline(esc(", ".join(letters)))
+    return Inline((Run(", ".join(letters)),))
 
 
 register(

@@ -17,10 +17,12 @@ markers usable in the library at all — they do not have to be avoided.
 from __future__ import annotations
 
 import math
-from typing import Callable
+from dataclasses import dataclass
+from typing import Callable, Sequence
 
-from physics_svg.draw.geometry import BBox, Pt, union_all
-from physics_svg.draw.nodes import Node, Rect
+from physics_svg.draw.geometry import BBox, Pt, Transform, union_all
+from physics_svg.draw.nodes import Group, Line, Node, Path, Rect
+from physics_svg.draw.pathdata import LineTo, Move
 from physics_svg.draw.style import Style
 from physics_svg.draw.text import FONT_STACK, num
 
@@ -40,6 +42,105 @@ DEFAULT_PADDING = 1.0
 _SNAP = 0.5
 
 
+@dataclass(frozen=True)
+class Tiling:
+    """A repeating cell — an exercise-book square, a millimetre grid.
+
+    One declaration, two renderings: SVG registers it as a `<pattern>` and
+    fills a rectangle with it, a backend of native shapes repeats the cell
+    across the area as ordinary lines. Stating it once is what keeps the two
+    from drifting; a pattern written as markup could only ever be one of them.
+
+    `base` is a tiling the cell is laid over — the millimetre paper, whose
+    centimetre square is filled with the fine one.
+    """
+
+    id: str
+    step_x: float
+    step_y: float
+    tile: tuple[Node, ...]
+    base: "Tiling | None" = None
+
+    def __str__(self) -> str:
+        """A fill value: `url(#…)`, exactly what a style already holds."""
+        return f"url(#{self.id})"
+
+    def expanded(self, region: BBox) -> list[Node]:
+        """The cell repeated across `region`, as plain nodes.
+
+        The area is always a whole number of cells (a ruling is measured in
+        its own cells), so nothing has to be clipped.
+
+        **A cell edge becomes one line across the field.** Repeating the cell
+        literally is quadratic — a millimetre field of a hundred by sixty
+        cells would be six thousand shapes — while the squares it draws are
+        really a few hundred straight lines. Anything that is not an edge (the
+        dot of a dotted ruling) is repeated cell by cell, because there is
+        nothing to join it into.
+        """
+        nodes: list[Node] = []
+        if self.base is not None:
+            nodes.extend(self.base.expanded(region))
+        columns = max(1, round(region.width / self.step_x))
+        rows = max(1, round(region.height / self.step_y))
+        for child in self.tile:
+            spans, rest = self._split(child)
+            for offset, horizontal, style in spans:
+                nodes.extend(self._ruled(region, offset, horizontal, style, columns, rows))
+            for row in range(rows):
+                for column in range(columns):
+                    shift = Transform.translate(
+                        region.x0 + column * self.step_x, region.y0 + row * self.step_y
+                    )
+                    nodes.extend(node.transformed(shift) for node in rest)
+        return nodes
+
+    def _split(self, child: Node) -> tuple[list[tuple[float, bool, Style]], list[Node]]:
+        """Cell edges (offset, horizontal?, style) apart from everything else."""
+        if not isinstance(child, (Line, Path)):
+            return [], [child]
+        pairs = _straight_pairs(child)
+        if pairs is None:
+            return [], [child]
+        spans: list[tuple[float, bool, Style]] = []
+        leftovers: list[Node] = []
+        for a, b in pairs:
+            if a.y == b.y and sorted((a.x, b.x)) == [0.0, self.step_x]:
+                spans.append((a.y, True, child.style))
+            elif a.x == b.x and sorted((a.y, b.y)) == [0.0, self.step_y]:
+                spans.append((a.x, False, child.style))
+            else:
+                leftovers.append(Line(a, b, child.style))
+        return spans, leftovers
+
+    def _ruled(
+        self,
+        region: BBox,
+        offset: float,
+        horizontal: bool,
+        style: Style,
+        columns: int,
+        rows: int,
+    ) -> list[Node]:
+        if horizontal:
+            return [
+                Line(
+                    Pt(region.x0, region.y0 + row * self.step_y + offset),
+                    Pt(region.x1, region.y0 + row * self.step_y + offset),
+                    style,
+                )
+                for row in range(rows)
+            ]
+        return [
+            Line(
+                Pt(region.x0 + column * self.step_x + offset, region.y0),
+                Pt(region.x0 + column * self.step_x + offset, region.y1),
+                style,
+            )
+            for column in range(columns)
+        ]
+
+
 class Canvas:
     """A drawing surface for one illustration."""
 
@@ -47,6 +148,7 @@ class Canvas:
         self.scope = scope
         self._nodes: list[Node] = []
         self._defs: dict[str, str] = {}
+        self._tilings: dict[str, Tiling] = {}
 
     # --- building -------------------------------------------------------
 
@@ -72,6 +174,60 @@ class Canvas:
         if element_id not in self._defs:
             self._defs[element_id] = build(element_id)
         return element_id
+
+    def tiling(
+        self,
+        name: str,
+        step_x: float,
+        step_y: float,
+        tile: Sequence[Node],
+        base: "Tiling | None" = None,
+    ) -> Tiling:
+        """Register a repeating cell and get it back to fill with."""
+        entry = Tiling(self.uid(name), step_x, step_y, tuple(tile), base)
+        self._tilings[entry.id] = entry
+        self.define(name, lambda pid: _pattern(entry))
+        return entry
+
+    def fill_tiled(self, region: BBox, tiling: Tiling) -> Node:
+        """The area, filled with the cell."""
+        return Rect(
+            Pt(region.x0, region.y0),
+            region.width,
+            region.height,
+            Style(fill=str(tiling)),
+        )
+
+    @property
+    def nodes(self) -> list[Node]:
+        """Everything drawn, in order."""
+        return list(self._nodes)
+
+    def flat_nodes(self) -> list[Node]:
+        """The same, with groups flattened and tiled areas turned into lines.
+
+        What a backend without patterns and without nested frames can draw —
+        which is every backend except SVG.
+        """
+        flat: list[Node] = []
+        for node in self._nodes:
+            if isinstance(node, Group):
+                flat.extend(node.flattened())
+                continue
+            tiling = self._tiling_of(node)
+            if tiling is not None:
+                box = node.bbox()
+                assert box is not None
+                flat.extend(tiling.expanded(box))
+                continue
+            flat.append(node)
+        return flat
+
+    def _tiling_of(self, node: Node) -> Tiling | None:
+        fill = getattr(getattr(node, "style", None), "fill", None)
+        if not isinstance(fill, str) or not fill.startswith("url(#"):
+            return None
+        return self._tilings.get(fill[5:-1])
 
     @property
     def is_empty(self) -> bool:
@@ -134,6 +290,11 @@ class Canvas:
         parts.append("</svg>")
         return "".join(parts)
 
+    def frame_box(self, viewbox: BBox | None = None, padding: float = DEFAULT_PADDING) -> BBox:
+        """The box the picture is framed by — the `viewBox` of the SVG, and
+        the extent a Word drawing is sized from."""
+        return self._resolve_box(viewbox, padding)
+
     def _resolve_box(self, viewbox: BBox | None, padding: float) -> BBox:
         if viewbox is not None:
             return viewbox
@@ -152,3 +313,44 @@ def _snap_out(box: BBox) -> BBox:
         math.ceil(box.x1 / _SNAP) * _SNAP,
         math.ceil(box.y1 / _SNAP) * _SNAP,
     )
+
+
+def _pattern(tiling: Tiling) -> str:
+    """The tiling as an SVG `<pattern>`.
+
+    The cell is serialised from its own nodes, so the two renderings cannot
+    describe different rulings. A tiling laid over another one opens with a
+    rectangle filled by it — the nesting keeps the markup small however large
+    the field is.
+    """
+    base = (
+        f'<rect width="{num(tiling.step_x)}" height="{num(tiling.step_y)}" '
+        f'fill="{tiling.base}"/>'
+        if tiling.base is not None
+        else ""
+    )
+    cell = "".join(node.svg() for node in tiling.tile)
+    return (
+        f'<pattern id="{tiling.id}" width="{num(tiling.step_x)}" '
+        f'height="{num(tiling.step_y)}" patternUnits="userSpaceOnUse">'
+        f"{base}{cell}</pattern>"
+    )
+
+
+def _straight_pairs(child: Line | Path) -> list[tuple[Pt, Pt]] | None:
+    """The node as straight segments, or `None` if it is not made of them."""
+    if isinstance(child, Line):
+        return [(child.a, child.b)]
+    pairs: list[tuple[Pt, Pt]] = []
+    here: Pt | None = None
+    for segment in child.segments():
+        if isinstance(segment, Move):
+            here = segment.to
+        elif isinstance(segment, LineTo):
+            if here is None:
+                return None
+            pairs.append((here, segment.to))
+            here = segment.to
+        else:
+            return None
+    return pairs

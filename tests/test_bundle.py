@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ast
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 
 import build_skill  # noqa: E402
+from physics_svg.cli import FORMATS  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 
@@ -72,6 +74,18 @@ class TestSkillMd:
         text = (bundle / "SKILL.md").read_text(encoding="utf-8")
         assert f"все {len(load_questions())} видов" in text
         assert f"все {len(load_visuals())} типов" in text
+
+    def test_it_promises_only_formats_the_cli_has(self, bundle: Path) -> None:
+        """The command table is the model's whole knowledge of the surface.
+
+        A format named here and unknown to the CLI is a run that fails in
+        front of a teacher; a format the CLI has and the table omits is a file
+        nobody is ever offered.
+        """
+        text = (bundle / "SKILL.md").read_text(encoding="utf-8")
+        named = set(re.findall(r"--format (\w+)", text))
+        assert named <= set(FORMATS), f"SKILL.md обещает форматы, которых нет: {named}"
+        assert "docx" in named, "SKILL.md не рассказывает про Word — модель его не предложит"
 
     def test_it_promises_nothing_missing(self, bundle: Path) -> None:
         # `build` already fails on this; asserting here documents the rule.
@@ -162,6 +176,39 @@ class TestEndToEnd:
         html = (tmp_path / "out" / "document.html").read_text(encoding="utf-8")
         assert '<div class="answers-section">' in html
         assert 'id="document-source"' in html
+
+    def test_it_builds_a_word_document(
+        self, bundle: Path, clean_env: dict[str, str], tmp_path: Path
+    ) -> None:
+        """The Word backend ships and runs with nothing installed — the whole
+        promise of the bundle applied to a format that usually needs a
+        library."""
+        draft = tmp_path / "draft"
+        (draft / "blocks").mkdir(parents=True)
+        (draft / "document.json").write_text(
+            '{"title": "Проба", "order": ["t"]}', encoding="utf-8"
+        )
+        (draft / "blocks" / "t.json").write_text(
+            '{"id": "t", "type": "task", "blocks": ['
+            '{"type": "text", "body": "Условие."}, {"type": "open", "answer": "42"}]}',
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(bundle / "scripts" / "render.py"),
+                "build",
+                str(draft),
+                "--format",
+                "docx",
+                "-o",
+                str(tmp_path / "out"),
+            ],
+            capture_output=True, text=True, encoding="utf-8", env=clean_env, cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        data = (tmp_path / "out" / "document.docx").read_bytes()
+        assert data[:2] == b"PK"
 
     def test_it_draws_a_library_spec(
         self, bundle: Path, clean_env: dict[str, str], tmp_path: Path

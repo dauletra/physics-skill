@@ -7,10 +7,11 @@ from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Inline
 from physics_svg.document.domain import Domain
-from physics_svg.document.html import bank_list, blank_cell
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import Bank, Block, Gap, Para, Stack
+from physics_svg.document.layout import Inline as InlinePart
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import t
-from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
 
 #: A placeholder in the template: `___имя___`. The name is the key in
@@ -68,22 +69,27 @@ class FillTextSpec:
                 self.domain.check_member(value, field="blanks", attr=name)
 
 
-def body(model: FillTextSpec) -> str:
-    pieces: list[str] = []
+def body(model: FillTextSpec) -> Block:
+    # The template's own underscores are not ruling here: in this kind a place
+    # to write is a named gap, and bare underscores are literal text.
+    pieces: list[InlinePart] = []
     last = 0
     for found in BLANK_RE.finditer(model.template):
-        pieces.append(esc(model.template[last : found.start()]))
-        pieces.append(blank_cell())
+        pieces.extend(parse_inline(model.template[last : found.start()]))
+        pieces.append(Gap())
         last = found.end()
-    pieces.append(esc(model.template[last:]))
-    text = f'<p>{"".join(pieces)}</p>'
-    return bank_list(model.bank, t("bank_label")) + text if model.bank else text
+    pieces.extend(parse_inline(model.template[last:]))
+    text = Para(tuple(pieces))
+    if not model.bank:
+        return text
+    bank = Bank(t("bank_label"), tuple(parse_inline(word) for word in model.bank))
+    return Stack((bank, text))
 
 
 def answer(model: FillTextSpec) -> Answer:
     # Values in the order the gaps appear in the sentence.
     values = [model.blanks[found.group(1)] for found in BLANK_RE.finditer(model.template)]
-    return Inline(esc("; ".join(values)))
+    return Inline(parse_inline("; ".join(values)))
 
 
 register(

@@ -23,9 +23,14 @@ from pathlib import Path
 from typing import Any, Callable, Iterator
 
 from physics_svg.document.answers import MaybeAnswer
+from physics_svg.document.layout import Block
 
-Renderer = Callable[[Any], str]
-#: The answers section is handed a shape, not finished markup — see
+#: What the student sees, in the layout vocabulary — never markup: a kind
+#: describes what to print, and a backend decides how it looks in HTML or in
+#: Word. This is what makes a new kind work in both formats without writing
+#: anything for either.
+Renderer = Callable[[Any], Block]
+#: The answers section is handed a shape, not finished layout — see
 #: `document/answers.py` for why.
 AnswerRenderer = Callable[[Any], MaybeAnswer]
 
@@ -150,7 +155,7 @@ def is_question(model: object) -> bool:
     return isinstance(model, question_models())
 
 
-def render_body(model: Any) -> str:
+def render_body(model: Any) -> Block:
     return load_all()[model.type].body(model)
 
 

@@ -29,7 +29,12 @@ from physics_svg.document.manifest import (
     parse_block,
     parse_document,
 )
-from physics_svg.document.render import build_document, build_preview, render_source
+from physics_svg.document.render import (
+    build_document,
+    build_docx,
+    build_preview,
+    render_source,
+)
 from physics_svg.document.workspace import Workspace, WorkspaceError, load_workspace
 
 __all__ = [
@@ -41,6 +46,7 @@ __all__ = [
     "Workspace",
     "WorkspaceError",
     "build_document",
+    "build_docx",
     "build_preview",
     "component_annotation",
     "doc_block_annotation",

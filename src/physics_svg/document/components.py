@@ -17,15 +17,20 @@ from __future__ import annotations
 import re
 from typing import Literal, Optional
 
-from physics_svg.document.html import blank, div, inline_blank, list_html, table_html
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import (
+    Bullets,
+    Grid,
+    Heading,
+    Item,
+    Line,
+    Para,
+    Rule,
+    Run,
+    Slot,
+)
 from physics_svg.document.strings import LETTERS, t
-from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
-
-#: A run of underscores in author text is a ruled space, as wide as it was
-#: typed. Three is the shortest run that cannot be a typo or an em dash typed
-#: by hand.
-BLANK_RUN = re.compile(r"_{3,}")
 
 #: The `fill_text` gap, recognised here only in order to be refused.
 NAMED_BLANK = re.compile(r"_{3,}[^\W_]\w*_{3,}")
@@ -129,34 +134,34 @@ class DividerSpec:
     id: Optional[str] = None
 
 
-# --- rendering ----------------------------------------------------------
+# --- layout -------------------------------------------------------------
 
 
-def render_text(model: TextSpec) -> str:
-    # Escaping first, then the ruling: the blank is markup the renderer adds,
-    # and it must not be escaped along with the author's text.
-    body = BLANK_RUN.sub(lambda run: inline_blank(len(run.group())), esc(model.body))
-    return f"<p>{body}</p>"
+def build_text(model: TextSpec) -> Para:
+    # `blanks=True`: a run of underscores in a paragraph is a place to write.
+    # In a `fill_text` template it is not — there a gap carries a name.
+    return Para(parse_inline(model.body, blanks=True))
 
 
-def render_table(model: TableSpec) -> str:
-    return table_html(
-        [esc(header) for header in model.headers],
-        [[esc(cell) for cell in row] for row in model.rows],
+def build_table(model: TableSpec) -> Grid:
+    return Grid(
+        tuple(parse_inline(header) for header in model.headers),
+        tuple(tuple(parse_inline(cell) for cell in row) for row in model.rows),
     )
 
 
-def render_list(model: ListSpec) -> str:
-    return list_html([esc(item) for item in model.items], model.marker, model.columns)
+def build_list(model: ListSpec) -> Bullets:
+    items: tuple[Item, ...] = tuple(parse_inline(item) for item in model.items)
+    return Bullets(items, model.marker, model.columns)
 
 
-def render_answer_line(model: AnswerLineSpec) -> str:
-    return f'<div>{t("answer_label")} {blank()}</div>'
+def build_answer_line(model: AnswerLineSpec) -> Line:
+    return Line((Run(f'{t("answer_label")} '), Slot()))
 
 
-def render_heading(model: HeadingSpec) -> str:
-    return div(f"doc-heading level-{model.level}", esc(model.text))
+def build_heading(model: HeadingSpec) -> Heading:
+    return Heading(model.level, parse_inline(model.text))
 
 
-def render_divider(model: DividerSpec) -> str:
-    return '<hr class="doc-divider">'
+def build_divider(model: DividerSpec) -> Rule:
+    return Rule()

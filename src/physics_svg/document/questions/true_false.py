@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Inline
-from physics_svg.document.html import list_html, statement_row
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import Bullets, Item, Run, Statement, Verdict
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import LETTERS, t
-from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
 
 
@@ -38,23 +38,14 @@ class TrueFalseSpec:
             )
 
 
-def _square() -> str:
-    return '<span class="tf-square"></span>'
-
-
-def body(model: TrueFalseSpec) -> str:
-    rows = [
-        statement_row(
-            esc(statement.text),
-            '<span class="tf-box">'
-            f'{_square()} {t("true_label")}&nbsp;&nbsp;{_square()} {t("false_label")}'
-            "</span>",
-        )
+def body(model: TrueFalseSpec) -> Bullets:
+    rows: tuple[Item, ...] = tuple(
+        Statement(parse_inline(statement.text), Verdict())
         for statement in model.statements
-    ]
+    )
     # Lettered, so a verdict has something to name — and lettered rather than
     # numbered because a sheet already enumerates with а)/б): subtasks, options.
-    return list_html(rows, marker="letter")
+    return Bullets(rows, marker="letter")
 
 
 def answer(model: TrueFalseSpec) -> Answer:
@@ -64,7 +55,7 @@ def answer(model: TrueFalseSpec) -> Answer:
         f"{LETTERS[i]} — {t('true_label') if statement.answer else t('false_label')}"
         for i, statement in enumerate(model.statements)
     ]
-    return Inline(esc(", ".join(verdicts)))
+    return Inline((Run(", ".join(verdicts)),))
 
 
 register(

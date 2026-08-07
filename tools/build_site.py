@@ -26,7 +26,12 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "tools"))
 
 import build_skill  # noqa: E402
-from physics_svg.document import build_document, parse_block, parse_document  # noqa: E402
+from physics_svg.document import (  # noqa: E402
+    build_document,
+    build_docx,
+    parse_block,
+    parse_document,
+)
 from physics_svg.document.assets import BASE_CSS  # noqa: E402
 from physics_svg.document.questions import QuestionType  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
@@ -90,7 +95,13 @@ def _copy_download(archive: Path) -> None:
 
 
 def _write_example() -> None:
-    """The worked example as the real artefact, not a description of one."""
+    """The worked example as the real artefact, not a description of one.
+
+    In both formats, because both are what a teacher gets: the page to look at
+    and print, and the Word file to edit by hand. Downloading the .docx is the
+    only way to see what the second backend actually produces before
+    installing anything.
+    """
     from physics_svg.document import load_workspace
 
     workspace = load_workspace(EXAMPLE)
@@ -101,6 +112,9 @@ def _write_example() -> None:
     (DOCS / "assets" / "example-handout.html").write_text(
         build_document(workspace.document, workspace.blocks, with_answers=False),
         encoding="utf-8",
+    )
+    (DOCS / "assets" / "example-document.docx").write_bytes(
+        build_docx(workspace.document, workspace.blocks)
     )
 
 

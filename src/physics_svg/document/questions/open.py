@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.document.answers import Inline, MaybeAnswer
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import NOTHING, Block
 from physics_svg.document.questions.registry import register
-from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
 
 
@@ -34,19 +35,19 @@ class OpenSpec:
             )
 
 
-def body(model: OpenSpec) -> str:
+def body(model: OpenSpec) -> Block:
     """Prints nothing at all.
 
     The statement is the neighbouring `text` and the place to write is the
     neighbouring `paper`/`answer_line`; it stays a question only so that its
     answer reaches the answers section.
     """
-    return ""
+    return NOTHING
 
 
 def answer(model: OpenSpec) -> MaybeAnswer:
     # `None`, not an empty line: a question asked aloud gets no row at all.
-    return Inline(esc(model.answer)) if model.answer else None
+    return Inline(parse_inline(model.answer)) if model.answer else None
 
 
 register(

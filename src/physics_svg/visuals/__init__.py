@@ -14,6 +14,7 @@ See registry.py for what a type declares.
 from physics_svg.visuals.registry import (
     Layout,
     VisualType,
+    build_shapes,
     build_svg,
     load_all,
     parse_visual,
@@ -26,6 +27,7 @@ from physics_svg.visuals.registry import (
 __all__ = [
     "Layout",
     "VisualType",
+    "build_shapes",
     "build_svg",
     "load_all",
     "parse_visual",

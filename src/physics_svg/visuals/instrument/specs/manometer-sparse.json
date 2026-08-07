@@ -1,0 +1,11 @@
+{
+  "type": "instrument",
+  "kind": "manometer",
+  "unit": "кПа",
+  "min": 0,
+  "max": 600,
+  "step": 20,
+  "label_step": 200,
+  "value": 430,
+  "caption": "Манометр: подписан каждый десятый штрих"
+}

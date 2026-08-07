@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Rows
-from physics_svg.document.html import list_html, statement_row
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import Bullets, Item, Square, Statement
 from physics_svg.document.questions.registry import register
-from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
 
 
@@ -39,12 +39,11 @@ class RankSpec:
             )
 
 
-def body(model: RankSpec) -> str:
-    rows = [
-        statement_row(esc(item.text), '<span class="rank-square"></span>')
-        for item in model.items
-    ]
-    return list_html(rows)
+def body(model: RankSpec) -> Bullets:
+    rows: tuple[Item, ...] = tuple(
+        Statement(parse_inline(item.text), Square()) for item in model.items
+    )
+    return Bullets(rows)
 
 
 def answer(model: RankSpec) -> Answer:
@@ -56,7 +55,7 @@ def answer(model: RankSpec) -> Answer:
     wrong answer. A line per position cannot be misread.
     """
     ordered = sorted(model.items, key=lambda item: item.position)
-    return Rows([esc(f"{item.position} — {item.text}") for item in ordered])
+    return Rows(tuple(parse_inline(f"{item.position} — {item.text}") for item in ordered))
 
 
 register(

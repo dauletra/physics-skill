@@ -15,6 +15,9 @@ from kinds import EACH_KIND
 from physics_svg.document import build_document, parse_block, parse_document
 from physics_svg.document.answers import Block, Inline, Rows
 from physics_svg.document.blocks import doc_block_annotation
+from physics_svg.document.emit.html import block as block_html
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import Run, is_empty
 from physics_svg.document.questions import is_question, load_all, render_answer, render_body
 from physics_svg.document.strings import LETTERS
 from physics_svg.draw import esc
@@ -193,8 +196,10 @@ class TestAnswers:
     def test_open_body_is_empty_but_the_task_still_prints(self) -> None:
         from physics_svg.document.questions.open import OpenSpec
 
-        assert render_body(OpenSpec(type="open")) == ""
-        assert render_answer(OpenSpec(type="open", answer="15 м/с")) == Inline("15 м/с")
+        assert is_empty(render_body(OpenSpec(type="open")))
+        assert render_answer(OpenSpec(type="open", answer="15 м/с")) == Inline(
+            parse_inline("15 м/с")
+        )
 
     def test_a_question_without_an_answer_says_so_with_none(self) -> None:
         from physics_svg.document.questions.open import OpenSpec
@@ -247,13 +252,15 @@ class TestAnswerShape:
         assert _answer_of(kind) is None or isinstance(_answer_of(kind), (Inline, Rows, Block))
 
     def test_a_drawn_answer_is_a_block_and_a_short_one_is_not(self, kind) -> None:
-        # The one thing the shapes exist to prevent: an SVG in the slot that
-        # holds «б», or a picture folded into a semicolon-joined line.
+        # The one thing the shapes exist to prevent: a drawing in the slot
+        # that holds «б», or a picture folded into a semicolon-joined line.
+        # A short answer is text and nothing else — not a picture, and not a
+        # place to write either: the section prints answers, it does not ask.
         answer = _answer_of(kind)
         if isinstance(answer, Inline):
-            assert "<svg" not in answer.html
+            assert all(isinstance(part, Run) for part in answer.runs)
         if isinstance(answer, Rows):
-            assert all("<svg" not in row for row in answer.rows)
+            assert all(isinstance(part, Run) for row in answer.rows for part in row)
 
 
 def _answer_of(kind) -> Any:
@@ -297,8 +304,8 @@ class TestLetteredStatements:
                 StatementSpec(text="Путь бывает отрицательным", answer=False),
             ],
         )
-        assert render_answer(model) == Inline("а — Верно, б — Неверно")
-        assert '<span class="list-marker">а)</span>' in render_body(model)
+        assert render_answer(model) == Inline((Run("а — Верно, б — Неверно"),))
+        assert '<span class="list-marker">а)</span>' in block_html(render_body(model))
 
 
 class TestDomain:

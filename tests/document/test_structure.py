@@ -11,8 +11,9 @@ from __future__ import annotations
 import pytest
 
 from physics_svg.document import parse_block, part_labels
-from physics_svg.document.components import render_heading, render_text
+from physics_svg.document.components import build_heading, build_text
 from physics_svg.document.containers import PartSpec
+from physics_svg.document.emit.html import block as block_html
 from physics_svg.schema import SchemaError
 
 TEXT = {"type": "text", "body": "Условие."}
@@ -215,12 +216,12 @@ class TestSheetFurniture:
     """The header is blocks, so everything it needs is a block's business."""
 
     def test_a_run_of_underscores_becomes_a_ruled_space(self) -> None:
-        html = render_text(parse_block({"type": "text", "body": "Дата: ______"}, "b"))
+        html = block_html(build_text(parse_block({"type": "text", "body": "Дата: ______"}, "b")))
         assert 'class="blank" style="width:6ch;"' in html
         assert "_" not in html
 
     def test_two_underscores_are_just_text(self) -> None:
-        html = render_text(parse_block({"type": "text", "body": "a__b"}, "b"))
+        html = block_html(build_text(parse_block({"type": "text", "body": "a__b"}, "b")))
         assert "blank" not in html and "a__b" in html
 
     def test_a_named_gap_belongs_to_a_question(self) -> None:
@@ -238,5 +239,5 @@ class TestSheetFurniture:
     def test_two_heading_levels(self) -> None:
         for level in (1, 2):
             block = parse_block({"type": "heading", "text": "Т", "level": level}, "b")
-            assert f"level-{level}" in render_heading(block)
+            assert f"level-{level}" in block_html(build_heading(block))
         rejects({"type": "heading", "text": "Т", "level": 3}, "level")

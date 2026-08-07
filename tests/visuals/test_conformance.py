@@ -17,6 +17,7 @@ from library import EACH_EXAMPLE, EACH_TYPE
 from physics_svg.draw import BBox, Canvas
 from physics_svg.schema import SchemaError, emit_schema, spec_meta
 from physics_svg.visuals import (
+    build_shapes,
     build_svg,
     load_all,
     parse_visual,
@@ -25,6 +26,10 @@ from physics_svg.visuals import (
 )
 
 VIEWBOX = re.compile(r'viewBox="(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)"')
+
+#: The width of the document column in EMU — what a picture is fitted into
+#: when it is drawn as shapes.
+COLUMN_EMU = 9638 * 635
 
 #: Injected into every free-text field. If any of it reaches the markup
 #: unescaped, a worksheet can carry active content.
@@ -82,6 +87,33 @@ class TestExamples:
 
     def test_output_is_deterministic(self, example) -> None:
         assert build_svg(example.model, scope="t") == build_svg(example.model, scope="t")
+
+    def test_draws_as_native_shapes_too(self, example) -> None:
+        """Every spec reaches Word, not only the browser.
+
+        A type is written once, against the node vocabulary, and both formats
+        follow — but only as long as it stays inside that vocabulary. This is
+        what catches the day it does not.
+        """
+        group, cx, cy = build_shapes(example.model, width_emu=COLUMN_EMU)
+        assert group.startswith("<wpg:wgp>")
+        assert cx > 0 and cy > 0
+        assert group.count("<wps:wsp>") > 0
+
+    def test_shapes_fit_the_frame(self, example) -> None:
+        # The counterpart of the viewBox check: a shape outside the extent is
+        # clipped by Word exactly as an overflowing viewBox clips a browser.
+        group, cx, cy = build_shapes(example.model, width_emu=COLUMN_EMU)
+        for x, y in re.findall(r'<a:off x="(-?\d+)" y="(-?\d+)"/>', group):
+            assert -1 <= int(x) <= cx and -1 <= int(y) <= cy, example.name
+
+    def test_a_drawing_is_not_absurdly_heavy(self, example) -> None:
+        """A ruling expands into lines, and a careless expansion is quadratic.
+        The bound is generous — it is here to catch an order of magnitude, not
+        to police a few shapes."""
+        group, _cx, _cy = build_shapes(example.model, width_emu=COLUMN_EMU)
+        assert group.count("<wps:wsp>") < 2000, example.name
+        assert len(group) < 400_000, example.name
 
     def test_standalone_carries_its_own_paper_and_size(self, example) -> None:
         svg = build_svg(example.model, standalone=True)

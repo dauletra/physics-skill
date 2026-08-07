@@ -6,11 +6,14 @@ from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Rows
 from physics_svg.document.domain import Domain
-from physics_svg.document.html import bank_list, blank, list_html, statement_row
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import Bank, Bullets, Item, Slot, Stack, Statement
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import t
-from physics_svg.draw import esc
 from physics_svg.schema import field, spec
+
+#: The line beside a group name: short, because the answer is one word.
+_LINE_PX = 115
 
 
 @spec
@@ -42,12 +45,15 @@ class ClassifySpec:
             self.domain.check_member(item.category, field="items", index=i, attr="category")
 
 
-def body(model: ClassifySpec) -> str:
+def body(model: ClassifySpec) -> Stack:
     # The groups are printed, not left to the author to repeat in a
     # neighbouring `text`: they are required data of this question, and a
     # sheet that only lists the items asks the student to guess the groups.
-    rows = [statement_row(esc(item.text), blank(115)) for item in model.items]
-    return bank_list(model.categories, t("groups_label")) + list_html(rows)
+    rows: tuple[Item, ...] = tuple(
+        Statement(parse_inline(item.text), Slot(_LINE_PX)) for item in model.items
+    )
+    bank = Bank(t("groups_label"), tuple(parse_inline(name) for name in model.categories))
+    return Stack((bank, Bullets(rows)))
 
 
 def answer(model: ClassifySpec) -> Answer:
@@ -59,8 +65,8 @@ def answer(model: ClassifySpec) -> Answer:
     rows = []
     for category in model.categories:
         texts = [item.text for item in model.items if item.category == category]
-        rows.append(esc(f"{category}: {', '.join(texts) if texts else '—'}"))
-    return Rows(rows)
+        rows.append(parse_inline(f"{category}: {', '.join(texts) if texts else '—'}"))
+    return Rows(tuple(rows))
 
 
 register(

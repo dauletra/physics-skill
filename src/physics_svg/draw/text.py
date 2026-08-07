@@ -83,3 +83,28 @@ def text_width(raw: str, size: float) -> float:
     """
     plain = _SUPSUB_RE.sub("", str(raw))
     return len(plain) * _MEAN_ADVANCE * size
+
+
+def split_scripts(raw: object) -> list[tuple[str, str]]:
+    """Author text as (chunk, script) pairs, where script is "", "sup" or "sub".
+
+    `svg_text()` turns the same markup into shifted `tspan`s; a backend of
+    native shapes needs the structure instead. Both read the one syntax an
+    author may type, which is why the splitting lives here rather than in
+    either backend.
+    """
+    parts: list[tuple[str, str]] = []
+    script = ""
+    position = 0
+    text = str(raw if raw is not None else "")
+    for found in _SUPSUB_RE.finditer(text):
+        chunk = text[position : found.start()]
+        if chunk:
+            parts.append((chunk, script))
+        tag = found.group()
+        script = "" if tag.startswith("</") else tag[1:-1]
+        position = found.end()
+    tail = text[position:]
+    if tail:
+        parts.append((tail, script))
+    return parts

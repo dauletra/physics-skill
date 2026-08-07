@@ -21,7 +21,12 @@ from pathlib import Path
 from typing import Any, Callable, Union
 
 from physics_svg.draw import DEFAULT_PADDING, SCREEN_SCALE, WHITE, BBox, Canvas
+from physics_svg.draw.shapes import EMU_PER_PX, Drawing, Frame
 from physics_svg.schema import parse
+
+#: EMU per user unit at the size the library is calibrated to. The picture is
+#: the same physical size in Word as on screen — one calibration, two formats.
+EMU_PER_UNIT = SCREEN_SCALE * EMU_PER_PX
 
 
 @dataclass(frozen=True)
@@ -131,3 +136,29 @@ def build_svg(
         background=WHITE if standalone else None,
         fluid_height=None if standalone else layout.fluid_height,
     )
+
+
+def build_shapes(model: Any, *, width_emu: int) -> tuple[str, int, int]:
+    """Render one visual to native Word shapes: (group, width, height) in EMU.
+
+    Same renderer, same canvas, same frame as the SVG — only the serialiser
+    differs, which is what keeps a picture identical in the two formats.
+
+    `width_emu` is the room the picture has across. Two things depend on it:
+    a drawing wider than the column is fitted into it whole (the counterpart
+    of `max-width: 100%`), and a ruling with no width of its own stretches to
+    fill it, keeping the height its author asked for — which is exactly what
+    `preserveAspectRatio="none"` does on the page.
+    """
+    canvas = Canvas()
+    layout = render_to_canvas(model, canvas)
+    box = canvas.frame_box(layout.viewbox, layout.padding)
+    if layout.fluid_height is not None:
+        sx, sy = width_emu / box.width, EMU_PER_UNIT
+    else:
+        needed = box.width * EMU_PER_UNIT
+        factor = min(1.0, width_emu / needed) if needed else 1.0
+        sx = sy = EMU_PER_UNIT * factor
+    frame = Frame(box, sx, sy)
+    drawing = Drawing(frame)
+    return drawing.group(canvas.flat_nodes()), frame.width, frame.height

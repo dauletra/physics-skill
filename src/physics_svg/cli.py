@@ -2,6 +2,7 @@
 
     physics-svg build <draft>            document.html (bodies + answers + draft)
     physics-svg build <draft> --handout  the same document without answers
+    physics-svg build <draft> --format docx   the same document as a Word file
     physics-svg build <draft> --block ID a preview of one block
     physics-svg visual <spec.json>       one standalone SVG
     physics-svg schema                   the published JSON Schema
@@ -19,11 +20,22 @@ import sys
 from pathlib import Path
 
 from physics_svg import __version__
-from physics_svg.document import WorkspaceError, build_document, build_preview, load_workspace
+from physics_svg.document import (
+    WorkspaceError,
+    build_document,
+    build_docx,
+    build_preview,
+    load_workspace,
+)
 from physics_svg.document.blocks import doc_block_annotation
+from physics_svg.document.emit.docx import Unsupported
 from physics_svg.draw import SCREEN_SCALE
 from physics_svg.schema import SchemaError, emit_schema
 from physics_svg.visuals import build_svg, parse_visual, visual_annotation
+
+#: Output formats, named once: SKILL.md tells the model about them, and the
+#: bundle test checks it promises nothing this list does not have.
+FORMATS = ("html", "docx", "both")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,6 +46,13 @@ def main(argv: list[str] | None = None) -> int:
 
     build = commands.add_parser("build", help="собрать документ из папки-черновика")
     build.add_argument("draft", help="папка с document.json и blocks/")
+    build.add_argument(
+        "--format",
+        default="html",
+        choices=list(FORMATS),
+        help="html — страница для просмотра и продолжения работы, "
+        "docx — файл Word для правки руками и печати",
+    )
     build.add_argument(
         "--handout",
         action="store_true",
@@ -93,15 +112,26 @@ def _build(args: argparse.Namespace) -> int:
 
     output_dir = Path(args.out) if args.out else draft / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
-    if args.handout:
-        # No embedded draft here: it would reveal the answers through the page
-        # source, which is the one place a handout must not leak them.
-        html = build_document(workspace.document, workspace.blocks, with_answers=False)
-        destination = output_dir / "document-handout.html"
-    else:
-        html = build_document(workspace.document, workspace.blocks, source=workspace.source)
-        destination = output_dir / "document.html"
-    return _write(destination, html)
+    name = "document-handout" if args.handout else "document"
+    answers = not args.handout
+
+    status = 0
+    if args.format in ("html", "both"):
+        # No embedded draft in a handout: it would reveal the answers through
+        # the page source, which is the one place it must not leak them.
+        source = None if args.handout else workspace.source
+        html = build_document(
+            workspace.document, workspace.blocks, with_answers=answers, source=source
+        )
+        status = _write(output_dir / f"{name}.html", html)
+    if args.format in ("docx", "both"):
+        try:
+            data = build_docx(workspace.document, workspace.blocks, with_answers=answers)
+        except Unsupported as error:
+            print(str(error), file=sys.stderr)
+            return 1
+        status = _write_bytes(output_dir / f"{name}.docx", data) or status
+    return status
 
 
 def _visual(args: argparse.Namespace) -> int:
@@ -132,6 +162,13 @@ def _schema(args: argparse.Namespace) -> int:
 def _write(path: Path, content: str) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+    print(f"Готово: {path}")
+    return 0
+
+
+def _write_bytes(path: Path, content: bytes) -> int:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
     print(f"Готово: {path}")
     return 0
 

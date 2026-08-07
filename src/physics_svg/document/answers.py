@@ -15,12 +15,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Union
 
+from physics_svg.document import layout
+
 
 @dataclass(frozen=True)
 class Inline:
     """One short line: a letter, «1-а, 2-б», a number with its unit."""
 
-    html: str
+    runs: layout.Text
 
 
 @dataclass(frozen=True)
@@ -31,14 +33,14 @@ class Rows:
     student's sheet element by element.
     """
 
-    rows: list[str]
+    rows: tuple[layout.Text, ...]
 
 
 @dataclass(frozen=True)
 class Block:
     """A drawing — the correct graph on the question's own axes."""
 
-    html: str
+    block: layout.Block
 
 
 Answer = Union[Inline, Rows, Block]

@@ -17,9 +17,9 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Block
+from physics_svg.document.layout import Picture
 from physics_svg.document.questions.registry import register
 from physics_svg.schema import field, spec
-from physics_svg.visuals import build_svg
 from physics_svg.visuals.graph.model import (
     ChartType,
     GraphAxes,
@@ -66,8 +66,8 @@ class PlotSpec(GraphAxes):
         )
 
 
-def body(model: PlotSpec) -> str:
-    return build_svg(model.as_graph(model.given or []), scope=f"plot-{model.id or 'q'}")
+def body(model: PlotSpec) -> Picture:
+    return Picture(model.as_graph(model.given or []), scope=f"plot-{model.id or 'q'}")
 
 
 def answer(model: PlotSpec) -> Answer:
@@ -76,7 +76,7 @@ def answer(model: PlotSpec) -> Answer:
     A `Block`, not a compact line: the answers section gives a drawing its own
     room instead of squeezing it into the slot that holds «б».
     """
-    return Block(build_svg(model.as_graph(model.answer), scope=f"plot-{model.id or 'q'}-a"))
+    return Block(Picture(model.as_graph(model.answer), scope=f"plot-{model.id or 'q'}-a"))
 
 
 register(

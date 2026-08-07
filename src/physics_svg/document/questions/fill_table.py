@@ -11,10 +11,10 @@ from typing import Literal, Optional, Union
 
 from physics_svg.document.answers import Answer, Inline
 from physics_svg.document.domain import Domain
-from physics_svg.document.html import bank_list, blank_cell, table_html
+from physics_svg.document.inline import parse_inline
+from physics_svg.document.layout import Bank, Block, Gap, Grid, Stack, Text
 from physics_svg.document.questions.registry import register
 from physics_svg.document.strings import t
-from physics_svg.draw import esc
 from physics_svg.schema import Invalid, field, spec
 
 
@@ -68,13 +68,16 @@ class FillTableSpec:
                         self.domain.check_member(cell.answer, field="rows", index=i)
 
 
-def body(model: FillTableSpec) -> str:
-    rows = [
-        [esc(cell) if isinstance(cell, str) else blank_cell() for cell in row]
+def body(model: FillTableSpec) -> Block:
+    rows: tuple[tuple[Text, ...], ...] = tuple(
+        tuple(parse_inline(cell) if isinstance(cell, str) else (Gap(),) for cell in row)
         for row in model.rows
-    ]
-    table = table_html([esc(header) for header in model.headers], rows)
-    return bank_list(model.bank, t("bank_label")) + table if model.bank else table
+    )
+    table = Grid(tuple(parse_inline(header) for header in model.headers), rows)
+    if not model.bank:
+        return table
+    bank = Bank(t("bank_label"), tuple(parse_inline(word) for word in model.bank))
+    return Stack((bank, table))
 
 
 def answer(model: FillTableSpec) -> Answer:
@@ -82,7 +85,7 @@ def answer(model: FillTableSpec) -> Answer:
     values = [
         cell.answer for row in model.rows for cell in row if not isinstance(cell, str)
     ]
-    return Inline(esc("; ".join(values)))
+    return Inline(parse_inline("; ".join(values)))
 
 
 register(

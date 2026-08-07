@@ -1,0 +1,16 @@
+{
+  "type": "instrument",
+  "kind": "balance",
+  "unit": "г",
+  "min": 0,
+  "max": 500,
+  "step": 5,
+  "value": 135,
+  "weights": [
+    100,
+    20,
+    10,
+    5
+  ],
+  "caption": "Рычажные весы с набором гирь"
+}

@@ -1,0 +1,10 @@
+{
+  "type": "instrument",
+  "kind": "thermometer",
+  "unit": "°C",
+  "min": -10,
+  "max": 50,
+  "step": 1,
+  "label_step": 10,
+  "caption": "Термометр без показания"
+}

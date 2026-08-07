@@ -38,10 +38,23 @@
 
   .slide h2 { font-size: 4.5vmin; font-weight: 700; }
   .slide p { font-size: 3.2vmin; line-height: 1.5; }
-  .slide ul { font-size: 3.2vmin; line-height: 1.6; padding-left: 1.2em; }
+  .slide ul, .slide ol { font-size: 3.2vmin; line-height: 1.6; padding-left: 1.2em; }
   .slide li { margin: 0.4em 0; }
 
-  .slide-board_task p.condition { font-size: 3.8vmin; }
+  .slide-board_task p.condition, .slide-example p.condition { font-size: 3.8vmin; }
+
+  /* Разделитель этапа — единственный слайд, который выглядит иначе: он не
+     содержание, а знак препинания между частями урока. */
+  .slide-section { background: #1a1a1a; color: #ffffff; align-items: center; }
+  .slide-section h2 { font-size: 6vmin; text-align: center; }
+
+  /* Шаг разбора и ответ ждут своей очереди. Место под них занято сразу:
+     слайд не должен прыгать в тот момент, когда класс на него смотрит. */
+  .fragment { opacity: 0; transition: opacity 0.15s ease-out; }
+  .fragment.shown { opacity: 1; }
+
+  .answer { font-size: 3.6vmin; font-weight: 700; }
+  .answer .label { font-weight: 400; color: #777; }
 
   /* Картинка на слайде — не иллюстрация внутри текста, а сам предмет
      разговора: она забирает всё свободное место, а не остаётся того
@@ -86,12 +99,43 @@
     cursor: pointer;
   }
   #hud button:hover { color: #1a1a1a; border-color: #999; }
+  #stage-label { max-width: 30vmin; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Список этапов: учителю нужно уметь вернуться к разбору, а не пролистать
+     до него. Этапы — слайды section, навигацию по ним строит плеер. */
+  #stages {
+    position: fixed;
+    inset: 0;
+    background: #ffffff;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.5vmin;
+    padding: 6vmin 8vmin;
+    overflow-y: auto;
+  }
+  #stages.open { display: flex; }
+  #stages .caption { font-size: 2.6vmin; color: #999; margin-bottom: 1.5vmin; }
+  #stages button {
+    font: inherit;
+    font-size: 4vmin;
+    text-align: left;
+    color: #1a1a1a;
+    background: none;
+    border: none;
+    padding: 0.25em 0;
+    cursor: pointer;
+  }
+  #stages button:hover { text-decoration: underline; }
+  #stages button.here::after { content: " ←"; color: #999; }
 </style>
 </head>
 <body>
 <script type="application/json" id="presentation-data">__PRESENTATION_DATA__</script>
 <main id="stage"></main>
+<div id="stages"></div>
 <footer id="hud">
+  <span id="stage-label"></span>
   <button id="prev" type="button" aria-label="Предыдущий слайд">&#8249;</button>
   <span id="counter"></span>
   <button id="next" type="button" aria-label="Следующий слайд">&#8250;</button>
@@ -150,6 +194,18 @@ function itemsList(items) {
   return list;
 }
 
+/* Ответ приходит в данных всегда, а показывается по шагу навигации: когда
+   его открыть — решение плеера, а не поле слайда (docs/presentation.md §3). */
+function answerBlock(answer) {
+  var node = el("p", "answer fragment");
+  var label = document.createElement("span");
+  label.className = "label";
+  label.textContent = "Ответ: ";
+  node.appendChild(label);
+  runsInto(node, answer);
+  return node;
+}
+
 var RENDERERS = {
   title: function (slide, root) {
     root.appendChild(el("h1", "", slide.text));
@@ -159,17 +215,38 @@ var RENDERERS = {
     root.appendChild(el("h2", "", [{ t: "Цели урока" }]));
     root.appendChild(itemsList(slide.items));
   },
+  section: function (slide, root) {
+    root.appendChild(el("h2", "", slide.text));
+  },
   content: function (slide, root) {
     if (slide.heading) root.appendChild(el("h2", "", slide.heading));
     if (slide.text) root.appendChild(el("p", "", slide.text));
     if (slide.items) root.appendChild(itemsList(slide.items));
     if (slide.visual) root.appendChild(figureFor(slide.visual));
   },
-  board_task: function (slide, root) {
-    /* slide.answer приходит в данных, но скелет его не показывает:
-       раскрытие ответа — интерактив следующей фазы. */
+  example: function (slide, root) {
     root.appendChild(el("p", "condition", slide.text));
     if (slide.visual) root.appendChild(figureFor(slide.visual));
+    var steps = document.createElement("ol");
+    (slide.steps || []).forEach(function (step) {
+      var item = el("li", "fragment", step);
+      steps.appendChild(item);
+    });
+    root.appendChild(steps);
+    if (slide.answer) root.appendChild(answerBlock(slide.answer));
+  },
+  board_task: function (slide, root) {
+    root.appendChild(el("p", "condition", slide.text));
+    if (slide.visual) root.appendChild(figureFor(slide.visual));
+    if (slide.answer) root.appendChild(answerBlock(slide.answer));
+  },
+  prompt: function (slide, root) {
+    root.appendChild(el("h2", "", [{ t: "Вопросы классу" }]));
+    root.appendChild(itemsList(slide.items));
+  },
+  reflection: function (slide, root) {
+    root.appendChild(el("h2", "", [{ t: "Рефлексия" }]));
+    root.appendChild(itemsList(slide.items));
   }
 };
 
@@ -187,40 +264,122 @@ function buildSlide(slide) {
   return root;
 }
 
+/* Прогоны обратно в простой текст — для мест, где нужна строка, а не DOM:
+   название этапа в списке и в углу экрана. */
+function plain(runs) {
+  return (runs || []).map(function (run) {
+    return run.math !== undefined ? run.math : (run.t || "");
+  }).join("");
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   var data = JSON.parse(document.getElementById("presentation-data").textContent);
   if (data.title) document.title = data.title;
 
   var stage = document.getElementById("stage");
   var counter = document.getElementById("counter");
+  var stageLabel = document.getElementById("stage-label");
+  var panel = document.getElementById("stages");
   var slides = (data.slides || []).map(buildSlide);
   if (!slides.length) slides = [buildSlide({ type: "title", text: [{ t: data.title || "Пустая презентация" }] })];
   slides.forEach(function (slide) { stage.appendChild(slide); });
 
+  /* Этапы урока — метки section в плоском списке слайдов. Навигация по ним
+     строится здесь, потому что этап в данных не контейнер, а слайд. */
+  var stages = [];
+  (data.slides || []).forEach(function (slide, index) {
+    if (slide.type === "section") stages.push({ index: index, name: plain(slide.text) });
+  });
+
   var current = 0;
-  function show(index) {
-    current = Math.max(0, Math.min(slides.length - 1, index));
-    slides.forEach(function (slide, i) { slide.classList.toggle("active", i === current); });
-    counter.textContent = (current + 1) + " / " + slides.length;
+  var revealed = 0;
+
+  function fragments() {
+    return slides[current].querySelectorAll(".fragment");
   }
 
-  document.getElementById("prev").addEventListener("click", function () { show(current - 1); });
-  document.getElementById("next").addEventListener("click", function () { show(current + 1); });
+  function paint() {
+    [].forEach.call(fragments(), function (node, i) {
+      node.classList.toggle("shown", i < revealed);
+    });
+    var pending = fragments().length - revealed;
+    counter.textContent = (current + 1) + " / " + slides.length + (pending ? " +" + pending : "");
+    stageLabel.textContent = stageAt(current);
+    [].forEach.call(panel.querySelectorAll("button"), function (button, i) {
+      button.classList.toggle("here", stages[i].name === stageAt(current));
+    });
+  }
+
+  function stageAt(index) {
+    var name = "";
+    stages.forEach(function (item) { if (item.index <= index) name = item.name; });
+    return name;
+  }
+
+  function show(index, reveal) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    var total = slides[current].querySelectorAll(".fragment").length;
+    revealed = reveal === "all" ? total : 0;
+    slides.forEach(function (slide, i) { slide.classList.toggle("active", i === current); });
+    paint();
+  }
+
+  /* Шаг вперёд открывает следующий спрятанный кусок и только потом уходит на
+     следующий слайд; шаг назад закрывает последний открытый. Возврат на
+     предыдущий слайд показывает его целиком: класс уже всё это видел, и
+     проскочивший учитель платит одно нажатие, а не пять. */
+  function next() {
+    if (revealed < fragments().length) { revealed += 1; paint(); }
+    else if (current < slides.length - 1) show(current + 1, 0);
+  }
+
+  function prev() {
+    if (revealed > 0) { revealed -= 1; paint(); }
+    else if (current > 0) show(current - 1, "all");
+  }
+
+  stages.forEach(function (item) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.textContent = item.name;
+    button.addEventListener("click", function () { toggleStages(false); show(item.index, 0); });
+    panel.appendChild(button);
+  });
+  if (stages.length) {
+    var caption = document.createElement("div");
+    caption.className = "caption";
+    caption.textContent = "Этапы урока — Esc, чтобы закрыть";
+    panel.insertBefore(caption, panel.firstChild);
+  }
+
+  function toggleStages(open) {
+    if (!stages.length) return;
+    panel.classList.toggle("open", open === undefined ? !panel.classList.contains("open") : open);
+  }
+
+  document.getElementById("prev").addEventListener("click", prev);
+  document.getElementById("next").addEventListener("click", next);
   document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      toggleStages();
+      return;
+    }
+    if (panel.classList.contains("open")) return;
     if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
       event.preventDefault();
-      show(current + 1);
+      next();
     } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
       event.preventDefault();
-      show(current - 1);
+      prev();
     } else if (event.key === "Home") {
-      show(0);
+      show(0, 0);
     } else if (event.key === "End") {
-      show(slides.length - 1);
+      show(slides.length - 1, "all");
     }
   });
 
-  show(0);
+  show(0, 0);
 });
 </script>
 </body>

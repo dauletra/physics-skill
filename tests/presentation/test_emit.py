@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -43,17 +44,31 @@ def lesson_data() -> dict:
     return build_data(workspace.presentation, workspace.slides)
 
 
+def of_type(data: dict, tag: str) -> list[dict]:
+    """Slides of one kind — the fixture is a lesson, not a fixed layout, and
+    a test that says «the third slide» breaks the moment the lesson grows."""
+    return [slide for slide in data["slides"] if slide["type"] == tag]
+
+
 class TestCanonical:
     def test_the_envelope_names_its_contract(self) -> None:
         data = lesson_data()
         assert data["format"] == FORMAT
         assert data["title"] == "Равноускоренное движение"
+        # The fixture is a whole lesson, and it carries every kind there is:
+        # a type the lesson never uses is a type nothing ever emitted.
         assert [slide["type"] for slide in data["slides"]] == [
             "title",
             "objectives",
+            "section",
             "content",
+            "example",
+            "section",
             "board_task",
+            "prompt",
+            "reflection",
         ]
+        assert {slide["type"] for slide in data["slides"]} == set(load_all())
 
     def test_two_builds_are_identical(self) -> None:
         # Determinism is what the golden stands on — same rule as the .docx.
@@ -73,8 +88,7 @@ class TestCanonical:
 
 class TestVisuals:
     def test_a_visual_carries_spec_svg_and_frame(self) -> None:
-        slides = lesson_data()["slides"]
-        visual = slides[2]["visual"]
+        visual = of_type(lesson_data(), "content")[0]["visual"]
         assert visual["spec"]["type"] == "graph"
         assert visual["svg"].startswith("<svg")
         assert visual["width"] > 0 and visual["height"] > 0
@@ -84,12 +98,23 @@ class TestVisuals:
         # re-render or edit the picture later.
         from physics_svg.visuals import parse_visual
 
-        visual = lesson_data()["slides"][3]["visual"]
+        visual = of_type(lesson_data(), "board_task")[0]["visual"]
         assert parse_visual(visual["spec"], "wire") is not None
 
     def test_two_pictures_get_their_own_id_scope(self) -> None:
-        slides = lesson_data()["slides"]
-        assert slides[2]["visual"]["svg"] != slides[3]["visual"]["svg"]
+        # Ids are global inside a page, and every slide lives in one page:
+        # the same picture twice must not make two elements share an id.
+        from physics_svg.presentation.emit import emit_visual
+        from physics_svg.visuals import parse_visual
+
+        spec = json.loads(
+            (REPO / "src/physics_svg/visuals/paper/specs/grid.json").read_text(encoding="utf-8")
+        )
+        model = parse_visual(spec, "wire")
+        first = set(re.findall(r'id="([^"]+)"', emit_visual(model, "s1")["svg"]))
+        second = set(re.findall(r'id="([^"]+)"', emit_visual(model, "s2")["svg"]))
+        assert first, "у разлиновки нет ни одного id — проверять нечего, возьми другой тип"
+        assert not (first & second), f"слайды делят id: {sorted(first & second)}"
 
 
 class TestPage:

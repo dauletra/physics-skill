@@ -42,6 +42,6 @@ register(
     title="Задача у доски",
     model=BoardTaskSpec,
     emit=emit,
-    order=40,
+    order=50,
     module=__name__,
 )

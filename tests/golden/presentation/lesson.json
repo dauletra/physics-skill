@@ -43,6 +43,14 @@
       ]
     },
     {
+      "type": "section",
+      "text": [
+        {
+          "t": "Новая тема"
+        }
+      ]
+    },
+    {
       "type": "content",
       "heading": [
         {
@@ -98,6 +106,94 @@
       }
     },
     {
+      "type": "example",
+      "text": [
+        {
+          "t": "По графику найдите ускорение на первом участке."
+        }
+      ],
+      "steps": [
+        [
+          {
+            "t": "Берём две точки участка: "
+          },
+          {
+            "math": "(0; 0)"
+          },
+          {
+            "t": " и "
+          },
+          {
+            "math": "(3; 6)"
+          }
+        ],
+        [
+          {
+            "t": "Ускорение — наклон графика: "
+          },
+          {
+            "math": "a = \\frac{6 - 0}{3 - 0} = 2"
+          },
+          {
+            "t": " м/с²"
+          }
+        ]
+      ],
+      "visual": {
+        "spec": {
+          "x_label": "t, с",
+          "y_label": "υ, м/с",
+          "x_range": [
+            0,
+            6
+          ],
+          "y_range": [
+            0,
+            8
+          ],
+          "type": "graph",
+          "chart_type": "line",
+          "grid": "ticks",
+          "series": [
+            {
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  3,
+                  6
+                ],
+                [
+                  6,
+                  6
+                ]
+              ],
+              "label": "υ(t)",
+              "style": "solid"
+            }
+          ]
+        },
+        "svg": "<svg class=\"visual-svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"-42.5 -21 253.5 143\" font-family=\"PT Sans, Segoe UI, Verdana, Arial, sans-serif\" width=\"380.25\" height=\"214.5\"><line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"92\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"29\" y1=\"0\" x2=\"29\" y2=\"92\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"58\" y1=\"0\" x2=\"58\" y2=\"92\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"87\" y1=\"0\" x2=\"87\" y2=\"92\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"116\" y1=\"0\" x2=\"116\" y2=\"92\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"145\" y1=\"0\" x2=\"145\" y2=\"92\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"174\" y1=\"0\" x2=\"174\" y2=\"92\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"0\" y1=\"92\" x2=\"174\" y2=\"92\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"0\" y1=\"69\" x2=\"174\" y2=\"69\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"0\" y1=\"46\" x2=\"174\" y2=\"46\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"0\" y1=\"23\" x2=\"174\" y2=\"23\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"0\" y1=\"0\" x2=\"174\" y2=\"0\" fill=\"none\" stroke=\"#ccc\" stroke-width=\"0.6\"/><line x1=\"0\" y1=\"92\" x2=\"178.5\" y2=\"92\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.5\"/><polygon points=\"184,92 178.5,89 178.5,95\" fill=\"#000\"/><line x1=\"0\" y1=\"92\" x2=\"0\" y2=\"-8.5\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.5\"/><polygon points=\"0,-14 -3,-8.5 3,-8.5\" fill=\"#000\"/><text x=\"187\" y=\"105\" fill=\"#000\" font-size=\"10\">t, с</text><text x=\"-7.5\" y=\"-11\" text-anchor=\"end\" fill=\"#000\" font-size=\"10\">υ, м/с</text><line x1=\"29\" y1=\"92\" x2=\"29\" y2=\"96\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"58\" y1=\"92\" x2=\"58\" y2=\"96\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"87\" y1=\"92\" x2=\"87\" y2=\"96\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"116\" y1=\"92\" x2=\"116\" y2=\"96\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"145\" y1=\"92\" x2=\"145\" y2=\"96\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"174\" y1=\"92\" x2=\"174\" y2=\"96\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"0\" y1=\"92\" x2=\"-4\" y2=\"92\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"0\" y1=\"80.5\" x2=\"-2.5\" y2=\"80.5\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.5\"/><line x1=\"0\" y1=\"69\" x2=\"-4\" y2=\"69\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"0\" y1=\"57.5\" x2=\"-2.5\" y2=\"57.5\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.5\"/><line x1=\"0\" y1=\"46\" x2=\"-4\" y2=\"46\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"0\" y1=\"34.5\" x2=\"-2.5\" y2=\"34.5\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.5\"/><line x1=\"0\" y1=\"23\" x2=\"-4\" y2=\"23\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><line x1=\"0\" y1=\"11.5\" x2=\"-2.5\" y2=\"11.5\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.5\"/><line x1=\"0\" y1=\"0\" x2=\"-4\" y2=\"0\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.9\"/><path d=\"M0,92 L87,23 L174,23\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><text x=\"29\" y=\"105\" text-anchor=\"middle\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">1</text><text x=\"29\" y=\"105\" text-anchor=\"middle\" fill=\"#000\" font-size=\"9\">1</text><text x=\"58\" y=\"105\" text-anchor=\"middle\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">2</text><text x=\"58\" y=\"105\" text-anchor=\"middle\" fill=\"#000\" font-size=\"9\">2</text><text x=\"87\" y=\"105\" text-anchor=\"middle\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">3</text><text x=\"87\" y=\"105\" text-anchor=\"middle\" fill=\"#000\" font-size=\"9\">3</text><text x=\"116\" y=\"105\" text-anchor=\"middle\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">4</text><text x=\"116\" y=\"105\" text-anchor=\"middle\" fill=\"#000\" font-size=\"9\">4</text><text x=\"145\" y=\"105\" text-anchor=\"middle\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">5</text><text x=\"145\" y=\"105\" text-anchor=\"middle\" fill=\"#000\" font-size=\"9\">5</text><text x=\"174\" y=\"105\" text-anchor=\"middle\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">6</text><text x=\"174\" y=\"105\" text-anchor=\"middle\" fill=\"#000\" font-size=\"9\">6</text><text x=\"-7.5\" y=\"95\" text-anchor=\"end\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">0</text><text x=\"-7.5\" y=\"95\" text-anchor=\"end\" fill=\"#000\" font-size=\"9\">0</text><text x=\"-7.5\" y=\"72\" text-anchor=\"end\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">2</text><text x=\"-7.5\" y=\"72\" text-anchor=\"end\" fill=\"#000\" font-size=\"9\">2</text><text x=\"-7.5\" y=\"49\" text-anchor=\"end\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">4</text><text x=\"-7.5\" y=\"49\" text-anchor=\"end\" fill=\"#000\" font-size=\"9\">4</text><text x=\"-7.5\" y=\"26\" text-anchor=\"end\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">6</text><text x=\"-7.5\" y=\"26\" text-anchor=\"end\" fill=\"#000\" font-size=\"9\">6</text><text x=\"-7.5\" y=\"3\" text-anchor=\"end\" fill=\"#fff\" stroke=\"#fff\" stroke-width=\"2.4\" font-size=\"9\">8</text><text x=\"-7.5\" y=\"3\" text-anchor=\"end\" fill=\"#000\" font-size=\"9\">8</text><line x1=\"71.3\" y1=\"115.5\" x2=\"84.3\" y2=\"115.5\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><text x=\"87.3\" y=\"118\" fill=\"#000\" font-size=\"7\">υ(t)</text></svg>",
+        "width": 380,
+        "height": 214
+      },
+      "answer": [
+        {
+          "t": "2 м/с²"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "text": [
+        {
+          "t": "Закрепление"
+        }
+      ]
+    },
+    {
       "type": "board_task",
       "text": [
         {
@@ -148,6 +244,46 @@
         {
           "t": "12 м"
         }
+      ]
+    },
+    {
+      "type": "prompt",
+      "items": [
+        [
+          {
+            "t": "Что показывает наклон графика скорости?"
+          }
+        ],
+        [
+          {
+            "t": "Как движется тело, если график υ(t) — горизонтальная прямая?"
+          }
+        ],
+        [
+          {
+            "t": "Может ли путь расти, если скорость не меняется?"
+          }
+        ]
+      ]
+    },
+    {
+      "type": "reflection",
+      "items": [
+        [
+          {
+            "t": "Что нового вы узнали о равноускоренном движении?"
+          }
+        ],
+        [
+          {
+            "t": "Какой шаг в разборе задачи оказался самым трудным?"
+          }
+        ],
+        [
+          {
+            "t": "О чём стоит спросить ещё раз на следующем уроке?"
+          }
+        ]
       ]
     }
   ]

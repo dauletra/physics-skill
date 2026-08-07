@@ -7,7 +7,7 @@ from typing import Literal, Optional
 
 from physics_svg.document.answers import Answer, Inline
 from physics_svg.document.domain import Domain
-from physics_svg.document.inline import parse_inline
+from physics_svg.document.inline import math_spans, parse_inline
 from physics_svg.document.layout import Bank, Block, Gap, Para, Stack
 from physics_svg.document.layout import Inline as InlinePart
 from physics_svg.document.questions.registry import register
@@ -55,6 +55,17 @@ class FillTextSpec:
                 "в шаблоне нет пропусков ___имя___ — это обычный блок 'text', а не fill_text",
                 field="template",
             )
+        # A gap inside `$…$` splits the formula in two, and neither half is
+        # LaTeX any more: the sheet gets a line of source instead of a
+        # formula. Refused with a path to the block rather than printed.
+        inside = _gap_inside_math(self.template)
+        if inside is not None:
+            raise Invalid(
+                f"пропуск '___{inside}___' стоит внутри формулы $…$ — формула так не "
+                "соберётся; вынеси пропуск за формулу или запиши выражение "
+                "обычным текстом (см. references/symbols.md)",
+                field="template",
+            )
         if placeholders != set(self.blanks):
             raise Invalid(
                 f"пропуски шаблона {sorted(placeholders)} не совпадают с ключами blanks "
@@ -67,6 +78,15 @@ class FillTextSpec:
             self.domain.check()
             for name, value in self.blanks.items():
                 self.domain.check_member(value, field="blanks", attr=name)
+
+
+def _gap_inside_math(template: str) -> Optional[str]:
+    """The name of the first gap that fell inside a formula, if any."""
+    spans = math_spans(template)
+    for found in BLANK_RE.finditer(template):
+        if any(start <= found.start() and found.end() <= end for start, end in spans):
+            return found.group(1)
+    return None
 
 
 def body(model: FillTextSpec) -> Block:

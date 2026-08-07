@@ -32,6 +32,7 @@ from physics_svg.document.layout import (
     Lettered,
     Line,
     Lines,
+    Math,
     Numbered,
     Para,
     Phrase,
@@ -76,6 +77,19 @@ def _run(model: Run) -> str:
     return f"<{model.script}>{body}</{model.script}>" if model.script else body
 
 
+def _math(model: Math) -> str:
+    """The formula, delimiters and all, exactly as it was typed.
+
+    KaTeX typesets it in the browser by finding these dollars in the finished
+    page — so this backend's job is to put them back and escape the whole
+    thing once, which is precisely what it did when a formula was still part
+    of a `Run`. That equality is the phase's invariant: the golden pages must
+    not move by a byte.
+    """
+    fence = "$$" if model.display else "$"
+    return esc(f"{fence}{model.latex}{fence}")
+
+
 def _verdict() -> str:
     square = '<span class="tf-square"></span>'
     return (
@@ -87,6 +101,7 @@ def _verdict() -> str:
 
 _INLINE: dict[type, Callable[[Any], str]] = {
     Run: _run,
+    Math: _math,
     Blank: lambda model: f'<span class="blank" style="width:{model.width_ch}ch;"></span>',
     Gap: lambda model: '<span class="fill-blank"></span>',
     Slot: lambda model: (

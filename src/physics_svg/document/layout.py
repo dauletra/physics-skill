@@ -75,7 +75,21 @@ class Verdict:
     choice; a backend prints it whole rather than assembling it again."""
 
 
-Inline = Union[Run, Blank, Gap, Slot, Square, Verdict]
+@dataclass(frozen=True)
+class Math:
+    """A formula, carried as the LaTeX the author typed.
+
+    Raw, like `Run.text`, and for the same reason: the two backends need
+    different things from it. HTML prints the delimiters back and lets KaTeX
+    typeset in the browser; Word translates a subset of LaTeX into OMML.
+    `display` is `$$…$$` — a formula on a line of its own.
+    """
+
+    latex: str
+    display: bool = False
+
+
+Inline = Union[Run, Blank, Gap, Slot, Square, Verdict, Math]
 
 #: A line's worth of inline content.
 Text = tuple[Inline, ...]

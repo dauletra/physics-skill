@@ -65,9 +65,11 @@ src/physics_svg/
   visuals/    библиотека иллюстраций: одна папка = один тип
   document/   компоненты, вопросы, контейнеры, нумерация, «Ответы»;
               layout.py — словарь вёрстки, на котором говорят все слои выше;
-              inline.py — авторский текст -> прогоны (<sup>, подчёркивания);
+              inline.py — авторский текст -> прогоны (<sup>, подчёркивания,
+                          формулы в $…$);
               emit/     — бэкенды: html.py (страница + CSS из assets.py),
-                          docx/ (пакет Word: wml.py, styles.py, package.py);
+                          docx/ (пакет Word: wml.py, styles.py, package.py,
+                          omml.py — подмножество LaTeX в формулы Word);
               domain.py — набор, из которого выбирает ученик;
               answers.py — форма ответа для секции «Ответы»
   cli.py      подкоманды build (--format html|docx|both) / visual / schema

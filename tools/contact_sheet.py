@@ -90,7 +90,7 @@ def build_word(destination: Path) -> Path:
     document = parse_document({"title": "Контрольный лист"})
     parsed = [parse_block({**raw, "id": f"b{i}"}, f"b{i}") for i, raw in enumerate(blocks)]
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(build_docx(document, parsed))
+    destination.write_bytes(build_docx(document, parsed).data)
     return destination
 
 

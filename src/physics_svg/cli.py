@@ -126,12 +126,27 @@ def _build(args: argparse.Namespace) -> int:
         status = _write(output_dir / f"{name}.html", html)
     if args.format in ("docx", "both"):
         try:
-            data = build_docx(workspace.document, workspace.blocks, with_answers=answers)
+            result = build_docx(workspace.document, workspace.blocks, with_answers=answers)
         except Unsupported as error:
             print(str(error), file=sys.stderr)
             return 1
-        status = _write_bytes(output_dir / f"{name}.docx", data) or status
+        status = _write_bytes(output_dir / f"{name}.docx", result.data) or status
+        _report(result.notes)
     return status
+
+
+def _report(notes: tuple[str, ...]) -> None:
+    """What the Word file could not express, said out loud.
+
+    The document is finished and correct; these are the formulas printed as
+    plain text because they are outside the OMML subset. Silence here would
+    mean a teacher finding `\\int` on the sheet after printing thirty copies.
+    """
+    if not notes:
+        return
+    print("Формулы, которые Word не понял (вставлены текстом):", file=sys.stderr)
+    for note in notes:
+        print(f"  {note}", file=sys.stderr)
 
 
 def _visual(args: argparse.Namespace) -> int:

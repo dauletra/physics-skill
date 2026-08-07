@@ -43,7 +43,7 @@ def task(*blocks: dict, **extra: object) -> dict:
 
 def build(*raw_blocks: dict, with_answers: bool = True) -> bytes:
     blocks = [parse_block(raw, f"b{i}") for i, raw in enumerate(raw_blocks)]
-    return build_docx(DOC, blocks, with_answers=with_answers)
+    return build_docx(DOC, blocks, with_answers=with_answers).data
 
 
 def body(data: bytes) -> ElementTree.Element:
@@ -358,14 +358,14 @@ class TestEveryKind:
         format only.
         """
         for i, example in enumerate(kind.tasks):
-            data = build_docx(DOC, [parse_block(example, f"{kind.tag}-{i}")])
+            data = build_docx(DOC, [parse_block(example, f"{kind.tag}-{i}")]).data
             docx.Document(io.BytesIO(data))
             assert "".join(texts(data)).strip()
 
     def test_the_answer_does_not_leak_into_the_body(self, kind) -> None:
         for i, example in enumerate(kind.tasks):
             block = parse_block(example, f"{kind.tag}-{i}")
-            data = build_docx(DOC, [block], with_answers=False)
+            data = build_docx(DOC, [block], with_answers=False).data
             assert "Ответы" not in "".join(texts(data))
 
 
@@ -377,6 +377,10 @@ class TestGolden:
             task(TEXT, OPEN, {"type": "answer_line"}),
             {"type": "row", "blocks": [TEXT, {"type": "list", "items": ["раз", "два"]}]},
             task(
+                {
+                    "type": "text",
+                    "body": "Энергия $E_k = \\frac{m\\upsilon^2}{2}$, а вот $\\int_0^t$ — нет.",
+                },
                 {"type": "text", "body": "Скорость υ<sub>0</sub> и дата: ______"},
                 {"type": "part", "blocks": [{"type": "text", "body": "а"}, OPEN]},
                 {

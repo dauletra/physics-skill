@@ -42,7 +42,7 @@ def package_bytes(source: Path) -> bytes:
     """
     if source.is_dir():
         workspace = load_workspace(source)
-        return build_docx(workspace.document, workspace.blocks)
+        return build_docx(workspace.document, workspace.blocks).data
     return source.read_bytes()
 
 

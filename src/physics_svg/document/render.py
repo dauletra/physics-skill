@@ -17,7 +17,7 @@ that could leak.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, NamedTuple, Optional
 
 from physics_svg.document.answers import Block as DrawnAnswer
 from physics_svg.document.answers import Inline as ShortAnswer
@@ -242,19 +242,34 @@ def build_document(
     return html.page(doc.title, build_layout(blocks, with_answers=with_answers), source)
 
 
+class Docx(NamedTuple):
+    """The file and what the build has to say about it.
+
+    `notes` is not an error list: the document is finished and correct. It is
+    what the build could not express in Word and printed as plain text
+    instead — today only formulas outside the OMML subset. A pair rather than
+    an optional out-parameter, because a report nobody is forced to look at
+    is the same thing as no report.
+    """
+
+    data: bytes
+    notes: tuple[str, ...]
+
+
 def build_docx(
     doc: DocumentSpec,
     blocks: list[Any],
     *,
     with_answers: bool = True,
-) -> bytes:
+) -> Docx:
     """The whole document as one .docx file.
 
     No embedded draft, unlike HTML: Word rewrites the package when the teacher
     saves, so a promise that the file can be loaded back into a session would
     be a promise we cannot keep. The HTML file remains the way back.
     """
-    return docx.document(doc.title, build_layout(blocks, with_answers=with_answers))
+    data, notes = docx.document(doc.title, build_layout(blocks, with_answers=with_answers))
+    return Docx(data, notes)
 
 
 def build_preview(doc: DocumentSpec, blocks: list[Any], block_id: str) -> str:

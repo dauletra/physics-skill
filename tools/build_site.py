@@ -114,7 +114,7 @@ def _write_example() -> None:
         encoding="utf-8",
     )
     (DOCS / "assets" / "example-document.docx").write_bytes(
-        build_docx(workspace.document, workspace.blocks)
+        build_docx(workspace.document, workspace.blocks).data
     )
 
 

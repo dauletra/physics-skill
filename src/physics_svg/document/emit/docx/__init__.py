@@ -15,10 +15,12 @@ from physics_svg.document.emit.docx.wml import el
 from physics_svg.document.layout import Block
 
 #: Everything the body may mention. Word refuses a document whose namespaces
-#: are not declared on the root, and illustrations bring four of them.
+#: are not declared on the root; illustrations bring four of them and
+#: formulas the fifth.
 _NAMESPACES: dict[str, object] = {
     "xmlns:w": W_NAMESPACE,
     "xmlns:r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "xmlns:m": "http://schemas.openxmlformats.org/officeDocument/2006/math",
     "xmlns:wp": (
         "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
     ),
@@ -28,10 +30,12 @@ _NAMESPACES: dict[str, object] = {
 }
 
 
-def document(title: str, blocks: tuple[Block, ...]) -> bytes:
-    """The whole document as one .docx file."""
-    body = el("w:document", _NAMESPACES, el("w:body", children=body_xml(blocks)))
-    return build_package(body, styles_xml(), settings_xml(), title)
+def document(title: str, blocks: tuple[Block, ...]) -> tuple[bytes, tuple[str, ...]]:
+    """The whole document as one .docx file, and what the build has to say
+    about it — see `render.build_docx`."""
+    content, notes = body_xml(blocks)
+    body = el("w:document", _NAMESPACES, el("w:body", children=content))
+    return build_package(body, styles_xml(), settings_xml(), title), notes
 
 
 __all__ = ["Unsupported", "document"]

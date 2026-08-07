@@ -26,6 +26,7 @@ from typing import Optional, Union
 
 from physics_svg.document.emit.docx import styles as st
 from physics_svg.document.emit.docx.drawing import Ids, drawing
+from physics_svg.document.emit.docx.omml import convert
 from physics_svg.document.emit.docx.wml import cell, para, row, run, tab_run, table
 from physics_svg.document.layout import (
     Answers,
@@ -44,6 +45,7 @@ from physics_svg.document.layout import (
     Lettered,
     Line,
     Lines,
+    Math,
     Numbered,
     Para,
     Phrase,
@@ -112,6 +114,25 @@ class Tbl:
 Node = Union[Par, Tbl]
 
 
+class Notes:
+    """What the build has to tell the teacher about the file it just made.
+
+    Not an error and not a silence: a formula Word could not be given is
+    printed as the author typed it, and this is where the fact is written
+    down so that the CLI can say it out loud.
+    """
+
+    def __init__(self) -> None:
+        self._items: list[str] = []
+
+    def add(self, text: str) -> None:
+        self._items.append(text)
+
+    @property
+    def items(self) -> tuple[str, ...]:
+        return tuple(self._items)
+
+
 @dataclass(frozen=True)
 class Frame:
     """What the surrounding containers impose on what is being emitted.
@@ -120,13 +141,16 @@ class Frame:
     of a row — and it is what a table divides between its columns, where a
     right-aligned control lands, and how wide an illustration may be drawn.
 
-    `ids` numbers the drawings of one document; it is shared by the whole
-    walk, so the numbering follows reading order and repeats build to build.
+    `ids` numbers the drawings of one document and `notes` collects what the
+    build has to report; both are shared by the whole walk, so the numbering
+    follows reading order and a note can name the task it came from.
     """
 
     width: int = st.TEXT_WIDTH
     style: str = st.NORMAL
     ids: Ids = field(default_factory=Ids)
+    notes: Notes = field(default_factory=Notes)
+    task: Optional[int] = None
 
 
 # --- inline -------------------------------------------------------------
@@ -147,9 +171,29 @@ def _verdict() -> str:
     return box + run(f' {t("true_label")}  ') + box + run(f' {t("false_label")}')
 
 
-def _piece(part: Inline) -> str:
+def _math(model: Math, frame: Frame) -> str:
+    """A formula: OMML if it is inside the subset, the author's own text if
+    it is not.
+
+    The text is printed with its dollars, so that what is on the sheet is
+    what was written — and the reason lands in the notes, because a formula
+    that quietly became a line of TeX is exactly the kind of thing a teacher
+    finds after printing thirty copies.
+    """
+    fence = "$$" if model.display else "$"
+    xml, reason = convert(model.latex, display=model.display)
+    if xml is not None:
+        return xml
+    where = f"задание {frame.task}: " if frame.task is not None else ""
+    frame.notes.add(f"{where}{fence}{model.latex}{fence} — {reason}")
+    return run(f"{fence}{model.latex}{fence}")
+
+
+def _piece(part: Inline, frame: Frame) -> str:
     if isinstance(part, Run):
         return run(part.text, script=part.script)
+    if isinstance(part, Math):
+        return _math(part, frame)
     if isinstance(part, Blank):
         return _ruled(part.width_ch * _CH_PX)
     if isinstance(part, Gap):
@@ -163,8 +207,8 @@ def _piece(part: Inline) -> str:
     raise Unsupported(f"инлайн-элемент '{type(part).__name__}' не печатается в Word")
 
 
-def inline(runs: Text) -> str:
-    return "".join(_piece(part) for part in runs)
+def inline(runs: Text, frame: Frame) -> str:
+    return "".join(_piece(part, frame) for part in runs)
 
 
 # --- adjusting what children produced -----------------------------------
@@ -214,9 +258,9 @@ def _bullet_item(item: Item, marker: str, frame: Frame) -> Par:
         # Statement on the left, control at the right edge — the tab does what
         # `justify-content: space-between` does on screen, including keeping
         # the control on the last line when the statement wraps.
-        runs += inline(item.runs) + tab_run() + inline((item.control,))
+        runs += inline(item.runs, frame) + tab_run() + inline((item.control,), frame)
         return Par(runs, style="ListItem", indent=gutter, hanging=gutter, right_tab=frame.width)
-    runs += inline(item)
+    runs += inline(item, frame)
     return Par(runs, style="ListItem", indent=gutter, hanging=gutter)
 
 
@@ -231,7 +275,7 @@ def _marker(model: Bullets, index: int) -> str:
 def _bullets(model: Bullets, frame: Frame) -> list[Node]:
     if model.columns == "inline":
         # A row of short items: one paragraph, items a wide space apart.
-        pieces = [inline(item) for item in model.items if not isinstance(item, Statement)]
+        pieces = [inline(item, frame) for item in model.items if not isinstance(item, Statement)]
         return [Par(run("   ").join(pieces))]
     if model.columns != "two":
         return [
@@ -287,10 +331,10 @@ def _grid(model: Grid, frame: Frame) -> Tbl:
     columns = max(1, len(model.headers))
     width = frame.width // columns
     header = [
-        _xml(Par(inline(header_cell), style="TableCell")) for header_cell in model.headers
+        _xml(Par(inline(header_cell, frame), style="TableCell")) for header_cell in model.headers
     ]
     body = [
-        [_xml(Par(inline(item), style="TableCell")) for item in line] for line in model.rows
+        [_xml(Par(inline(item, frame), style="TableCell")) for item in line] for line in model.rows
     ]
     return Tbl(
         [header, *body],
@@ -313,7 +357,7 @@ def _answers(model: Answers, frame: Frame) -> list[Node]:
         if answer.explanation is not None:
             body.append(
                 Par(
-                    run(f'{t("explanation_label")} ', bold=True) + inline(answer.explanation),
+                    run(f'{t("explanation_label")} ', bold=True) + inline(answer.explanation, frame),
                     style="Explanation",
                 )
             )
@@ -325,24 +369,24 @@ def _answers(model: Answers, frame: Frame) -> list[Node]:
 
 def _block(model: Block, frame: Frame) -> list[Node]:
     if isinstance(model, (Para, Phrase, Line)):
-        return [Par(inline(model.runs), style=frame.style)]
+        return [Par(inline(model.runs, frame), style=frame.style)]
     if isinstance(model, Hint):
-        return [Par(inline(model.runs), style="Hint")]
+        return [Par(inline(model.runs, frame), style="Hint")]
     if isinstance(model, Heading):
-        return [Par(inline(model.runs), style="SheetTitle" if model.level == 1 else "SectionTitle")]
+        return [Par(inline(model.runs, frame), style="SheetTitle" if model.level == 1 else "SectionTitle")]
     if isinstance(model, Rule):
         return [Par("", before=st.px(15), after=st.px(23), border_bottom=True)]
     if isinstance(model, Bullets):
         return _bullets(model, frame)
     if isinstance(model, Lines):
-        return [Par(inline(line), style=frame.style) for line in model.rows]
+        return [Par(inline(line, frame), style=frame.style) for line in model.rows]
     if isinstance(model, Grid):
         return [_grid(model, frame)]
     if isinstance(model, Bank):
         return [Par(
             run(model.label, bold=True)
             + run(" ")
-            + run(", ").join(inline(item) for item in model.items),
+            + run(", ").join(inline(item, frame) for item in model.items),
             style="Bank",
         )]
     if isinstance(model, Picture):
@@ -360,7 +404,7 @@ def _block(model: Block, frame: Frame) -> list[Node]:
     if isinstance(model, Numbered):
         # Paragraphs of a task carry a style of their own, so that a teacher
         # can change how every task on the sheet reads in one place.
-        body = _blocks(model.blocks, replace(frame, style="Task"))
+        body = _blocks(model.blocks, replace(frame, style="Task", task=model.number))
         return _gap_after(_label(body, f"{model.number}.", st.TASK_GUTTER), st.TASK_GAP)
     if isinstance(model, Lettered):
         body = _shift(_blocks(model.blocks, replace(frame, style="Subtask")), st.SUBTASK_INDENT)
@@ -418,7 +462,9 @@ def _xml(node: Node) -> str:
     return body
 
 
-def body_xml(blocks: tuple[Block, ...]) -> str:
-    """The `w:body` content for a whole document."""
-    nodes = _blocks(blocks, Frame())
-    return "".join(_xml(node) for node in nodes) + st.section_xml()
+def body_xml(blocks: tuple[Block, ...]) -> tuple[str, tuple[str, ...]]:
+    """The `w:body` content for a whole document, and what the build has to
+    say about it."""
+    frame = Frame()
+    nodes = _blocks(blocks, frame)
+    return "".join(_xml(node) for node in nodes) + st.section_xml(), frame.notes.items

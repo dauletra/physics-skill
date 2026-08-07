@@ -30,6 +30,7 @@ from physics_svg.document.manifest import (
     parse_document,
 )
 from physics_svg.document.render import (
+    Docx,
     build_document,
     build_docx,
     build_preview,
@@ -40,6 +41,7 @@ from physics_svg.document.workspace import Workspace, WorkspaceError, load_works
 __all__ = [
     "DocRowSpec",
     "DocumentSpec",
+    "Docx",
     "PartSpec",
     "RowSpec",
     "TaskSpec",

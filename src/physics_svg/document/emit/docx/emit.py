@@ -246,8 +246,13 @@ def _bullets(model: Bullets, frame: Frame) -> list[Node]:
 
 def _inner_frame(frame: Frame, columns: int, gap: int) -> Frame:
     """What a child of a row has to work with: its share of the width, less
-    the gutter that separates it from its neighbour."""
-    return Frame(width=frame.width // columns - gap, style=frame.style)
+    the gutter that separates it from its neighbour.
+
+    Derived from the frame rather than built anew, because `ids` numbers the
+    drawings of the whole document: a fresh frame would start counting again
+    and two pictures would claim the same `wp:docPr id`.
+    """
+    return replace(frame, width=frame.width // columns - gap)
 
 
 def _column_table(groups: list[list[Node]], columns: int, frame: Frame, gap: int) -> Tbl:
@@ -304,7 +309,7 @@ def _answers(model: Answers, frame: Frame) -> list[Node]:
         Par(run(t("answers_title"), bold=True), style="AnswersTitle"),
     ]
     for answer in model.rows:
-        body = _blocks(answer.blocks, Frame(width=frame.width, style="AnswerItem"))
+        body = _blocks(answer.blocks, replace(frame, style="AnswerItem"))
         if answer.explanation is not None:
             body.append(
                 Par(

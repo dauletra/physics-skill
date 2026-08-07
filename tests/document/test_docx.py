@@ -273,9 +273,28 @@ class TestPictures:
 
     def test_every_drawing_is_numbered_once(self) -> None:
         # Two drawings sharing a `docPr` id make Word refuse the document.
+        # A picture inside a row and one in the answers section count: both
+        # are emitted through a frame of their own, and a frame built from
+        # scratch would start the numbering again.
         data = build(
             {"type": "paper", "ruling": "lines", "rows": 2},
-            {"type": "paper", "ruling": "lines", "rows": 3},
+            {
+                "type": "row",
+                "blocks": [{"type": "paper", "ruling": "lines", "rows": 2}, TEXT],
+            },
+            task(
+                TEXT,
+                {
+                    "type": "plot",
+                    "x_label": "t, с",
+                    "y_label": "υ, м/с",
+                    "x_range": [0, 10],
+                    "y_range": [0, 20],
+                    "x_step": 2,
+                    "y_step": 5,
+                    "answer": [{"points": [[0, 0], [10, 20]]}],
+                },
+            ),
         )
         with zipfile.ZipFile(io.BytesIO(data)) as package:
             document = package.read("word/document.xml").decode()

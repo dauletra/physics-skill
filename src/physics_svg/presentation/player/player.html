@@ -18,42 +18,77 @@
   body {
     font-family: "PT Sans", "Segoe UI", sans-serif;
     color: #1a1a1a;
-    background: #ffffff;
+    background: #e8ecf1;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+
+  /* Кадр 16:9 — то же поле, что у проектора. Слайд живёт внутри него и
+     никогда не растекается по окну: размер кадра берёт то из двух
+     ограничений, которое наступает раньше, а пропорции держит aspect-ratio.
+     Всё внутри задано в cqh — процентах высоты кадра, — поэтому слайд не
+     пересчитывает себя под окно, а масштабируется целиком и одинаково. */
+  #stage {
+    --pad: 2.5vmin;
+    position: relative;
+    width: min(calc(100vw - 2 * var(--pad)), calc((100vh - 2 * var(--pad)) * 16 / 9));
+    aspect-ratio: 16 / 9;
+    container-type: size;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid rgba(20, 30, 50, 0.10);
+    border-radius: 1vmin;
+    box-shadow: 0 0.4vmin 2.4vmin rgba(20, 30, 50, 0.18);
+  }
+
+  /* Во весь экран кадр остаётся тем же кадром: уходят поля и рамка, а поле
+     вокруг проекции чернеет — так его и не видно на стене. */
+  :fullscreen, :fullscreen body { background: #000000; }
+  :fullscreen #stage {
+    --pad: 0px;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
   .slide {
     position: absolute;
     inset: 0;
     display: none;
     flex-direction: column;
     justify-content: center;
-    padding: 6vmin 8vmin;
-    gap: 3vmin;
+    padding: 6cqh 8cqh;
+    gap: 3cqh;
+    /* Кадр — граница: слайд, которому не хватило места, обрезается, а не
+       раздвигает рамку и не мельчает сам. */
+    overflow: hidden;
   }
   .slide.active { display: flex; }
 
   .slide-title { align-items: center; text-align: center; }
-  .slide-title h1 { font-size: 7vmin; font-weight: 700; }
-  .slide-title .subtitle { font-size: 3vmin; color: #555; }
+  .slide-title h1 { font-size: 7cqh; font-weight: 700; }
+  .slide-title .subtitle { font-size: 3cqh; color: #555; }
 
-  .slide h2 { font-size: 4.5vmin; font-weight: 700; }
-  .slide p { font-size: 3.2vmin; line-height: 1.5; }
-  .slide ul, .slide ol { font-size: 3.2vmin; line-height: 1.6; padding-left: 1.2em; }
+  .slide h2 { font-size: 4.5cqh; font-weight: 700; }
+  .slide p { font-size: 3.2cqh; line-height: 1.5; }
+  .slide ul, .slide ol { font-size: 3.2cqh; line-height: 1.6; padding-left: 1.2em; }
   .slide li { margin: 0.4em 0; }
 
-  .slide-board_task p.condition, .slide-example p.condition { font-size: 3.8vmin; }
+  .slide-board_task p.condition, .slide-example p.condition { font-size: 3.8cqh; }
 
   /* Разделитель этапа — единственный слайд, который выглядит иначе: он не
      содержание, а знак препинания между частями урока. */
   .slide-section { background: #1a1a1a; color: #ffffff; align-items: center; }
-  .slide-section h2 { font-size: 6vmin; text-align: center; }
+  .slide-section h2 { font-size: 6cqh; text-align: center; }
 
   /* Шаг разбора и ответ ждут своей очереди. Место под них занято сразу:
      слайд не должен прыгать в тот момент, когда класс на него смотрит. */
   .fragment { opacity: 0; transition: opacity 0.15s ease-out; }
   .fragment.shown { opacity: 1; }
 
-  .answer { font-size: 3.6vmin; font-weight: 700; }
+  .answer { font-size: 3.6cqh; font-weight: 700; }
   .answer .label { font-weight: 400; color: #777; }
 
   /* Картинка на слайде — не иллюстрация внутри текста, а сам предмет
@@ -70,7 +105,7 @@
      во всё отведённое место, пропорции держит холст, а не CSS. */
   figure svg { width: 100%; height: 100%; }
 
-  .placeholder { color: #999; font-size: 3vmin; align-items: center; }
+  .placeholder { color: #999; font-size: 3cqh; align-items: center; }
 
   .blank {
     text-decoration: underline;
@@ -78,14 +113,17 @@
     white-space: pre;
   }
 
+  /* Пульт живёт внутри кадра — вместе с ним уезжает в полный экран и вместе
+     с ним масштабируется, а не висит в углу окна сам по себе. */
   #hud {
-    position: fixed;
-    right: 2vmin;
-    bottom: 2vmin;
+    position: absolute;
+    z-index: 2;
+    right: 2cqh;
+    bottom: 2cqh;
     display: flex;
     align-items: center;
-    gap: 1.2vmin;
-    font-size: 2.2vmin;
+    gap: 1.2cqh;
+    font-size: 2.2cqh;
     color: #999;
     user-select: none;
   }
@@ -99,26 +137,27 @@
     cursor: pointer;
   }
   #hud button:hover { color: #1a1a1a; border-color: #999; }
-  #stage-label { max-width: 30vmin; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #stage-label { max-width: 30cqh; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* Список этапов: учителю нужно уметь вернуться к разбору, а не пролистать
      до него. Этапы — слайды section, навигацию по ним строит плеер. */
   #stages {
-    position: fixed;
+    position: absolute;
+    z-index: 3;
     inset: 0;
     background: #ffffff;
     display: none;
     flex-direction: column;
     justify-content: center;
-    gap: 0.5vmin;
-    padding: 6vmin 8vmin;
+    gap: 0.5cqh;
+    padding: 6cqh 8cqh;
     overflow-y: auto;
   }
   #stages.open { display: flex; }
-  #stages .caption { font-size: 2.6vmin; color: #999; margin-bottom: 1.5vmin; }
+  #stages .caption { font-size: 2.6cqh; color: #999; margin-bottom: 1.5cqh; }
   #stages button {
     font: inherit;
-    font-size: 4vmin;
+    font-size: 4cqh;
     text-align: left;
     color: #1a1a1a;
     background: none;
@@ -132,14 +171,16 @@
 </head>
 <body>
 <script type="application/json" id="presentation-data">__PRESENTATION_DATA__</script>
-<main id="stage"></main>
-<div id="stages"></div>
-<footer id="hud">
-  <span id="stage-label"></span>
-  <button id="prev" type="button" aria-label="Предыдущий слайд">&#8249;</button>
-  <span id="counter"></span>
-  <button id="next" type="button" aria-label="Следующий слайд">&#8250;</button>
-</footer>
+<main id="stage">
+  <div id="stages"></div>
+  <footer id="hud">
+    <span id="stage-label"></span>
+    <button id="full" type="button" aria-label="Во весь экран" title="Во весь экран (F)">&#10530;</button>
+    <button id="prev" type="button" aria-label="Предыдущий слайд">&#8249;</button>
+    <span id="counter"></span>
+    <button id="next" type="button" aria-label="Следующий слайд">&#8250;</button>
+  </footer>
+</main>
 <script>
 "use strict";
 
@@ -357,9 +398,41 @@ document.addEventListener("DOMContentLoaded", function () {
     panel.classList.toggle("open", open === undefined ? !panel.classList.contains("open") : open);
   }
 
-  document.getElementById("prev").addEventListener("click", prev);
-  document.getElementById("next").addEventListener("click", next);
+  /* Полный экран — дело браузера, а не кадра: кадр 16:9 и так держит свои
+     пропорции, экрану он отдаёт только поля вокруг себя. F11 у браузера
+     остаётся, кнопка и F — для тех, кто про неё не помнит. */
+  var full = document.getElementById("full");
+  function toggleFullscreen() {
+    var root = document.documentElement;
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+    } else if (root.requestFullscreen) {
+      /* Отказ (нет разрешения, нет жеста) — не повод падать: учитель нажмёт F11. */
+      var started = root.requestFullscreen();
+      if (started && started.catch) started.catch(function () {});
+    }
+  }
+  document.addEventListener("fullscreenchange", function () {
+    var on = !!document.fullscreenElement;
+    full.innerHTML = on ? "&#10529;" : "&#10530;";
+    full.title = on ? "Выйти из полного экрана (F)" : "Во весь экран (F)";
+    full.setAttribute("aria-label", full.title);
+  });
+
+  /* Кнопка, нажатая мышью, остаётся в фокусе — и следующий пробел прилетел бы
+     ей, а не показу. */
+  function press(button, action) {
+    button.addEventListener("click", function () { action(); button.blur(); });
+  }
+  press(document.getElementById("prev"), prev);
+  press(document.getElementById("next"), next);
+  press(full, toggleFullscreen);
   document.addEventListener("keydown", function (event) {
+    if (event.code === "KeyF") {
+      event.preventDefault();
+      toggleFullscreen();
+      return;
+    }
     if (event.key === "Escape") {
       event.preventDefault();
       toggleStages();

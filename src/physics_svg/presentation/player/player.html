@@ -92,9 +92,15 @@
      показывает, следующий щелчок прячет обратно. Стрелки сюда не ходят —
      ответ не `.fragment`, и открыть его можно только намеренно. */
   .answer {
-    position: relative;
-    display: block;
-    width: 100%;
+    /* Текст ответа и плашка лежат в одной ячейке грида, поэтому коробка
+       получает ширину большего из двух: плашка ровно по ответу, а не во всю
+       строку, и слайд не прыгает, когда ответ открыли. */
+    display: inline-grid;
+    align-self: flex-start;
+    max-width: 100%;
+    /* Поле плашки уходит наружу: открытый ответ стоит в одну линию с
+       остальным текстом слайда, а не с отступом. */
+    margin-left: -0.5em;
     font: inherit;
     font-size: 3.6cqh;
     font-weight: 700;
@@ -105,17 +111,15 @@
     padding: 0;
     cursor: pointer;
   }
+  .answer .body, .answer .cover { grid-area: 1 / 1; padding: 0.15em 0.5em; }
   .answer .label { font-weight: 400; color: #777; }
   /* Спрятан от глаз, но не из потока: место под ответ занимает сам ответ. */
   .answer .body { visibility: hidden; }
   .answer.open .body { visibility: visible; }
   .answer .cover {
-    position: absolute;
-    inset: -0.3em -0.5em;
     display: flex;
     align-items: center;
-    gap: 0.7em;
-    padding: 0 0.7em;
+    justify-content: center;
     font-weight: 400;
     color: #6b7280;
     background: #f1f4f8;
@@ -129,8 +133,6 @@
   .answer:hover .cover { color: #1a1a1a; background: #e9edf3; border-color: #8a95a5; }
   .answer:focus-visible { outline: none; }
   .answer:focus-visible .cover { border-style: solid; border-color: #6b7280; }
-  .answer .cover-label { font-weight: 700; color: #4b5563; }
-  .answer .cover-hint { font-size: 0.6em; color: #98a1ae; }
 
   /* Картинка на слайде — не иллюстрация внутри текста, а сам предмет
      разговора: она забирает всё свободное место, а не остаётся того
@@ -285,8 +287,10 @@ function itemsList(items) {
    не открывают, счётчик его не обещает, открывает только щелчок по плашке.
 
    Текст ответа стоит на месте всегда и лишь спрятан от глаз, плашка лежит
-   поверх него — так место занято настоящим ответом, и слайд не прыгает ни
-   когда его открыли, ни когда закрыли обратно. */
+   в той же ячейке грида — так место занято настоящим ответом, плашка не
+   шире его, и слайд не прыгает ни когда ответ открыли, ни когда закрыли
+   обратно. Подсказку «нажмите» несёт подпись кнопки, а не сама плашка:
+   лишнее слово на ней задало бы ширину вместо ответа. */
 function answerBlock(answer) {
   var node = document.createElement("button");
   node.type = "button";
@@ -303,15 +307,16 @@ function answerBlock(answer) {
 
   var cover = document.createElement("span");
   cover.className = "cover";
-  cover.appendChild(el("span", "cover-label", [{ t: "Ответ" }]));
-  cover.appendChild(el("span", "cover-hint", [{ t: "нажмите, чтобы показать" }]));
+  cover.textContent = "Ответ";
   node.appendChild(cover);
 
   node.setAttribute("aria-label", "Показать ответ");
+  node.title = "Нажмите, чтобы показать ответ";
   node.addEventListener("click", function () {
     var open = node.classList.toggle("open");
     node.setAttribute("aria-expanded", open ? "true" : "false");
     node.setAttribute("aria-label", open ? "Скрыть ответ" : "Показать ответ");
+    node.title = open ? "Нажмите, чтобы скрыть ответ" : "Нажмите, чтобы показать ответ";
     /* Кнопка, нажатая мышью, остаётся в фокусе — и следующий пробел ушёл бы
        ей, а не показу. */
     node.blur();
@@ -437,6 +442,7 @@ document.addEventListener("DOMContentLoaded", function () {
       node.classList.remove("open");
       node.setAttribute("aria-expanded", "false");
       node.setAttribute("aria-label", "Показать ответ");
+      node.title = "Нажмите, чтобы показать ответ";
     });
   }
 

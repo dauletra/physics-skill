@@ -147,16 +147,24 @@ class TestEmittedKinds:
             json.dumps(emitted, ensure_ascii=False)  # wire-serialisable
 
     def test_author_text_survives_the_json_gate(self, kind) -> None:
-        """The payload fuzz, field by field — the mirror of the document's."""
-        for key, value in kind.example.items():
-            if not isinstance(value, str) or key in ("type", "id"):
-                continue
-            try:
-                model = parse_slide({**kind.example, key: PAYLOAD}, "s")
-            except SchemaError:
-                continue  # a closed vocabulary, not free text
-            page = build_page({"format": FORMAT, "title": "", "slides": [kind.emit(model, "s1")]})
-            assert "</script><script>alert" not in page, f"'{kind.tag}': поле '{key}'"
-            extracted = extract_data(page)
-            texts = json.dumps(extracted, ensure_ascii=False)
-            assert "alert" in texts, f"'{kind.tag}': поле '{key}' потерялось по дороге"
+        """The payload fuzz, field by field — the mirror of the document's.
+
+        Every template, not just the first: a field that only one of them
+        fills (`answer` in a task, `visual` in an explanation) is still a
+        field author text reaches the page through.
+        """
+        for example in kind.examples:
+            for key, value in example.items():
+                if not isinstance(value, str) or key in ("type", "id"):
+                    continue
+                try:
+                    model = parse_slide({**example, key: PAYLOAD}, "s")
+                except SchemaError:
+                    continue  # a closed vocabulary, not free text
+                page = build_page(
+                    {"format": FORMAT, "title": "", "slides": [kind.emit(model, "s1")]}
+                )
+                assert "</script><script>alert" not in page, f"'{kind.tag}': поле '{key}'"
+                extracted = extract_data(page)
+                texts = json.dumps(extracted, ensure_ascii=False)
+                assert "alert" in texts, f"'{kind.tag}': поле '{key}' потерялось по дороге"

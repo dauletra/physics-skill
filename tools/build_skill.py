@@ -15,6 +15,7 @@ caught here rather than by a teacher.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import sys
@@ -34,6 +35,7 @@ from physics_svg.document.components import (  # noqa: E402
     TextSpec,
 )
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
+from physics_svg.presentation.slides import SlideTemplate, SlideType  # noqa: E402
 from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.schema import emit_schema  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
@@ -54,6 +56,13 @@ MENTIONED_PATH = re.compile(r"\b((?:references|scripts|examples|library|physics_
 #: One-line descriptions for the index tables: the first paragraph of a
 #: type's card, so the table and the gallery never disagree.
 _FIRST_PARAGRAPH = re.compile(r"^#[^\n]*\n+(.+?)(?:\n\n|$)", re.S)
+
+#: How a slide's fragment pins a template into its text: a fenced block
+#: naming it by file stem. The same convention as ```spec in a gallery card.
+_TEMPLATE_FENCE = re.compile(r"^```template\n(.+?)\n```[ \t]*$", re.M)
+
+#: Where a shipped template lands, and therefore what the model is told to copy.
+_LIBRARY_SLIDES = "library/slides"
 
 #: The front matter is the only part of the skill read before it triggers,
 #: and it is cut at this length. Silently losing the tail would cost the
@@ -109,7 +118,7 @@ def _write_references(directory: Path) -> None:
             "У каждого вида — свои естественные поля и правильный ответ инлайн, "
             "рядом с содержимым, к которому он относится. Общее у всех: `type`, "
             "необязательные `id` и `explanation`.",
-            [entry.doc for entry in load_questions().values()],
+            [_read(entry.doc) for entry in load_questions().values()],
         ),
         encoding="utf-8",
     )
@@ -119,31 +128,92 @@ def _write_references(directory: Path) -> None:
             "Презентация сверху — плоский список слайдов; порядок в списке и есть "
             "порядок показа. У каждого вида свои поля, общее — `type` и "
             "необязательный `id`. Раскладку слайд не задаёт: где встанет "
-            "картинка и когда откроется ответ, решает плеер.",
-            [entry.doc for entry in load_slides().values()],
+            "картинка и когда откроется ответ, решает плеер. Заготовки, которые "
+            "можно взять и заполнить, перечислены в `references/templates.md`.",
+            [_slide_fragment(entry) for entry in load_slides().values()],
         ),
         encoding="utf-8",
     )
+    (directory / "templates.md").write_text(_template_catalogue(), encoding="utf-8")
     (directory / "visuals.md").write_text(
         _concatenate(
             "Иллюстрации",
             "Задаются данными, а не рисунком. Одна и та же спека годится и как "
             "блок внутри документа, и как отдельный SVG-файл. Готовые примеры — "
             "в `library/<тип>/`.",
-            [entry.doc("doc.md") for entry in load_visuals().values()],
+            [_read(entry.doc("doc.md")) for entry in load_visuals().values()],
         ),
         encoding="utf-8",
     )
 
 
-def _concatenate(title: str, intro: str, fragments: list[Path]) -> str:
+def _read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _concatenate(title: str, intro: str, fragments: list[str]) -> str:
     parts = [f"# {title}\n\n{intro}\n"]
     for fragment in fragments:
-        text = fragment.read_text(encoding="utf-8").strip()
         # Fragments are standalone pages with their own H1; nested under one
         # title every level moves down by one, so the outline stays valid.
-        parts.append("\n" + re.sub(r"^(#{1,5}) ", r"#\1 ", text, flags=re.M) + "\n")
+        parts.append("\n" + re.sub(r"^(#{1,5}) ", r"#\1 ", fragment.strip(), flags=re.M) + "\n")
     return "\n".join(parts)
+
+
+def _slide_fragment(entry: SlideType) -> str:
+    """The kind's reference with its templates written out inside it.
+
+    A fragment places a template where the prose wants it; what the prose
+    does not place is appended at the end. That is the same deal a gallery
+    card gets for its specs, and it has the same consequence: adding a
+    template stays "add a file", and a template cannot go missing from the
+    reference (docs/slide-templates.md §3).
+    """
+    text = _read(entry.doc).rstrip()
+    blocks = {template.slug: _template_block(entry, template) for template in entry.templates}
+    parts: list[str] = []
+    cursor = 0
+    for match in _TEMPLATE_FENCE.finditer(text):
+        slug = match.group(1).strip()
+        if slug not in blocks:
+            raise SystemExit(
+                f"{entry.tag}/doc.md: шаблона '{slug}' нет; "
+                f"есть {', '.join(sorted(blocks))}"
+            )
+        parts += [text[cursor : match.start()], blocks.pop(slug)]
+        cursor = match.end()
+    parts.append(text[cursor:])
+    parts += [f"\n\n{block}" for block in blocks.values()]
+    return "".join(parts)
+
+
+def _template_block(entry: SlideType, template: SlideTemplate) -> str:
+    """One template as the model meets it: where to copy it from, when to
+    take it, and what is inside. Written to stand where a fence stood, so it
+    carries no blank lines of its own."""
+    return (
+        f"`{_LIBRARY_SLIDES}/{entry.tag}/{template.slug}.json` — {template.when}\n\n"
+        f"```json\n{json.dumps(template.slide, ensure_ascii=False, indent=2)}\n```"
+    )
+
+
+def _template_catalogue() -> str:
+    """Every template of every kind in one table — the cheap read before
+    picking one, without the field tables of `slides.md`."""
+    rows = [
+        (f"{_LIBRARY_SLIDES}/{entry.tag}/{template.slug}.json", template.when)
+        for entry in load_slides().values()
+        for template in entry.templates
+    ]
+    return (
+        "# Шаблоны слайдов\n\n"
+        "Готовые слайды: скопируй файл в `slides/<id>.json`, поставь `id` по имени "
+        "файла и замени содержимое полей своим. Шаблон — это заполненный слайд "
+        "обычного вида, а не отдельная сущность: поля, инварианты и всё, чего в "
+        "шаблоне не оказалось, — в `references/slides.md`.\n\n"
+        + _table(("файл", "когда брать"), rows)
+        + "\n"
+    )
 
 
 def _component_table() -> str:
@@ -199,6 +269,9 @@ def _write_skill_md(destination: Path) -> None:
             "QUESTION_COUNT": str(len(load_questions())),
             "VISUAL_COUNT": str(len(load_visuals())),
             "SLIDE_COUNT": str(len(load_slides())),
+            "TEMPLATE_COUNT": str(
+                sum(len(entry.templates) for entry in load_slides().values())
+            ),
         },
     )
     _check_description(text)
@@ -232,17 +305,29 @@ def _fill(template: str, values: dict[str, str]) -> str:
 
 
 def _write_library(directory: Path) -> None:
-    """The example specs, shipped so the model edits one instead of inventing."""
+    """The example specs and slide templates, shipped so the model edits one
+    instead of inventing.
+
+    A template ships **unwrapped**: the envelope carries the name and the
+    "when" for the catalogue, but what the model copies into `slides/` has to
+    be a slide and nothing else.
+    """
     for entry in load_visuals().values():
         target = directory / entry.tag
         target.mkdir(parents=True, exist_ok=True)
         for spec in entry.specs:
             shutil.copy2(spec, target / spec.name)
+    for slide in load_slides().values():
+        target = directory / "slides" / slide.tag
+        target.mkdir(parents=True, exist_ok=True)
+        for template in slide.templates:
+            (target / template.path.name).write_text(
+                json.dumps(template.slide, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
 
 
 def _write_schema(destination: Path) -> None:
-    import json
-
     schema = emit_schema(
         {"block": doc_block_annotation(), "visual": visual_annotation()},
         title="physics-svg: блок документа и иллюстрация",

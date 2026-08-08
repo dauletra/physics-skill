@@ -1,10 +1,10 @@
 """The registry of slide types — the same shape as the question registry.
 
-A slide type is one module declaring its spec, its place in the reading
-order, and a reference fragment with worked examples. Registration happens on
-import, so adding a slide kind is adding a module; the union of allowed
-types, the JSON Schema, the reference and the conformance tests are all
-derived from the registry.
+A slide type is one package declaring its spec, its place in the reading
+order, its documentation and its templates. Registration happens on import,
+so adding a slide kind is adding a directory; the union of allowed types,
+the JSON Schema, the reference, the template catalogue and the conformance
+tests are all derived from the registry.
 
 What a slide type does **not** declare: a renderer. Slides are rendered by
 the player, in the browser, from the emitted JSON — Python never writes
@@ -18,13 +18,12 @@ later without the data noticing (docs/presentation.md §3).
 from __future__ import annotations
 
 import importlib
-import json
 import pkgutil
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Union
 
+from physics_svg.presentation.slides.template import SlideTemplate, load_template
 from physics_svg.schema import Deferred
 from physics_svg.visuals import visual_annotation
 
@@ -32,9 +31,6 @@ from physics_svg.visuals import visual_annotation
 #: visual for an illustration. The second argument is the id scope for the
 #: slide's SVG — unique per slide, so two graphs on one page cannot collide.
 Emitter = Callable[[Any, str], dict[str, Any]]
-
-#: The worked examples live in the fragment, in fenced JSON blocks.
-_JSON_BLOCK = re.compile(r"```json\n(.*?)\n```", re.S)
 
 if TYPE_CHECKING:  # mypy reads this as plain `Any`; at runtime it resolves
     VISUAL = Any
@@ -57,36 +53,44 @@ class SlideType:
     #: by where a slide sits in a lesson, not by its latin tag. Multiples of
     #: ten, so a new kind slots in without renumbering.
     order: int
+    #: The type's package directory: templates/, doc.md, card.md live here.
     directory: Path
 
     @property
     def doc(self) -> Path:
         """Reference fragment for the model: fields, invariants, JSON."""
-        return self.directory / f"{self.tag}.md"
+        return self.directory / "doc.md"
 
     @property
     def card(self) -> Path:
         """Card for the teacher: what it is and what phrase produces it."""
-        return self.directory / f"{self.tag}.card.md"
+        return self.directory / "card.md"
+
+    @property
+    def templates(self) -> list[SlideTemplate]:
+        """The kind's starting points, in file-name order.
+
+        One source for every reader: the model copies them out of the
+        bundle's `library/slides/`, the reference shows them, the suite
+        parses and emits them. A template that stops validating fails the
+        build (docs/slide-templates.md §7).
+        """
+        paths = sorted((self.directory / "templates").glob("*.json"))
+        if not paths:
+            raise ValueError(
+                f"у вида '{self.tag}' нет ни одного шаблона: заведи "
+                f"{self.tag}/templates/<слаг>.json"
+            )
+        return [load_template(path) for path in paths]
 
     @property
     def examples(self) -> list[dict[str, Any]]:
-        """The worked slides from the fragment, in order of appearance.
-
-        Each is a whole slide — the slide is the smallest thing that
-        validates and the smallest thing the player shows. One source for
-        every reader: the model reads them in the bundle, the suite parses
-        them, the site will show them. An example that stops validating
-        fails the build.
-        """
-        blocks = _JSON_BLOCK.findall(self.doc.read_text(encoding="utf-8"))
-        if not blocks:
-            raise ValueError(f"в {self.doc.name} нет примера в блоке ```json")
-        return [json.loads(block) for block in blocks]
+        """Every template's slide — whole slides, not fragments."""
+        return [template.slide for template in self.templates]
 
     @property
     def example(self) -> dict[str, Any]:
-        """The canonical slide: the first example of the fragment."""
+        """The canonical slide: the kind's first template."""
         return self.examples[0]
 
 
@@ -112,7 +116,7 @@ def load_all() -> dict[str, SlideType]:
     if not _LOADED:
         package = importlib.import_module("physics_svg.presentation.slides")
         for info in pkgutil.iter_modules(package.__path__):
-            if info.name != "registry":
+            if info.ispkg:  # a kind is a package; registry.py and template.py are not
                 importlib.import_module(f"physics_svg.presentation.slides.{info.name}")
         _LOADED = True
     return dict(sorted(_REGISTRY.items(), key=lambda item: item[1].order))

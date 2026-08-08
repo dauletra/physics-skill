@@ -26,6 +26,7 @@ sys.path.insert(0, str(REPO / "tools"))
 import build_skill  # noqa: E402
 from physics_svg.cli import FORMATS  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
+from physics_svg.presentation import parse_slide  # noqa: E402
 from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
 
@@ -44,7 +45,14 @@ class TestContents:
 
     def test_every_reference_is_generated(self, bundle: Path) -> None:
         names = {path.name for path in (bundle / "references").glob("*.md")}
-        assert names == {"document.md", "questions.md", "slides.md", "symbols.md", "visuals.md"}
+        assert names == {
+            "document.md",
+            "questions.md",
+            "slides.md",
+            "symbols.md",
+            "templates.md",
+            "visuals.md",
+        }
 
     def test_the_player_ships(self, bundle: Path) -> None:
         # The player is the only data file the package cannot work without,
@@ -57,6 +65,20 @@ class TestContents:
         for entry in load_visuals().values():
             shipped = list((bundle / "library" / entry.tag).glob("*.json"))
             assert len(shipped) == len(entry.specs), f"библиотека '{entry.tag}' неполная"
+
+    def test_slide_templates_ship_unwrapped(self, bundle: Path) -> None:
+        """What the model copies must be a slide, not an envelope.
+
+        The name and the "when" are the catalogue's business; a file landing
+        in `slides/` with them still inside would not validate.
+        """
+        for entry in load_slides().values():
+            for template in entry.templates:
+                path = bundle / "library" / "slides" / entry.tag / f"{template.slug}.json"
+                assert path.exists(), f"шаблон '{entry.tag}/{template.slug}' не доехал"
+                shipped = json.loads(path.read_text(encoding="utf-8"))
+                assert shipped == template.slide
+                assert parse_slide(shipped, template.slug) is not None
 
     def test_the_worked_example_ships(self, bundle: Path) -> None:
         lesson = bundle / "examples" / "kinematics-9th-grade"
@@ -125,6 +147,19 @@ class TestReferencesFollowTheRegistries:
         text = (bundle / "references" / "slides.md").read_text(encoding="utf-8")
         for tag in load_slides():
             assert f"`{tag}`" in text, f"вид слайда '{tag}' не попал в справочник"
+
+    def test_every_template_reaches_the_catalogue_and_the_fragment(self, bundle: Path) -> None:
+        catalogue = (bundle / "references" / "templates.md").read_text(encoding="utf-8")
+        fragments = (bundle / "references" / "slides.md").read_text(encoding="utf-8")
+        for entry in load_slides().values():
+            for template in entry.templates:
+                path = f"library/slides/{entry.tag}/{template.slug}.json"
+                assert path in catalogue, f"шаблона '{path}' нет в каталоге"
+                assert template.when in catalogue
+                # And in the kind's own fragment, placed by the prose or
+                # appended — a template invisible to the reference is a
+                # template nobody takes.
+                assert path in fragments, f"шаблона '{path}' нет в справочнике видов"
 
     def test_the_index_in_document_md_lists_them_too(self, bundle: Path) -> None:
         text = (bundle / "references" / "document.md").read_text(encoding="utf-8")

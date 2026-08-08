@@ -76,6 +76,14 @@
        с ней, поэтому «осталось место — и ладно» кончается графиком, который
        с задней парты не прочитать. */
     --visual-min: 38cqh;
+
+    /* Ритм и поля. --hud-zone — полоса под пульт, куда содержимое не
+       заходит: раньше её никто не резервировал, и плашка ответа у нижней
+       задачи вставала вплотную к счётчику. */
+    --step: 1.5cqh;
+    --pad-y: 6cqh;
+    --pad-x: 7cqh;
+    --hud-zone: 8cqh;
   }
 
   /* Одна ступень вниз — и всё. Не плавная подгонка: плавная делает кегль
@@ -129,19 +137,47 @@
     box-shadow: none;
   }
 
+  /* Содержимое прижато к верху, а не к середине кадра: тогда у всех слайдов
+     урока один горизонт, и при смене слайда глаз класса не ищет заголовок
+     заново. Пустота остаётся внизу — там её не замечают; пустота сверху и
+     снизу сразу превращала слайд в мелкую надпись посреди белого поля. */
   .slide {
     position: absolute;
     inset: 0;
     display: none;
     flex-direction: column;
-    justify-content: center;
-    padding: 6cqh 8cqh;
-    gap: 3cqh;
+    justify-content: flex-start;
+    padding: var(--pad-y) var(--pad-x) var(--hud-zone);
+    gap: calc(2 * var(--step));
     /* Кадр — граница: слайд, которому не хватило места, обрезается, а не
        раздвигает рамку и не мельчает сам. */
     overflow: hidden;
   }
   .slide.active { display: flex; }
+
+  /* Два вида центрируются: у них нет содержания, которое надо выстроить по
+     общему горизонту, — они сами знак препинания в уроке. */
+  .slide-title, .slide-section { justify-content: center; }
+
+  /* Шапка на одном месте у всех видов. Кикер называет жанр — «Задача»,
+     «Разбор», — и это единственное, что говорит классу, слушать сейчас или
+     решать. Плеер знает его из типа слайда, поэтому поля в схеме под него
+     нет и не нужно (docs/presentation.md §13). */
+  .s-head {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.4 * var(--step));
+    padding-bottom: var(--step);
+    border-bottom: 1px solid var(--line);
+  }
+  .kicker {
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
 
   .slide-title { align-items: center; text-align: center; }
   .slide-title h1 { font-size: var(--t-hero); font-weight: 700; }
@@ -171,6 +207,13 @@
      парты она перестаёт читаться. Разбор обозначений идёт парами в две
      колонки — «символ | что это» находится глазами, абзац с той же
      расшифровкой не находится. */
+  /* KaTeX даёт display-формуле собственные поля в 1em: на слайде-формуле это
+     8,8cqh сверху и столько же снизу — поверх ритма, который слайд и так
+     держит своим gap. Расстояния между блоками — дело системы, а не
+     чужого CSS; внутри абзаца формуле оставлен свой небольшой отступ. */
+  .katex-display { margin: calc(0.5 * var(--step)) 0; }
+  .slide-formula .formula .katex-display { margin: 0; }
+
   .slide-formula { align-items: center; text-align: center; }
   .slide-formula .formula { font-size: var(--t-xxl); }
   .slide-formula .terms {
@@ -192,12 +235,12 @@
     display: grid;
     flex: 1;
     min-height: 0;
-    gap: 2cqh 5cqh;
+    gap: calc(1.5 * var(--step)) calc(3 * var(--step));
   }
   .slide-compare .case, .slide-tasks .task {
     display: flex;
     flex-direction: column;
-    gap: 1.5cqh;
+    gap: var(--step);
     min-height: 0;
   }
   /* Своего кегля у ячейки нет: текст в колонке читают с той же парты, что
@@ -306,14 +349,18 @@
   .slide.split.active {
     display: grid;
     grid-template-columns: 1.2fr 1fr;
-    column-gap: 5cqh;
+    grid-template-rows: auto 1fr;
+    column-gap: calc(3 * var(--step));
     align-items: center;
   }
-  .slide.split > figure { align-self: stretch; }
+  /* Шапка называет весь слайд, а не левую колонку, поэтому идёт над обеими. */
+  .slide.split > .s-head { grid-column: 1 / -1; grid-row: 1; align-self: start; }
+  .slide.split > .prose { grid-column: 1; grid-row: 2; }
+  .slide.split > figure { grid-column: 2; grid-row: 2; align-self: stretch; }
   .prose {
     display: flex;
     flex-direction: column;
-    gap: 3cqh;
+    gap: calc(2 * var(--step));
     min-width: 0;
     min-height: 0;
   }
@@ -371,8 +418,8 @@
     display: none;
     flex-direction: column;
     justify-content: center;
-    gap: 0.5cqh;
-    padding: 6cqh 8cqh;
+    gap: calc(0.3 * var(--step));
+    padding: var(--pad-y) var(--pad-x) var(--hud-zone);
     overflow-y: auto;
   }
   #stages.open { display: flex; }
@@ -607,12 +654,48 @@ var RENDERERS = {
   }
 };
 
+/* Жанр слайда словом. Классу надо знать, слушать сейчас или решать, и знать
+   это раньше, чем он прочитал текст; сегодня `objectives`, `prompt` и
+   `reflection` различались одним словом в заголовке, а у задачи и разбора
+   заголовка не было вовсе.
+
+   Кикера нет там, где заголовок и так называет жанр (цели, вопросы,
+   рефлексия — они сами себе название) и у `content`: это рабочая лошадка
+   объяснения, и она должна выглядеть нейтрально. */
+var KICKERS = {
+  formula: "Формула",
+  compare: "Сравнение",
+  tasks: "Задачи",
+  board_task: "Задача",
+  example: "Разбор"
+};
+
+/* Шапка собирается после вида, а не внутри него: вид отвечает за то, какие
+   у слайда части, а где они стоят — дело плеера. */
+function addHead(root, type) {
+  if (type === "title" || type === "section") return;
+  var heading = root.querySelector(":scope > h2");
+  var kicker = KICKERS[type];
+  if (!heading && !kicker) return;
+  var head = document.createElement("div");
+  head.className = "s-head";
+  if (kicker) {
+    var tag = document.createElement("div");
+    tag.className = "kicker";
+    tag.textContent = kicker;
+    head.appendChild(tag);
+  }
+  if (heading) head.appendChild(heading);
+  root.insertBefore(head, root.firstChild);
+}
+
 function buildSlide(slide) {
   var root = document.createElement("section");
   var render = RENDERERS[slide.type];
   if (render) {
     root.className = "slide slide-" + slide.type;
     render(slide, root);
+    addHead(root, slide.type);
   } else {
     /* Старый плеер обязан пережить новый тип слайда — заглушкой, не падением. */
     root.className = "slide placeholder";
@@ -647,13 +730,15 @@ function overflow(slide) {
 function splitOff(slide) {
   var figure = slide.querySelector(":scope > figure");
   if (!figure) return false;
+  var head = slide.querySelector(":scope > .s-head");
   var prose = document.createElement("div");
   prose.className = "prose";
   while (slide.firstChild) {
     var node = slide.firstChild;
     slide.removeChild(node);
-    if (node !== figure) prose.appendChild(node);
+    if (node !== figure && node !== head) prose.appendChild(node);
   }
+  if (head) slide.appendChild(head);
   slide.appendChild(prose);
   slide.appendChild(figure);
   slide.classList.add("split");

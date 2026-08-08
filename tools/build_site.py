@@ -7,8 +7,8 @@ the renderer from a spec the tests also render, and every example of a task
 kind is rendered by the document renderer itself. A screenshot cannot go
 stale here, because there are no screenshots.
 
-Hand-written pages (`docs/index.md`, `docs/install.md`, `docs/contribute.md`
-and the two design documents) are left alone.
+Hand-written pages (`docs/index.md`, `docs/install.md`, `docs/present.md`,
+`docs/contribute.md` and the design documents) are left alone.
 
     python tools/build_site.py     # then: zensical serve
 """

@@ -33,6 +33,6 @@ register(
     title="Разделитель этапа",
     model=SectionSpec,
     emit=emit,
-    order=80,
+    order=110,
     module=__name__,
 )

@@ -83,6 +83,59 @@
   .slide-section { background: #1a1a1a; color: #ffffff; align-items: center; }
   .slide-section h2 { font-size: 6cqh; text-align: center; }
 
+  /* Формула — предмет слайда, а не строка внутри абзаца. Отсюда и размер, и
+     display-вид: в тексте KaTeX набирает дробь по высоте строки, и с задней
+     парты она перестаёт читаться. Разбор обозначений идёт парами в две
+     колонки — «символ | что это» находится глазами, абзац с той же
+     расшифровкой не находится. */
+  .slide-formula { align-items: center; text-align: center; }
+  .slide-formula .formula { font-size: 6cqh; }
+  .slide-formula .terms {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 1.2em;
+    row-gap: 0.3em;
+    font-size: 2.8cqh;
+    text-align: left;
+  }
+  .slide-formula .terms dt { font-weight: 700; text-align: right; }
+  .slide-formula .terms dd { color: #555; }
+
+  /* Сопоставление и набор задач раскладываются одинаково — сеткой равных
+     ячеек, — потому что в данных они об одном: несколько равноправных
+     кусков на экране. Сколько их, слайд говорит, а во что они встают,
+     решает плеер (docs/slide-templates.md §5). */
+  .slide-compare .cases, .slide-tasks .grid {
+    display: grid;
+    flex: 1;
+    min-height: 0;
+    gap: 2cqh 5cqh;
+  }
+  .slide-compare .case, .slide-tasks .task {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5cqh;
+    min-height: 0;
+  }
+  .slide-compare .case h3 { font-size: 3.4cqh; }
+  .slide-compare .case p, .slide-compare .case li,
+  .slide-tasks .task p { font-size: 2.8cqh; }
+  .slide-compare .case ul { padding-left: 1em; }
+
+  /* Номер задачи рисует плеер: в данных его нет, потому что номер — это
+     место в списке, а не свойство задачи (принцип 2). */
+  .slide-tasks .grid { counter-reset: task; }
+  .slide-tasks .task > p:first-child::before {
+    counter-increment: task;
+    content: counter(task) ". ";
+    font-weight: 700;
+    color: #999;
+  }
+  /* Плашки ответов встают в одну линию по низу ячеек, а не там, куда их
+     опустил текст: задача с картинкой длиннее задачи без неё, и плашки на
+     разной высоте читаются как сбитая вёрстка, а не как ряд ответов. */
+  .slide-tasks .answer { font-size: 2.8cqh; margin-top: auto; }
+
   /* Шаг разбора и ответ ждут своей очереди. Место под них занято сразу:
      слайд не должен прыгать в тот момент, когда класс на него смотрит. */
   .fragment { opacity: 0; transition: opacity 0.15s ease-out; }
@@ -357,6 +410,58 @@ var RENDERERS = {
     root.appendChild(el("p", "condition", slide.text));
     if (slide.visual) root.appendChild(figureFor(slide.visual));
     if (slide.answer) root.appendChild(answerBlock(slide.answer));
+  },
+  formula: function (slide, root) {
+    if (slide.heading) root.appendChild(el("h2", "", slide.heading));
+    root.appendChild(el("div", "formula", slide.formula));
+    if (slide.text) root.appendChild(el("p", "", slide.text));
+    if (slide.terms) {
+      var terms = document.createElement("dl");
+      terms.className = "terms";
+      slide.terms.forEach(function (term) {
+        terms.appendChild(el("dt", "", term.symbol));
+        terms.appendChild(el("dd", "", term.meaning));
+      });
+      root.appendChild(terms);
+    }
+  },
+  compare: function (slide, root) {
+    if (slide.heading) root.appendChild(el("h2", "", slide.heading));
+    var cases = document.createElement("div");
+    cases.className = "cases";
+    /* Колонок ровно столько, сколько случаев: они равноправны, и делить
+       кадр между ними поровну — это и есть «рядом». */
+    cases.style.gridTemplateColumns = "repeat(" + (slide.cases || []).length + ", 1fr)";
+    (slide.cases || []).forEach(function (item) {
+      var box = document.createElement("div");
+      box.className = "case";
+      box.appendChild(el("h3", "", item.label));
+      if (item.text) box.appendChild(el("p", "", item.text));
+      if (item.items) box.appendChild(itemsList(item.items));
+      if (item.visual) box.appendChild(figureFor(item.visual));
+      cases.appendChild(box);
+    });
+    root.appendChild(cases);
+  },
+  tasks: function (slide, root) {
+    if (slide.heading) root.appendChild(el("h2", "", slide.heading));
+    var grid = document.createElement("div");
+    grid.className = "grid";
+    var list = slide.tasks || [];
+    /* Две задачи встают рядом, три-четыре — в две колонки и два ряда:
+       колонка уже половины кадра с задней парты не читается. */
+    grid.style.gridTemplateColumns = "repeat(" + Math.min(list.length, 2) + ", 1fr)";
+    list.forEach(function (task) {
+      var box = document.createElement("div");
+      box.className = "task";
+      box.appendChild(el("p", "", task.text));
+      if (task.visual) box.appendChild(figureFor(task.visual));
+      /* Ответ у каждой задачи свой: класс решает их параллельно, и учитель
+         открывает тот, до которого дошли. */
+      if (task.answer) box.appendChild(answerBlock(task.answer));
+      grid.appendChild(box);
+    });
+    root.appendChild(grid);
   },
   prompt: function (slide, root) {
     root.appendChild(el("h2", "", [{ t: "Вопросы классу" }]));

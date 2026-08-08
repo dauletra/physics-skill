@@ -32,6 +32,6 @@ register(
     title="Рефлексия",
     model=ReflectionSpec,
     emit=emit,
-    order=70,
+    order=100,
     module=__name__,
 )

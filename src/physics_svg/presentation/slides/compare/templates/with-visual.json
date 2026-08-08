@@ -1,0 +1,36 @@
+{
+  "template": "with-visual",
+  "when": "сравнение по картинкам: два графика рядом, разницу класс видит глазами",
+  "slide": {
+    "type": "compare",
+    "heading": "Найдите разницу",
+    "cases": [
+      {
+        "label": "Равномерное",
+        "visual": {
+          "type": "graph",
+          "x_label": "t, с",
+          "y_label": "υ, м/с",
+          "x_range": [0, 6],
+          "y_range": [0, 8],
+          "series": [
+            { "label": "υ(t)", "points": [[0, 4], [6, 4]] }
+          ]
+        }
+      },
+      {
+        "label": "Равноускоренное",
+        "visual": {
+          "type": "graph",
+          "x_label": "t, с",
+          "y_label": "υ, м/с",
+          "x_range": [0, 6],
+          "y_range": [0, 8],
+          "series": [
+            { "label": "υ(t)", "points": [[0, 0], [6, 6]] }
+          ]
+        }
+      }
+    ]
+  }
+}

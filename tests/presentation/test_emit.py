@@ -62,9 +62,12 @@ class TestCanonical:
             "objectives",
             "section",
             "content",
+            "formula",
+            "compare",
             "example",
             "section",
             "board_task",
+            "tasks",
             "prompt",
             "reflection",
         ]
@@ -115,6 +118,16 @@ class TestVisuals:
         second = set(re.findall(r'id="([^"]+)"', emit_visual(model, "s2")["svg"]))
         assert first, "у разлиновки нет ни одного id — проверять нечего, возьми другой тип"
         assert not (first & second), f"слайды делят id: {sorted(first & second)}"
+
+    def test_two_pictures_on_one_slide_get_their_own_id_scope(self) -> None:
+        # A slide used to hold at most one picture, so the slide's own scope
+        # was enough. `compare` and `tasks` broke that: a kind that emits
+        # several visuals owes each of them a scope of its own.
+        cases = of_type(lesson_data(), "compare")[0]["cases"]
+        drawn = [case["visual"]["svg"] for case in cases if "visual" in case]
+        assert len(drawn) > 1, "в фикстуре нет слайда с двумя картинками — проверять нечего"
+        ids = [set(re.findall(r'id="([^"]+)"', svg)) for svg in drawn]
+        assert not (ids[0] & ids[1]), f"картинки одного слайда делят id: {sorted(ids[0] & ids[1])}"
 
 
 class TestPage:

@@ -208,8 +208,10 @@ python <путь-к-скиллу>/scripts/render.py build <папка-черно
 
 1. Читай `references/slides.md` — там все {{SLIDE_COUNT}} видов слайдов с
    примерами. Ход урока задают виды: `title`, `objectives`, `section`
-   (разделитель этапа), `content` (объяснение), `example` (разбор по
-   шагам), `board_task` (задача для доски), `prompt`, `reflection`.
+   (разделитель этапа), `content` (объяснение), `formula` (формула крупно с
+   разбором обозначений), `compare` (два-три случая рядом), `example`
+   (разбор по шагам), `board_task` (задача для доски), `tasks` (несколько
+   задач сразу), `prompt`, `reflection`.
 2. Заведи в папке урока `presentation.json` (`title` и `order` — список
    имён файлов) и по файлу `slides/<id>.json` на слайд; `id` совпадает с
    именем файла. Это та же дисциплина, что у `blocks/`, и по той же

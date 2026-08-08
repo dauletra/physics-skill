@@ -32,6 +32,6 @@ register(
     title="Вопросы классу",
     model=PromptSpec,
     emit=emit,
-    order=60,
+    order=90,
     module=__name__,
 )

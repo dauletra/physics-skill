@@ -48,6 +48,6 @@ register(
     title="Разбор задачи",
     model=ExampleSpec,
     emit=emit,
-    order=40,
+    order=60,
     module=__name__,
 )

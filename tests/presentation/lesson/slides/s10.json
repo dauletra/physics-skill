@@ -1,0 +1,10 @@
+{
+  "id": "s10",
+  "type": "formula",
+  "heading": "Путь при равноускоренном движении",
+  "formula": "$S = \\upsilon_0 t + \\frac{at^2}{2}$",
+  "terms": [
+    { "symbol": "υ₀", "meaning": "начальная скорость, м/с" },
+    { "symbol": "a", "meaning": "ускорение, м/с²" }
+  ]
+}

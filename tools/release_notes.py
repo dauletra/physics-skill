@@ -67,7 +67,12 @@ def main() -> None:
         Path(args.out).write_text(notes + "\n", encoding="utf-8")
         print(f"Готово: {args.out}")
     else:
-        sys.stdout.write(notes + "\n")
+        # Straight to the byte stream: the notes are Russian and may carry a
+        # symbol the console encoding has no place for (the `⤢` of the player
+        # already does), and a release must not die on the terminal it was
+        # printed to. The file branch above is explicit about UTF-8 for the
+        # same reason.
+        sys.stdout.buffer.write((notes + "\n").encode("utf-8"))
 
 
 if __name__ == "__main__":

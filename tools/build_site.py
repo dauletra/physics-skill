@@ -35,8 +35,14 @@ from physics_svg.document import (  # noqa: E402
 from physics_svg.document.assets import BASE_CSS  # noqa: E402
 from physics_svg.document.questions import QuestionType  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
-from physics_svg.presentation import build_data, build_page  # noqa: E402
+from physics_svg.presentation import (  # noqa: E402
+    build_data,
+    build_page,
+    parse_presentation,
+    parse_slide,
+)
 from physics_svg.presentation import load_workspace as load_lesson  # noqa: E402
+from physics_svg.presentation.slides import SlideType  # noqa: E402
 from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.visuals import VisualType, build_svg, parse_visual  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
@@ -121,9 +127,8 @@ def _write_example() -> None:
     (DOCS / "assets" / "example-document.docx").write_bytes(
         build_docx(workspace.document, workspace.blocks).data
     )
-    # The lesson's second draft, built by the same command a teacher runs.
-    # Nothing on the site describes what a slide looks like — the page links
-    # to the presentation itself, and the player draws it.
+    # The lesson's second draft, built by the same command a teacher runs —
+    # the whole lesson, next to the single slides the slides page embeds.
     lesson = load_lesson(EXAMPLE)
     (DOCS / "assets" / "example-presentation.html").write_text(
         build_page(build_data(lesson.presentation, lesson.slides)), encoding="utf-8"
@@ -218,17 +223,33 @@ def _write_questions() -> None:
 
 def _write_slides() -> None:
     (DOCS / "slides.md").write_text(_slides_page(), encoding="utf-8")
-    print(f"  slides.md ({len(load_slides())} видов)")
+    kinds = load_slides()
+    shown = sum(len(entry.templates) for entry in kinds.values())
+    print(f"  slides.md ({len(kinds)} видов, {shown} заготовок)")
+
+
+#: A slide preview is the real player with one slide inside it. The page has
+#: no other way to draw a slide: a second renderer in Python is the one thing
+#: the design forbids, so the page embeds the thing itself.
+SLIDE_PREVIEW_CSS = """
+.slide-preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  margin: 0.4rem 0 1.4rem;
+}
+.slide-preview-when { color: var(--md-default-fg-color--light); }
+"""
 
 
 def _slides_page() -> str:
-    """One page with every kind of slide — and the presentation itself.
+    """One page with every kind of slide, each shown as it looks on screen.
 
-    Here the site has to break its own habit: everything else on it is
-    rendered by the code that renders what a teacher gets, but a slide is
-    drawn by the player, in a browser, and a second renderer in Python is the
-    one thing the design forbids. So the page shows the cards and opens the
-    real built example instead of a picture of it.
+    Everything else in the showcase is produced by the renderer a teacher's
+    files go through; a slide is drawn by the player, in a browser. So the
+    page embeds that player — one built presentation per template — instead
+    of growing a second renderer to draw a picture of a slide.
     """
     parts = [
         "# Слайды презентации\n",
@@ -236,19 +257,55 @@ def _slides_page() -> str:
         "тема, цели, объяснение, разбор задачи, задачи для доски, рефлексия. "
         "Это отдельный материал, а не лист на экране: содержимое у них разное, "
         "общие только иллюстрации.\n",
-        "Ниже — виды слайдов, из которых она собирается, и что сказать Claude, "
-        "чтобы получить такой. Как показывать готовую презентацию на уроке — "
-        "на соседней странице [«Как показывать»](present.md).\n",
+        "Ниже — виды слайдов, из которых она собирается, что сказать Claude, "
+        "чтобы получить такой, и готовые заготовки: каждая показана настоящим "
+        "плеером — в ней можно открыть ответ и пройти шаги разбора прямо на "
+        "этой странице. Как показывать презентацию на уроке — на соседней "
+        "странице [«Как показывать»](present.md).\n",
         "[Открыть пример презентации](assets/example-presentation.html)"
         "{ .md-button .md-button--primary }\n",
         "Картинка на слайде — из той же библиотеки, что и в заданиях: "
         "[графики](gallery/graph.md), приборы со шкалой, векторные диаграммы.\n",
+        f"<style>{SLIDE_PREVIEW_CSS}</style>\n",
     ]
     for entry in load_slides().values():
         card = entry.card.read_text(encoding="utf-8").strip()
         parts.append(re.sub(r"^# ", "## ", card, flags=re.M))
         parts.append("")
+        parts.extend(_slide_previews(entry))
     return "\n".join(parts)
+
+
+def _slide_previews(entry: SlideType) -> list[str]:
+    """Every template of the kind, built and embedded.
+
+    The same file the model copies out of the bundle, through the same
+    `present` a teacher runs — a preview here cannot show something the skill
+    would not produce.
+    """
+    parts = []
+    assets = DOCS / "assets"
+    assets.mkdir(parents=True, exist_ok=True)
+    for template in entry.templates:
+        name = f"slide-{entry.tag}-{template.slug}.html"
+        (assets / name).write_text(
+            build_page(
+                build_data(
+                    parse_presentation({"title": entry.title}),
+                    [parse_slide(template.slide, template.slug)],
+                )
+            ),
+            encoding="utf-8",
+        )
+        parts.append(f"*{template.when}*{{ .slide-preview-when }}\n")
+        # `allowfullscreen` — чтобы кнопка `⤢` внутри плеера работала и здесь:
+        # заготовку можно посмотреть так же, как её увидит класс.
+        parts.append(
+            f'<iframe class="slide-preview" src="assets/{name}" loading="lazy"'
+            f' allowfullscreen title="Заготовка «{template.slug}»'
+            f' вида {entry.tag}"></iframe>\n'
+        )
+    return parts
 
 
 def _previews(entry: QuestionType) -> list[str]:

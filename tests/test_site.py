@@ -51,13 +51,24 @@ class TestGalleryCards:
 
 
 class TestSlidesPage:
-    """The one page the site cannot render for itself.
+    """The one page the site does not render for itself.
 
     Everything else in the showcase is produced by the renderer a teacher's
     files go through; a slide is drawn by the player, in a browser. So the
-    page's whole job is to carry every card and open the real presentation —
-    and that is what is checked here.
+    page embeds the player itself — one built presentation per template —
+    and its job is to carry every card, every template and the whole example.
     """
+
+    def test_every_template_is_shown_by_the_player(self) -> None:
+        page = build_site._slides_page()
+        for entry in load_slides().values():
+            for template in entry.templates:
+                name = f"slide-{entry.tag}-{template.slug}.html"
+                assert name in page, f"заготовка '{entry.tag}/{template.slug}' не попала на страницу"
+                asset = build_site.DOCS / "assets" / name
+                # A real built page, not a picture of one: the blob is what
+                # proves the player draws this preview at runtime.
+                assert 'id="presentation-data"' in asset.read_text(encoding="utf-8")
 
     def test_every_kind_reaches_the_page(self) -> None:
         page = build_site._slides_page()

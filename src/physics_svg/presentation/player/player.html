@@ -363,10 +363,12 @@
     align-items: center;
     min-height: 0;
   }
-  /* Пол — только у картинки самого слайда. В ячейке compare или tasks она
-     занимает половину ширины, и такой же пол по высоте выдавил бы ячейку
-     из кадра; там места ей отмеряет сама ячейка. */
+  /* Пол есть и у картинки в ячейке, но вдвое ниже: ячейка занимает половину
+     ширины, и полный пол выдавил бы из кадра набор из четырёх задач. Без
+     пола картинка в ячейке схлопывалась в ноль так же тихо, как когда-то
+     на самом слайде. */
   .slide > figure { min-height: var(--visual-min); }
+  .s-cell > figure { min-height: calc(var(--visual-min) / 2); }
   /* Вписывает рисунок сам viewBox (xMidYMid meet) — svg остаётся коробкой
      во всё отведённое место, пропорции держит холст, а не CSS. */
   figure svg { width: 100%; height: 100%; }
@@ -451,7 +453,12 @@
     --chrome-line: #3D4C5E;
   }
   #stage:has(.slide-section.active) #hud button:hover { color: var(--paper); }
-  #stage-label { max-width: 30cqh; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #stage-label {
+    max-width: calc(20 * var(--step));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* Единственный элемент управления, полезный не учителю, а классу: сколько
      урока осталось. Поэтому он не гаснет вместе с пультом и лежит по самому
@@ -807,8 +814,17 @@ function overflow(slide) {
     bottom = Math.max(bottom, rect.bottom);
   });
   if (top === Infinity) return 0;
-  return Math.max(0, box.top + parseFloat(style.paddingTop) - top)
+  var outside = Math.max(0, box.top + parseFloat(style.paddingTop) - top)
     + Math.max(0, bottom - (box.bottom - parseFloat(style.paddingBottom)));
+  /* Ячейка слайд не раздвигает: она flex-элемент с min-height: 0 и режет
+     лишнее внутри себя, а снаружи всё выглядит поместившимся. Это тот же
+     тихий обрез, что был у картинки, только уровнем ниже, поэтому её
+     переполнение считается отдельно и тоже доходит до fit(). */
+  var inside = 0;
+  [].forEach.call(slide.querySelectorAll(".s-cell"), function (cell) {
+    inside = Math.max(inside, cell.scrollHeight - cell.clientHeight);
+  });
+  return outside + inside;
 }
 
 /* Текст слайда уезжает в свою колонку, картинка встаёт рядом. Перестановка,

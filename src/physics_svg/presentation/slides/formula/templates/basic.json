@@ -6,10 +6,10 @@
     "heading": "Путь при равноускоренном движении",
     "formula": "$S = \\upsilon_0 t + \\frac{at^2}{2}$",
     "terms": [
-      { "symbol": "S", "meaning": "путь, м" },
-      { "symbol": "υ₀", "meaning": "начальная скорость, м/с" },
-      { "symbol": "a", "meaning": "ускорение, м/с²" },
-      { "symbol": "t", "meaning": "время, с" }
+      { "symbol": "$S$", "meaning": "путь, м" },
+      { "symbol": "$\\upsilon_0$", "meaning": "начальная скорость, м/с" },
+      { "symbol": "$a$", "meaning": "ускорение, м/с²" },
+      { "symbol": "$t$", "meaning": "время, с" }
     ]
   }
 }

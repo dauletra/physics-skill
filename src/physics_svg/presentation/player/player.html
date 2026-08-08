@@ -13,12 +13,88 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <style>
+  /* Система оформления — docs/slide-design.md. Всё, чем плеер рисует, живёт
+     здесь: размеров и цветов вне этого блока быть не должно, потому что вид
+     слайда собирается из готовых величин, а не изобретает свои. Схема про
+     них не знает и знать не будет (docs/presentation.md §13). */
+  :root {
+    /* Стек честный: PT Sans не входит ни в Windows, ни в macOS, и раньше
+       первая строка стека не применялась никогда. Разницу в метриках
+       системных шрифтов гасит запас по месту, а не подгонка кегля. */
+    --font: system-ui, "Segoe UI", "SF Pro Text", "Noto Sans", "DejaVu Sans", sans-serif;
+
+    /* Бумага не чисто белая: снятые проценты яркости заметно убирают блик
+       светодиодной доски в освещённом кабинете, а контраст текста остаётся
+       16,9:1. Поле вокруг кадра темнее бумаги — иначе лист не читается
+       листом. Тёмная заливка не чёрная: между двумя светлыми слайдами
+       чёрный кадр бьёт по зрачку и проявляет неровность подсветки. */
+    --paper: #F7F9FB;
+    --paper-sunk: #EDF1F6;
+    --around: #DFE5EC;
+    /* Поле вокруг проекции во весь экран — единственное место, где чёрный
+       уместен: его задача исчезнуть на стене, а не быть поверхностью. */
+    --letterbox: #000000;
+    --line: #D3DAE3;
+    --ink: #15181D;
+    --ink-soft: #4A5261;
+    --ink-faint: #69727E;
+    --panel: #1C2733;
+
+    /* Один хроматический тон на всю систему: он несёт смысл (структура и
+       управление) и никогда не украшает. Синий — единственный тон, надёжно
+       различимый при дейтеранопии и протанопии, а в классе физики таких
+       учеников статистически один-два. Иллюстрации остаются ч/б: акцент
+       живёт в оформлении слайда и внутрь SVG не заходит. */
+    --accent: #1B5FA8;
+    --accent-soft: #E4EDF7;
+    --accent-line: #B9CEE6;
+
+    /* Пульт принадлежит кадру, а не слайду, и обязан читаться на любой его
+       заливке. Своя тройка токенов нужна ровно поэтому: под тёмным слайдом
+       она переключается, а всё остальное оформление — нет. */
+    --chrome: var(--paper-sunk);
+    --chrome-ink: var(--ink-faint);
+    --chrome-line: var(--line);
+
+    /* Шкала в cqh — процентах высоты кадра, а не окна. Шаг 1,25, опора
+       --t-m: с последней парты кабинета 1cqh ≈ 4,6 угловой минуты, а
+       комфортное чтение по ISO 9241-303 начинается с 20. Отсюда 4,5cqh
+       (те же 24 pt, что требуют от PowerPoint). Ниже --t-s текста, который
+       читает класс, на слайде нет: --t-xs — только служебное, его читает
+       учитель с метра. */
+    --t-hero: 11cqh;
+    --t-xxl: 8.8cqh;
+    --t-xl: 7cqh;
+    --t-l: 5.6cqh;
+    --t-m: 4.5cqh;
+    --t-s: 3.6cqh;
+    --t-xs: 2.9cqh;
+    --lead: 1.45;
+
+    /* Пол иллюстрации. Ниже него картинка не ужимается ни при каком объёме
+       текста: подписи внутри SVG живут в единицах viewBox и мельчают вместе
+       с ней, поэтому «осталось место — и ладно» кончается графиком, который
+       с задней парты не прочитать. */
+    --visual-min: 38cqh;
+  }
+
+  /* Одна ступень вниз — и всё. Не плавная подгонка: плавная делает кегль
+     разным на каждом слайде урока, и класс перестаёт понимать, что важно, а
+     что просто длинно. Шкала сдвигается целиком, чтобы иерархия заголовка и
+     текста не схлопнулась; значения — те же семь ступеней из :root. */
+  .slide[data-dense] {
+    --t-xl: 5.6cqh;
+    --t-l: 4.5cqh;
+    --t-m: 3.6cqh;
+    --lead: 1.3;
+  }
+
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; }
   body {
-    font-family: "PT Sans", "Segoe UI", sans-serif;
-    color: #1a1a1a;
-    background: #e8ecf1;
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--around);
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -37,15 +113,15 @@
     aspect-ratio: 16 / 9;
     container-type: size;
     overflow: hidden;
-    background: #ffffff;
-    border: 1px solid rgba(20, 30, 50, 0.10);
+    background: var(--paper);
+    border: 1px solid var(--line);
     border-radius: 1vmin;
     box-shadow: 0 0.4vmin 2.4vmin rgba(20, 30, 50, 0.18);
   }
 
   /* Во весь экран кадр остаётся тем же кадром: уходят поля и рамка, а поле
      вокруг проекции чернеет — так его и не видно на стене. */
-  :fullscreen, :fullscreen body { background: #000000; }
+  :fullscreen, :fullscreen body { background: var(--letterbox); }
   :fullscreen #stage {
     --pad: 0px;
     border: none;
@@ -68,20 +144,27 @@
   .slide.active { display: flex; }
 
   .slide-title { align-items: center; text-align: center; }
-  .slide-title h1 { font-size: 7cqh; font-weight: 700; }
-  .slide-title .subtitle { font-size: 3cqh; color: #555; }
+  .slide-title h1 { font-size: var(--t-hero); font-weight: 700; }
+  .slide-title .subtitle { font-size: var(--t-l); color: var(--ink-soft); }
 
-  .slide h2 { font-size: 4.5cqh; font-weight: 700; }
-  .slide p { font-size: 3.2cqh; line-height: 1.5; }
-  .slide ul, .slide ol { font-size: 3.2cqh; line-height: 1.6; padding-left: 1.2em; }
+  /* Заголовку важнее не оставить одно слово на второй строке, чем занять
+     всю ширину: на доске висящий хвост читается как ошибка вёрстки. */
+  .slide h2 { font-size: var(--t-xl); font-weight: 700; text-wrap: balance; }
+  .slide p { font-size: var(--t-m); line-height: var(--lead); text-wrap: pretty; }
+  .slide ul, .slide ol {
+    font-size: var(--t-m);
+    line-height: var(--lead);
+    padding-left: 1.2em;
+    text-wrap: pretty;
+  }
   .slide li { margin: 0.4em 0; }
 
-  .slide-board_task p.condition, .slide-example p.condition { font-size: 3.8cqh; }
+  .slide-board_task p.condition, .slide-example p.condition { font-size: var(--t-l); }
 
   /* Разделитель этапа — единственный слайд, который выглядит иначе: он не
      содержание, а знак препинания между частями урока. */
-  .slide-section { background: #1a1a1a; color: #ffffff; align-items: center; }
-  .slide-section h2 { font-size: 6cqh; text-align: center; }
+  .slide-section { background: var(--panel); color: var(--paper); align-items: center; }
+  .slide-section h2 { font-size: var(--t-xxl); text-align: center; }
 
   /* Формула — предмет слайда, а не строка внутри абзаца. Отсюда и размер, и
      display-вид: в тексте KaTeX набирает дробь по высоте строки, и с задней
@@ -89,17 +172,17 @@
      колонки — «символ | что это» находится глазами, абзац с той же
      расшифровкой не находится. */
   .slide-formula { align-items: center; text-align: center; }
-  .slide-formula .formula { font-size: 6cqh; }
+  .slide-formula .formula { font-size: var(--t-xxl); }
   .slide-formula .terms {
     display: grid;
     grid-template-columns: auto auto;
     column-gap: 1.2em;
     row-gap: 0.3em;
-    font-size: 2.8cqh;
+    font-size: var(--t-s);
     text-align: left;
   }
   .slide-formula .terms dt { font-weight: 700; text-align: right; }
-  .slide-formula .terms dd { color: #555; }
+  .slide-formula .terms dd { color: var(--ink-soft); }
 
   /* Сопоставление и набор задач раскладываются одинаково — сеткой равных
      ячеек, — потому что в данных они об одном: несколько равноправных
@@ -117,24 +200,28 @@
     gap: 1.5cqh;
     min-height: 0;
   }
-  .slide-compare .case h3 { font-size: 3.4cqh; }
-  .slide-compare .case p, .slide-compare .case li,
-  .slide-tasks .task p { font-size: 2.8cqh; }
+  /* Своего кегля у ячейки нет: текст в колонке читают с той же парты, что
+     текст во всю ширину, и мельче он быть не может. Ячейка платит за это
+     вместимостью — три случая по пять строк на слайд не помещаются, и это
+     ограничение жанра, а не вёрстки. */
+  .slide-compare .case h3 { font-size: var(--t-l); }
   .slide-compare .case ul { padding-left: 1em; }
 
   /* Номер задачи рисует плеер: в данных его нет, потому что номер — это
      место в списке, а не свойство задачи (принцип 2). */
   .slide-tasks .grid { counter-reset: task; }
+  /* Номер — то, что учитель произносит вслух («решаем вторую»), поэтому он
+     набран акцентом, а не самым бледным серым на слайде. */
   .slide-tasks .task > p:first-child::before {
     counter-increment: task;
     content: counter(task) ". ";
     font-weight: 700;
-    color: #999;
+    color: var(--accent);
   }
   /* Плашки ответов встают в одну линию по низу ячеек, а не там, куда их
      опустил текст: задача с картинкой длиннее задачи без неё, и плашки на
      разной высоте читаются как сбитая вёрстка, а не как ряд ответов. */
-  .slide-tasks .answer { font-size: 2.8cqh; margin-top: auto; }
+  .slide-tasks .answer { margin-top: auto; }
 
   /* Шаг разбора и ответ ждут своей очереди. Место под них занято сразу:
      слайд не должен прыгать в тот момент, когда класс на него смотрит. */
@@ -155,7 +242,7 @@
        остальным текстом слайда, а не с отступом. */
     margin-left: -0.5em;
     font: inherit;
-    font-size: 3.6cqh;
+    font-size: var(--t-m);
     font-weight: 700;
     text-align: left;
     color: inherit;
@@ -165,27 +252,30 @@
     cursor: pointer;
   }
   .answer .body, .answer .cover { grid-area: 1 / 1; padding: 0.15em 0.5em; }
-  .answer .label { font-weight: 400; color: #777; }
+  .answer .label { font-weight: 400; color: var(--ink-faint); }
   /* Спрятан от глаз, но не из потока: место под ответ занимает сам ответ. */
   .answer .body { visibility: hidden; }
   .answer.open .body { visibility: visible; }
+  /* Плашка — единственное, по чему учитель обязан попасть пальцем под голос
+     класса, поэтому она набрана акцентом: видно, что это орган управления, а
+     не выцветший кусок текста. */
   .answer .cover {
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 400;
-    color: #6b7280;
-    background: #f1f4f8;
-    border: 1px dashed #b4bdca;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px dashed var(--accent-line);
     border-radius: 0.35em;
     transition: opacity 0.15s ease-out;
   }
   .answer.open .cover { opacity: 0; visibility: hidden; }
   /* Наведение только подсвечивает: показывает ответ щелчок, а не мышь,
      проехавшая мимо. */
-  .answer:hover .cover { color: #1a1a1a; background: #e9edf3; border-color: #8a95a5; }
+  .answer:hover .cover { border-color: var(--accent); }
   .answer:focus-visible { outline: none; }
-  .answer:focus-visible .cover { border-style: solid; border-color: #6b7280; }
+  .answer:focus-visible .cover { border-style: solid; border-color: var(--accent); }
 
   /* Картинка на слайде — не иллюстрация внутри текста, а сам предмет
      разговора: она забирает всё свободное место, а не остаётся того
@@ -197,11 +287,38 @@
     align-items: center;
     min-height: 0;
   }
+  /* Пол — только у картинки самого слайда. В ячейке compare или tasks она
+     занимает половину ширины, и такой же пол по высоте выдавил бы ячейку
+     из кадра; там места ей отмеряет сама ячейка. */
+  .slide > figure { min-height: var(--visual-min); }
   /* Вписывает рисунок сам viewBox (xMidYMid meet) — svg остаётся коробкой
      во всё отведённое место, пропорции держит холст, а не CSS. */
   figure svg { width: 100%; height: 100%; }
 
-  .placeholder { color: #999; font-size: 3cqh; align-items: center; }
+  /* Две колонки — способ дать картинке её пол, когда в столбик текст и
+     картинка вместе уже не влезают. Колонка текста уже, поэтому строк в неё
+     помещается больше на ту же высоту, и слайд перестаёт быть выбором между
+     условием и графиком. Кто во что встаёт, решает fit() — по замеру. */
+  /* Текстовая колонка шире картинки, хотя предмет разговора — картинка.
+     Замер: при равных колонках и при узкой текстовой этот же слайд не
+     влезает и уходит на ступень вниз, а картинка, выигравшая проценты
+     ширины, не стоит текста, упавшего ниже порога читаемости. */
+  .slide.split.active {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    column-gap: 5cqh;
+    align-items: center;
+  }
+  .slide.split > figure { align-self: stretch; }
+  .prose {
+    display: flex;
+    flex-direction: column;
+    gap: 3cqh;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .placeholder { color: var(--ink-soft); font-size: var(--t-m); align-items: center; }
 
   .blank {
     text-decoration: underline;
@@ -219,20 +336,29 @@
     display: flex;
     align-items: center;
     gap: 1.2cqh;
-    font-size: 2.2cqh;
-    color: #999;
+    font-size: var(--t-xs);
+    color: var(--chrome-ink);
     user-select: none;
   }
   #hud button {
     font: inherit;
     color: inherit;
-    background: none;
-    border: 1px solid #ddd;
+    background: var(--chrome);
+    border: 1px solid var(--chrome-line);
     border-radius: 0.5em;
     padding: 0.1em 0.7em;
     cursor: pointer;
   }
-  #hud button:hover { color: #1a1a1a; border-color: #999; }
+  #hud button:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  /* Тёмный слайд — тёмный пульт. Иначе кнопки становятся самым светлым
+     пятном кадра и класс смотрит на них, а не на название этапа. */
+  #stage:has(.slide-section.active) {
+    --chrome: #2A3746;
+    --chrome-ink: #9AA6B4;
+    --chrome-line: #3D4C5E;
+  }
+  #stage:has(.slide-section.active) #hud button:hover { color: var(--paper); }
   #stage-label { max-width: 30cqh; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* Список этапов: учителю нужно уметь вернуться к разбору, а не пролистать
@@ -241,7 +367,7 @@
     position: absolute;
     z-index: 3;
     inset: 0;
-    background: #ffffff;
+    background: var(--paper);
     display: none;
     flex-direction: column;
     justify-content: center;
@@ -250,19 +376,19 @@
     overflow-y: auto;
   }
   #stages.open { display: flex; }
-  #stages .caption { font-size: 2.6cqh; color: #999; margin-bottom: 1.5cqh; }
+  #stages .caption { font-size: var(--t-xs); color: var(--ink-faint); margin-bottom: 1.5cqh; }
   #stages button {
     font: inherit;
-    font-size: 4cqh;
+    font-size: var(--t-l);
     text-align: left;
-    color: #1a1a1a;
+    color: var(--ink);
     background: none;
     border: none;
     padding: 0.25em 0;
     cursor: pointer;
   }
   #stages button:hover { text-decoration: underline; }
-  #stages button.here::after { content: " ←"; color: #999; }
+  #stages button.here::after { content: " ←"; color: var(--accent); }
 </style>
 </head>
 <body>
@@ -287,7 +413,15 @@ function runsInto(target, runs) {
     if (run.math !== undefined) {
       var span = document.createElement("span");
       if (window.katex) {
-        katex.render(run.math, span, { throwOnError: false, displayMode: !!run.display });
+        /* \displaystyle и внутри строки: в тексте KaTeX набирает числитель
+           дробью от кегля абзаца, и на слайде это уходит за порог
+           читаемости вдвое. Плотную абзацную типографику, ради которой
+           инлайн и мельчает, на слайде защищать не от чего, а последняя
+           парта есть. */
+        katex.render("\\displaystyle " + run.math, span, {
+          throwOnError: false,
+          displayMode: !!run.display
+        });
       } else {
         /* Без сети формула остаётся исходным текстом — та же защита, что в документе. */
         span.textContent = (run.display ? "$$" : "$") + run.math + (run.display ? "$$" : "$");
@@ -487,6 +621,65 @@ function buildSlide(slide) {
   return root;
 }
 
+/* Насколько содержимое вылезло за поля кадра, в пикселях. Считается по
+   коробкам детей, а не по scrollHeight: слайд центрирован по вертикали, и
+   лишнее уходит вверх и вниз сразу, а scrollHeight видит только низ. */
+function overflow(slide) {
+  var box = slide.getBoundingClientRect();
+  var style = getComputedStyle(slide);
+  var top = Infinity;
+  var bottom = -Infinity;
+  [].forEach.call(slide.children, function (node) {
+    var rect = node.getBoundingClientRect();
+    if (!rect.height) return;
+    top = Math.min(top, rect.top);
+    bottom = Math.max(bottom, rect.bottom);
+  });
+  if (top === Infinity) return 0;
+  return Math.max(0, box.top + parseFloat(style.paddingTop) - top)
+    + Math.max(0, bottom - (box.bottom - parseFloat(style.paddingBottom)));
+}
+
+/* Текст слайда уезжает в свою колонку, картинка встаёт рядом. Перестановка,
+   а не вторая ветка рендера: вид слайда собирает одно и то же дерево, а как
+   оно стоит в кадре — дело плеера. Порядок текста сохраняется, поэтому в
+   разборе условие по-прежнему идёт перед шагами. */
+function splitOff(slide) {
+  var figure = slide.querySelector(":scope > figure");
+  if (!figure) return false;
+  var prose = document.createElement("div");
+  prose.className = "prose";
+  while (slide.firstChild) {
+    var node = slide.firstChild;
+    slide.removeChild(node);
+    if (node !== figure) prose.appendChild(node);
+  }
+  slide.appendChild(prose);
+  slide.appendChild(figure);
+  slide.classList.add("split");
+  return true;
+}
+
+/* Картинка не жертва: пол --visual-min держит CSS, а если с этим полом текст
+   и картинка в столбик не помещаются, слайд уходит в две колонки — и только
+   потом на ступень вниз по шкале. Раньше было наоборот: текст не двигался, а
+   картинка молча схлопывалась до нечитаемой.
+
+   Решение принимается один раз, при первом показе, и не пересматривается:
+   всё на слайде задано в долях высоты кадра, а кадр держит 16:9, поэтому
+   окно меняет масштаб целиком и переносов строк не трогает — замер,
+   сделанный в маленьком окне, верен и на доске. */
+function fit(slide) {
+  if (slide.dataset.fitted) return;
+  slide.dataset.fitted = "1";
+  if (overflow(slide) <= 1) return;
+  if (splitOff(slide) && overflow(slide) <= 1) return;
+  slide.dataset.dense = "1";
+  if (overflow(slide) > 1) {
+    console.warn("Слайд не помещается в кадр: " + slide.className);
+  }
+}
+
 /* Прогоны обратно в простой текст — для мест, где нужна строка, а не DOM:
    название этапа в списке и в углу экрана. */
 function plain(runs) {
@@ -557,6 +750,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var total = slides[current].querySelectorAll(".fragment").length;
     revealed = reveal === "all" ? total : 0;
     slides.forEach(function (slide, i) { slide.classList.toggle("active", i === current); });
+    /* Мерить можно только показанный слайд: спрятанный не разложен. */
+    fit(slides[current]);
     paint();
   }
 

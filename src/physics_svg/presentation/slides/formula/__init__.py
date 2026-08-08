@@ -22,7 +22,7 @@ from physics_svg.schema import field, spec
 class TermSpec:
     """Обозначение из формулы и его расшифровка."""
 
-    symbol: str = field(doc="Обозначение как в формуле: υ₀, a, t")
+    symbol: str = field(doc="Обозначение как в формуле, в тех же $…$: $\\upsilon_0$, $a$")
     meaning: str = field(doc="Что оно значит: «начальная скорость»")
 
 

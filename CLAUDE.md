@@ -92,7 +92,7 @@ skill/        рукописные исходники бандла: SKILL.md, re
 examples/     проработанный пример-черновик: лист и презентация одного урока
 docs/         источник сайта; генерируемые страницы гитигнорятся
 tools/        build_skill.py, build_site.py, dev.py, contact_sheet.py,
-              docx_dump.py, release.py
+              slide_sheet.py, docx_dump.py, release.py
 tests/        draw/, schema/, visuals/, document/, presentation/,
               test_bundle.py, test_site.py
 evals/        ручные чек-листы: triggers.md (срабатывания скилла),
@@ -164,6 +164,10 @@ JSON, плотно). `card.md` — для учителя (что это, ког�
    пройти [evals/presentation.md](evals/presentation.md) в браузере. Слайд
    рисует не Python, а плеер, поэтому тест видит только данные: читается ли
    слайд с задней парты и не съехал ли кадр — решают глаза.
+   Правка коснулась оформления или раскладки — смотреть **все** виды сразу:
+   `python tools/slide_sheet.py --open` (Esc — прыжок к нужному виду).
+   Система оформления — [docs/slide-design.md](docs/slide-design.md): размеры
+   и цвета берутся из её токенов, новых значений в плеере не заводят.
 
 ## Язык
 

@@ -88,8 +88,49 @@
   .fragment { opacity: 0; transition: opacity 0.15s ease-out; }
   .fragment.shown { opacity: 1; }
 
-  .answer { font-size: 3.6cqh; font-weight: 700; }
+  /* Ответ — спойлер: плашка накрывает готовый текст, щелчок по ней его
+     показывает, следующий щелчок прячет обратно. Стрелки сюда не ходят —
+     ответ не `.fragment`, и открыть его можно только намеренно. */
+  .answer {
+    position: relative;
+    display: block;
+    width: 100%;
+    font: inherit;
+    font-size: 3.6cqh;
+    font-weight: 700;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
   .answer .label { font-weight: 400; color: #777; }
+  /* Спрятан от глаз, но не из потока: место под ответ занимает сам ответ. */
+  .answer .body { visibility: hidden; }
+  .answer.open .body { visibility: visible; }
+  .answer .cover {
+    position: absolute;
+    inset: -0.3em -0.5em;
+    display: flex;
+    align-items: center;
+    gap: 0.7em;
+    padding: 0 0.7em;
+    font-weight: 400;
+    color: #6b7280;
+    background: #f1f4f8;
+    border: 1px dashed #b4bdca;
+    border-radius: 0.35em;
+    transition: opacity 0.15s ease-out;
+  }
+  .answer.open .cover { opacity: 0; visibility: hidden; }
+  /* Наведение только подсвечивает: показывает ответ щелчок, а не мышь,
+     проехавшая мимо. */
+  .answer:hover .cover { color: #1a1a1a; background: #e9edf3; border-color: #8a95a5; }
+  .answer:focus-visible { outline: none; }
+  .answer:focus-visible .cover { border-style: solid; border-color: #6b7280; }
+  .answer .cover-label { font-weight: 700; color: #4b5563; }
+  .answer .cover-hint { font-size: 0.6em; color: #98a1ae; }
 
   /* Картинка на слайде — не иллюстрация внутри текста, а сам предмет
      разговора: она забирает всё свободное место, а не остаётся того
@@ -235,15 +276,46 @@ function itemsList(items) {
   return list;
 }
 
-/* Ответ приходит в данных всегда, а показывается по шагу навигации: когда
-   его открыть — решение плеера, а не поле слайда (docs/presentation.md §3). */
+/* Ответ приходит в данных всегда, а показывается спойлером: когда его
+   открыть — решение плеера, а не поле слайда (docs/presentation.md §3).
+
+   Спойлер, а не шаг навигации: шаг разбора учитель проходит вместе с
+   классом, а ответ показывает намеренно — и промахнуться стрелкой мимо
+   этого решения нельзя. Поэтому ответ не `.fragment`: стрелки и пробел его
+   не открывают, счётчик его не обещает, открывает только щелчок по плашке.
+
+   Текст ответа стоит на месте всегда и лишь спрятан от глаз, плашка лежит
+   поверх него — так место занято настоящим ответом, и слайд не прыгает ни
+   когда его открыли, ни когда закрыли обратно. */
 function answerBlock(answer) {
-  var node = el("p", "answer fragment");
+  var node = document.createElement("button");
+  node.type = "button";
+  node.className = "answer spoiler";
+  node.setAttribute("aria-expanded", "false");
+
+  var body = el("span", "body");
   var label = document.createElement("span");
   label.className = "label";
   label.textContent = "Ответ: ";
-  node.appendChild(label);
-  runsInto(node, answer);
+  body.appendChild(label);
+  runsInto(body, answer);
+  node.appendChild(body);
+
+  var cover = document.createElement("span");
+  cover.className = "cover";
+  cover.appendChild(el("span", "cover-label", [{ t: "Ответ" }]));
+  cover.appendChild(el("span", "cover-hint", [{ t: "нажмите, чтобы показать" }]));
+  node.appendChild(cover);
+
+  node.setAttribute("aria-label", "Показать ответ");
+  node.addEventListener("click", function () {
+    var open = node.classList.toggle("open");
+    node.setAttribute("aria-expanded", open ? "true" : "false");
+    node.setAttribute("aria-label", open ? "Скрыть ответ" : "Показать ответ");
+    /* Кнопка, нажатая мышью, остаётся в фокусе — и следующий пробел ушёл бы
+       ей, а не показу. */
+    node.blur();
+  });
   return node;
 }
 
@@ -357,7 +429,19 @@ document.addEventListener("DOMContentLoaded", function () {
     return name;
   }
 
+  /* Шаги при возврате на слайд остаются открытыми, а ответ — нет: он
+     закрывается всегда, и показать его снова — отдельное решение учителя,
+     а не побочный эффект того, что он вернулся посмотреть условие. */
+  function closeAnswers() {
+    [].forEach.call(stage.querySelectorAll(".answer.open"), function (node) {
+      node.classList.remove("open");
+      node.setAttribute("aria-expanded", "false");
+      node.setAttribute("aria-label", "Показать ответ");
+    });
+  }
+
   function show(index, reveal) {
+    closeAnswers();
     current = Math.max(0, Math.min(slides.length - 1, index));
     var total = slides[current].querySelectorAll(".fragment").length;
     revealed = reveal === "all" ? total : 0;

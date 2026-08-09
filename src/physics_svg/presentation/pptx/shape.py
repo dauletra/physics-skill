@@ -133,6 +133,52 @@ class Place:
         )
 
 
+def plain_shape(
+    number: int,
+    name: str,
+    box: tuple[float, float, float, float],
+    body: str = "",
+    *,
+    anchor: str = "t",
+    fill: str = "",
+) -> str:
+    """A shape that is not a placeholder: geometry, fill, and whatever text
+    it was given.
+
+    Everything a slide shows should be a place a layout declared — that is
+    what makes «Сброс слайда» work and what lets a teacher restyle a lesson
+    at its master. This is for the exceptions, and there are only two: the
+    hairline under the heading and the word that names the genre. Both belong
+    to the layout, neither is text anybody edits.
+    """
+    x, y, width, height = (design.emu(value) for value in box)
+    return el(
+        "p:sp",
+        children=el(
+            "p:nvSpPr",
+            children=el("p:cNvPr", {"id": number, "name": name})
+            + el("p:cNvSpPr")
+            + el("p:nvPr"),
+        )
+        + el(
+            "p:spPr",
+            children=el(
+                "a:xfrm",
+                children=el("a:off", {"x": x, "y": y}) + el("a:ext", {"cx": width, "cy": height}),
+            )
+            + el("a:prstGeom", {"prst": "rect"}, el("a:avLst"))
+            + (fill or el("a:noFill"))
+            + el("a:ln", children=el("a:noFill")),
+        )
+        + el(
+            "p:txBody",
+            children=el("a:bodyPr", {"wrap": "square", "anchor": anchor}, el("a:normAutofit"))
+            + el("a:lstStyle")
+            + (body or el("a:p")),
+        ),
+    )
+
+
 def rule(y: float, *, colour: str = design.LINE, number: int = 90) -> str:
     """The hairline under a heading — the one horizon of docs/slide-design.md
     §6.1, drawn on the layout so that every slide of the lesson has it in the

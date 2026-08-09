@@ -10,9 +10,17 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.inline import Run, parse_inline
 from physics_svg.presentation.emit import emit_visual, runs
+from physics_svg.presentation.pptx import Slide, design, layouts
+from physics_svg.presentation.pptx.picture import picture
+from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import field, spec
+
+#: What stands before the answer. The word is not decoration: read aloud
+#: without it, «12 с» under a task is a number of unclear origin.
+ANSWER_LABEL = "Ответ: "
 
 
 @spec
@@ -37,11 +45,63 @@ def emit(model: BoardTaskSpec, scope: str) -> dict[str, object]:
     return data
 
 
+def _layout_for(model: BoardTaskSpec) -> "layouts.Layout":
+    """Where the picture goes, if there is one — the same measurement the
+    explanation slide makes, against a shorter box.
+
+    Shorter because the answer keeps a band at the foot of the frame whether
+    it is filled or not: the class always looks for it in one place. That
+    band is why the choice matters more here than on an explanation slide —
+    there is less height to lose.
+    """
+    if model.visual is None:
+        return layouts.TASK
+    assert layouts.TASK_SPLIT.picture is not None
+    if layouts.reads_in(layouts.TASK_SPLIT.picture, model.visual):
+        return layouts.TASK_SPLIT
+    return layouts.TASK_STACK
+
+
+def build(model: BoardTaskSpec) -> Slide:
+    """The statement, the picture, the answer — the player's own order.
+
+    The answer stands open. Hiding it is P5а of docs/pptx.md, where it
+    becomes an animation triggered by a click; until then a teacher who does
+    not want it on the screen leaves the field out, which is what the
+    `without-answer` template is for.
+    """
+    layout = _layout_for(model)
+    shapes = layout.places[0].on_slide(2, [paragraph(model.text)])
+    if model.visual is not None:
+        assert layout.picture is not None
+        shapes += picture(model.visual, layout.picture)
+    if model.answer is not None:
+        shapes += layout.places[1].on_slide(3, [_answer(model.answer)])
+    return Slide(layout.name, shapes)
+
+
+def _answer(answer: str) -> str:
+    """«Ответ: 12 с» — the word auxiliary, the value the point.
+
+    The player set the same line and hung an accent plate over it, because
+    there the plate was a button the teacher had to hit with a finger. Here
+    nothing is clickable yet, and an accent with nothing to press would say
+    «control» about a line of text.
+    """
+    return joined_paragraph(
+        [
+            ([Run(ANSWER_LABEL)], Style(colour=design.INK_FAINT)),
+            (parse_inline(answer), Style(bold=True)),
+        ]
+    )
+
+
 register(
     tag="board_task",
     title="Задача у доски",
     model=BoardTaskSpec,
     emit=emit,
+    build=build,
     order=70,
     module=__name__,
 )

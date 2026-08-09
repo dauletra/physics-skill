@@ -115,14 +115,29 @@ def paragraph(raw: object, style: Style = Style()) -> str:
 
 
 def runs_paragraph(pieces: Sequence[object], style: Style = Style()) -> str:
+    return joined_paragraph([(pieces, style)], style)
+
+
+def joined_paragraph(
+    parts: Sequence[tuple[Sequence[object], Style]], style: Style = Style()
+) -> str:
+    """One line whose parts are set differently — a label and what it labels.
+
+    «Ответ: 12 с» is one line and two voices: the word is auxiliary and the
+    value is the point. Two paragraphs would stack them; two shapes would put
+    the gap between them at somebody's discretion. So the paragraph keeps one
+    set of paragraph properties — indent, bullet, leading, which belong to the
+    line — and each part brings its own run properties.
+    """
     body = _paragraph_properties(style)
-    for piece in pieces:
-        if isinstance(piece, Run):
-            body += _text_run(piece.text, style, piece.script)
-        elif isinstance(piece, Math):
-            body += _text_run(piece.latex, style)
-        elif isinstance(piece, Blank):
-            body += _text_run(" ", style)
+    for pieces, part_style in parts:
+        for piece in pieces:
+            if isinstance(piece, Run):
+                body += _text_run(piece.text, part_style, piece.script)
+            elif isinstance(piece, Math):
+                body += _text_run(piece.latex, part_style)
+            elif isinstance(piece, Blank):
+                body += _text_run(" ", part_style)
     body += el("a:endParaRPr", {"lang": "ru-RU"} if style.size is None else {
         "lang": "ru-RU",
         "sz": design.sz(style.size),

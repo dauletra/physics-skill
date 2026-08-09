@@ -12,12 +12,12 @@ it, the same way the rest of the project derives from its registries.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Sequence
 
-from physics_svg.ooxml import el
+from physics_svg.ooxml import el, escape
 from physics_svg.presentation.pptx import design
-from physics_svg.presentation.pptx.shape import Place, rule
+from physics_svg.presentation.pptx.shape import Place, plain_shape, rule
 from physics_svg.presentation.pptx.slide import NS, shape_tree
 
 #: The slide in points, and the box the content lives in.
@@ -256,6 +256,121 @@ CONTENT_FIGURE = Layout(
 )
 
 
+def kicker(text: str, *, number: int = 91) -> str:
+    """The word that names the genre, standing where a heading would.
+
+    Ornament rather than a place: the word belongs to the kind, not to the
+    slide — every task says «Задача», and no author gets to retype it. A kind
+    without a heading still needs something on the horizon every other slide's
+    heading stands on ([slide-design.md](slide-design.md) §6.1), and a kind
+    whose heading already names the genre gets no kicker at all: that would be
+    the same word twice.
+
+    Set in the accent, in caps, letterspaced. At 16 pt it is the smallest
+    thing on the slide, and the class has to read it as a label rather than as
+    the first words of the text.
+    """
+    run = el(
+        "a:r",
+        children=el(
+            "a:rPr",
+            {"lang": "ru-RU", "sz": design.sz(design.TINY), "b": 1, "cap": "all", "spc": 130},
+            el("a:solidFill", children=el("a:srgbClr", {"val": design.ACCENT}))
+            + el("a:latin", {"typeface": design.FONT}),
+        )
+        + el("a:t", children=escape(text)),
+    )
+    box = (design.PAD_X, HEAD_TOP, CONTENT_WIDTH, HEAD_HEIGHT)
+    return plain_shape(number, "Жанр", box, el("a:p", children=run), anchor="b")
+
+
+#: The task slide. Its shape is the player's, top to bottom: the statement,
+#: then the picture if there is one, then the answer.
+#:
+#: The answer keeps a band of its own at the foot of the frame rather than
+#: following the text. Two reasons, and the second is the one that matters:
+#: the class always looks for it in the same place, and the picture above it
+#: therefore has a height that is known before the slide is built — which is
+#: what `reads_in` needs to choose where the picture goes.
+#:
+#: One line and a half of it. An answer to a task at the board is «12 с», not
+#: a paragraph; a longer one is shrunk by `normAutofit` rather than given room
+#: that the picture would have to pay for.
+_ANSWER_HEIGHT = design.TEXT * design.LEADING * 1.4
+_ANSWER_TOP = HEIGHT - design.PAD_Y - _ANSWER_HEIGHT
+_TASK_GAP = design.cqh(1.5)
+_TASK_BOTTOM = _ANSWER_TOP - _TASK_GAP
+
+#: The statement is set a step above body text: it is the whole slide until
+#: someone answers it, and the class reads it before anything else is on the
+#: board.
+_STATEMENT = Place(
+    name="Условие",
+    kind="title",
+    box=(design.PAD_X, BODY_TOP, CONTENT_WIDTH, _TASK_BOTTOM - BODY_TOP),
+    size=design.LEAD,
+    leading=design.LEADING,
+)
+_ANSWER = Place(
+    name="Ответ",
+    kind="body",
+    idx=1,
+    box=(design.PAD_X, _ANSWER_TOP, CONTENT_WIDTH, _ANSWER_HEIGHT),
+    size=design.TEXT,
+    anchor="b",
+)
+
+TASK = Layout(
+    name="task",
+    title="Задача у доски",
+    places=(_STATEMENT, _ANSWER),
+    ornament=rule(RULE_Y) + kicker("Задача"),
+)
+
+TASK_SPLIT = Layout(
+    name="task_split",
+    title="Задача с иллюстрацией сбоку",
+    places=(
+        replace(
+            _STATEMENT,
+            box=(design.PAD_X, BODY_TOP, _TEXT_COLUMN, _TASK_BOTTOM - BODY_TOP),
+        ),
+        _ANSWER,
+    ),
+    ornament=rule(RULE_Y) + kicker("Задача"),
+    picture=(
+        design.PAD_X + _TEXT_COLUMN + _GAP,
+        BODY_TOP,
+        _PICTURE_COLUMN,
+        _TASK_BOTTOM - BODY_TOP,
+    ),
+)
+
+#: The statement over the picture. Two lines of it: a task read off a graph
+#: says «найдите путь за первые 4 секунды» and hands the rest to the drawing.
+_TASK_TEXT_HEIGHT = design.LEAD * design.LEADING * 2.0
+_TASK_PICTURE_TOP = BODY_TOP + _TASK_TEXT_HEIGHT + _TASK_GAP
+
+TASK_STACK = Layout(
+    name="task_stack",
+    title="Задача над иллюстрацией",
+    places=(
+        replace(
+            _STATEMENT,
+            box=(design.PAD_X, BODY_TOP, CONTENT_WIDTH, _TASK_TEXT_HEIGHT),
+        ),
+        _ANSWER,
+    ),
+    ornament=rule(RULE_Y) + kicker("Задача"),
+    picture=(
+        design.PAD_X,
+        _TASK_PICTURE_TOP,
+        CONTENT_WIDTH,
+        _TASK_BOTTOM - _TASK_PICTURE_TOP,
+    ),
+)
+
+
 #: Kept because PowerPoint offers it in «Создать слайд» and a teacher will
 #: reach for it; nothing the skill generates uses it.
 BLANK = Layout(name="blank", title="Пустой", kind="blank", places=())
@@ -267,6 +382,9 @@ LAYOUTS: tuple[Layout, ...] = (
     CONTENT_SPLIT,
     CONTENT_STACK,
     CONTENT_FIGURE,
+    TASK,
+    TASK_SPLIT,
+    TASK_STACK,
     BLANK,
 )
 

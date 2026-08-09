@@ -25,12 +25,27 @@ from physics_svg.draw import BOARD, SHEET, Canvas, Medium, overlapping_labels
 from physics_svg.presentation.pptx import design, layouts
 from physics_svg.visuals import label_metrics, render_to_canvas
 
-#: The boxes a slide offers an illustration, narrowest first.
-BOXES = {
-    "content_split": layouts.CONTENT_SPLIT.picture,
-    "content_stack": layouts.CONTENT_STACK.picture,
-    "content_figure": layouts.CONTENT_FIGURE.picture,
+#: Every kind that carries a picture offers it the same choice — beside the
+#: text or above it — and each pair of boxes has to work on its own. A task
+#: keeps a band at the foot of the frame for its answer, so it has less
+#: height to give away than an explanation does; the rule is one, the room
+#: is not.
+PLACEMENTS = {
+    "content": (layouts.CONTENT_SPLIT, layouts.CONTENT_STACK),
+    "board_task": (layouts.TASK_SPLIT, layouts.TASK_STACK),
 }
+
+EACH_PLACEMENT = pytest.mark.parametrize(
+    "beside,above",
+    [pair for pair in PLACEMENTS.values()],
+    ids=list(PLACEMENTS),
+)
+
+
+def box_of(layout: object) -> tuple[float, float, float, float]:
+    picture = getattr(layout, "picture")
+    assert picture is not None, layout
+    return picture  # type: ignore[no-any-return]
 
 
 def fitted(model: object, box: tuple[float, float, float, float]) -> float:
@@ -41,19 +56,17 @@ def fitted(model: object, box: tuple[float, float, float, float]) -> float:
 
 
 @EACH_EXAMPLE
-def test_the_chosen_place_is_legible(example) -> None:
+@EACH_PLACEMENT
+def test_the_chosen_place_is_legible(example, beside, above) -> None:
     """Wherever the rule puts this picture, its smallest label reads."""
     size, _, _ = label_metrics(example.model)
     if not size:  # ruled paper carries no labels at all
         return
-    assert layouts.CONTENT_SPLIT.picture is not None
-    beside_text = layouts.reads_in(layouts.CONTENT_SPLIT.picture, example.model)
-    box = BOXES["content_split"] if beside_text else BOXES["content_stack"]
-    assert box is not None
+    box = box_of(beside if layouts.reads_in(box_of(beside), example.model) else above)
     actual = fitted(example.model, box)
     assert actual >= design.SMALL, (
-        f"{example.name}: подпись {actual:.1f} pt при пороге {design.SMALL:.0f} — "
-        "ни рядом с текстом, ни над ним не читается"
+        f"{example.name} на «{beside.name}»/«{above.name}»: подпись {actual:.1f} pt "
+        f"при пороге {design.SMALL:.0f} — ни рядом с текстом, ни над ним не читается"
     )
 
 
@@ -69,7 +82,8 @@ def test_a_picture_alone_gets_the_frame(example) -> None:
     assert actual >= design.SMALL, f"{example.name}: {actual:.1f} pt во всю ширину кадра"
 
 
-def test_moving_a_picture_out_of_the_column_helps() -> None:
+@EACH_PLACEMENT
+def test_moving_a_picture_out_of_the_column_helps(beside, above) -> None:
     """The rule only ever moves a picture to a place that is better for it.
 
     Worth stating because the obvious version of this rule — «wide pictures
@@ -80,19 +94,17 @@ def test_moving_a_picture_out_of_the_column_helps() -> None:
     invariant worth holding is not about shape at all — it is that the move
     is never a downgrade.
     """
-    assert layouts.CONTENT_SPLIT.picture is not None
-    assert layouts.CONTENT_STACK.picture is not None
     moved = [
         example
         for example in EXAMPLES
         if label_metrics(example.model)[0]
-        and not layouts.reads_in(layouts.CONTENT_SPLIT.picture, example.model)
+        and not layouts.reads_in(box_of(beside), example.model)
     ]
-    assert moved, "правило перестало кого-либо переставлять — проверь порог"
+    assert moved, f"{beside.name}: правило перестало кого-либо переставлять — проверь порог"
     for example in moved:
-        in_column = fitted(example.model, layouts.CONTENT_SPLIT.picture)
-        above = fitted(example.model, layouts.CONTENT_STACK.picture)
-        assert above > in_column, example.name
+        assert fitted(example.model, box_of(above)) > fitted(
+            example.model, box_of(beside)
+        ), example.name
 
 
 @EACH_EXAMPLE

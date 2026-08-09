@@ -9,8 +9,8 @@ The layering rule holds: nothing above `presentation/` is imported here, and
 the drawing library is used the way the document's Word backend uses it.
 """
 
-from physics_svg.presentation.pptx import layouts
+from physics_svg.presentation.pptx import design, layouts
 from physics_svg.presentation.pptx.package import build_pptx
 from physics_svg.presentation.pptx.slide import Slide, slide
 
-__all__ = ["Slide", "build_pptx", "layouts", "slide"]
+__all__ = ["Slide", "build_pptx", "design", "layouts", "slide"]

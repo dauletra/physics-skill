@@ -23,7 +23,7 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from physics_svg.ooxml import PACKAGE_RELS
-from physics_svg.presentation.pptx import build_pptx, slide
+from physics_svg.presentation.pptx import build_pptx, layouts, slide
 
 CONTENT_TYPES = "http://schemas.openxmlformats.org/package/2006/content-types"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -157,6 +157,38 @@ class TestDeck:
         assert "ppt/slides/slide1.xml" in empty.namelist()
 
 
+class TestLayouts:
+    """Geometry of the layouts themselves, which nothing else can catch.
+
+    PowerPoint places what it is told and says nothing about two boxes on top
+    of each other; the file is valid and the slide is wrong. So the arithmetic
+    of `layouts.py` is checked here rather than discovered on a panel.
+    """
+
+    @staticmethod
+    def boxes(layout: object) -> list[tuple[str, tuple[float, float, float, float]]]:
+        named = [(place.name, place.box) for place in getattr(layout, "places")]
+        picture = getattr(layout, "picture")
+        return named + ([("Иллюстрация", picture)] if picture else [])
+
+    @pytest.mark.parametrize("layout", layouts.LAYOUTS, ids=[e.name for e in layouts.LAYOUTS])
+    def test_no_two_boxes_share_room(self, layout: object) -> None:
+        entries = self.boxes(layout)
+        for index, (name, box) in enumerate(entries):
+            for other_name, other in entries[index + 1 :]:
+                x, y, width, height = box
+                ox, oy, owidth, oheight = other
+                apart = x + width <= ox or ox + owidth <= x or y + height <= oy or oy + oheight <= y
+                assert apart, f"{getattr(layout, 'name')}: «{name}» и «{other_name}» наложились"
+
+    @pytest.mark.parametrize("layout", layouts.LAYOUTS, ids=[e.name for e in layouts.LAYOUTS])
+    def test_every_box_is_inside_the_frame(self, layout: object) -> None:
+        for name, (x, y, width, height) in self.boxes(layout):
+            assert x >= 0 and y >= 0, f"{getattr(layout, 'name')}: «{name}» начинается за кадром"
+            assert x + width <= layouts.WIDTH + 1e-6, f"{getattr(layout, 'name')}: «{name}» шире кадра"
+            assert y + height <= layouts.HEIGHT + 1e-6, f"{getattr(layout, 'name')}: «{name}» ниже кадра"
+
+
 class TestLesson:
     """A deck built from real slide models, not from hand-written XML."""
 
@@ -218,6 +250,53 @@ class TestLesson:
             )
         ]
         assert "-25000" in properties
+
+    def test_an_answer_names_itself(self) -> None:
+        """«12 с» alone under a task is a number of unclear origin, so the
+        word is part of the answer and the value is what carries the weight."""
+        package = self.deck(
+            {"type": "board_task", "text": "За какое время?", "answer": "12 с"}
+        )
+        assert self.texts(package, "ppt/slides/slide1.xml") == [
+            "За какое время?",
+            "Ответ: ",
+            "12 с",
+        ]
+        runs = read(package, "ppt/slides/slide1.xml").iter(
+            "{http://schemas.openxmlformats.org/drawingml/2006/main}rPr"
+        )
+        assert [node.attrib.get("b") for node in runs] == [None, None, "1"]
+
+    def test_a_task_without_an_answer_leaves_the_band_empty(self) -> None:
+        """The band stays on the layout — the class looks for the answer in
+        one place — but nothing is written into it, so a task whose result is
+        a drawing on the board shows no stray «Ответ:»."""
+        package = self.deck({"type": "board_task", "text": "Постройте график."})
+        assert self.texts(package, "ppt/slides/slide1.xml") == ["Постройте график."]
+
+    def test_a_task_picture_goes_where_it_reads(self) -> None:
+        """The same measurement the explanation slide makes, against the
+        shorter box a task leaves after its answer band."""
+        graph = {
+            "type": "graph",
+            "x_label": "t, с",
+            "y_label": "υ, м/с",
+            "x_range": [0, 6],
+            "y_range": [0, 8],
+            "series": [{"points": [[0, 0], [6, 8]]}],
+        }
+        package = self.deck({"type": "board_task", "text": "Найдите путь.", "visual": graph})
+        targets = rels_of(package, "ppt/slides/slide1.xml").values()
+        wanted = layouts.layout_index("task_stack")
+        assert any(target.endswith(f"slideLayout{wanted}.xml") for target in targets)
+
+    def test_the_genre_is_named_on_the_layout(self) -> None:
+        """«Задача» belongs to the kind, not to the slide: it is written once
+        on the layout, where no author can retype it."""
+        package = self.deck({"type": "board_task", "text": "Задание"})
+        part = f"ppt/slideLayouts/slideLayout{layouts.layout_index('task')}.xml"
+        assert "Задача" in self.texts(package, part)
+        assert "Задача" not in self.texts(package, "ppt/slides/slide1.xml")
 
     def test_a_kind_without_a_layout_says_so(self) -> None:
         """Silence would give a lesson with slides missing from the middle.

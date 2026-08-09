@@ -47,7 +47,6 @@ Builder = Callable[[Any], "Slide"]
 #: a kind is added to it rather than removed.
 PLAYER_ONLY = frozenset(
     {
-        "board_task",
         "compare",
         "example",
         "formula",

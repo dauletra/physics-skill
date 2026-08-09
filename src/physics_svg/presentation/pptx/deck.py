@@ -5,9 +5,10 @@ same shape — one pass over the validated models, each handing its own kind
 the work. What differs is the destination: there the lesson became data for
 the player to arrange, here it becomes the arrangement.
 
-A kind that has no layout yet is named, loudly, with the phase that will
-give it one. Silence would produce a lesson with slides missing from the
-middle and nothing to say why.
+Every kind lays itself out since P5 of docs/pptx.md; `PLAYER_ONLY` is empty
+and the refusal below is what keeps it that way. A kind that arrives without
+a layout is named loudly rather than dropped — silence would produce a lesson
+with slides missing from the middle and nothing to say why.
 """
 
 from __future__ import annotations
@@ -16,20 +17,30 @@ from typing import Any, Sequence
 
 from physics_svg.presentation.manifest import PresentationSpec
 from physics_svg.presentation.pptx.package import build_pptx
-from physics_svg.presentation.slides.registry import PLAYER_ONLY, load_all
+from physics_svg.presentation.slides.registry import load_all
 
 
-def build_deck(presentation: PresentationSpec, slides: Sequence[Any]) -> bytes:
-    """The finished .pptx of one lesson."""
+def build_deck(
+    presentation: PresentationSpec, slides: Sequence[Any]
+) -> tuple[bytes, tuple[str, ...]]:
+    """The finished .pptx of one lesson, and what it could not say.
+
+    The notes are formulas outside the OMML subset, named by the slide they
+    stand on. Same shape as `build_docx`: the deck is finished and correct,
+    and these are the lines a teacher has to know about before the lesson
+    rather than during it.
+    """
     registry = load_all()
     built = []
+    notes: list[str] = []
     for number, model in enumerate(slides, start=1):
         kind = registry[model.type]
         if kind.build is None:
-            phase = "P4" if model.type in PLAYER_ONLY else "?"
             raise NotImplementedError(
-                f"слайд {number}: вид '{model.type}' ещё не раскладывается "
-                f"в PowerPoint — это фаза {phase} плана docs/pptx.md"
+                f"слайд {number}: вид '{model.type}' не раскладывается в "
+                "PowerPoint — у вида нет 'build' (docs/pptx.md §5.2)"
             )
-        built.append(kind.build(model))
-    return build_pptx(built, title=presentation.title)
+        slide = kind.build(model)
+        built.append(slide)
+        notes.extend(f"слайд {number}: {note}" for note in slide.notes)
+    return build_pptx(built, title=presentation.title), tuple(notes)

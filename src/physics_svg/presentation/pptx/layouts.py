@@ -432,6 +432,129 @@ CELLS_4 = _cells_layout("cells_4", "Четыре части", _grid(2, 2, 4))
 CELLS_3_SQUARE = _cells_layout("cells_3_square", "Три части в два ряда", _grid(2, 2, 3))
 
 
+#: A formula said large, with its symbols spelled out under it. The only kind
+#: laid out about a centre line: the formula is the slide, and a formula set
+#: against the left edge with white to the right of it reads as unfinished.
+_FORMULA_HEIGHT = design.DISPLAY * 2.0
+_FORMULA_TEXT_TOP = BODY_TOP + _FORMULA_HEIGHT + design.cqh(1.5)
+_FORMULA_TEXT_HEIGHT = design.TEXT * design.LEADING * 2.0
+_TERMS_TOP = _FORMULA_TEXT_TOP + _FORMULA_TEXT_HEIGHT + design.cqh(2.0)
+_TERMS_HEIGHT = HEIGHT - design.PAD_Y - _TERMS_TOP
+
+#: The two columns of the glossary: the symbol against the meaning. Widths
+#: are a quarter and a little over a third of the frame, set as a centred
+#: pair — the symbols end on one vertical, the meanings begin on the next,
+#: and the eye runs down either column without hunting.
+_SYMBOL_WIDTH = CONTENT_WIDTH * 0.27
+_MEANING_WIDTH = CONTENT_WIDTH * 0.43
+_TERMS_GAP = design.cqh(2.0)
+_SYMBOL_X = design.PAD_X + (CONTENT_WIDTH - _SYMBOL_WIDTH - _MEANING_WIDTH - _TERMS_GAP) / 2
+
+FORMULA = Layout(
+    name="formula",
+    title="Формула",
+    places=(
+        Place(
+            name="Заголовок",
+            kind="title",
+            box=(design.PAD_X, HEAD_TOP, CONTENT_WIDTH, HEAD_HEIGHT),
+            size=design.HEADING,
+            bold=True,
+            anchor="b",
+            align="ctr",
+        ),
+        Place(
+            name="Формула",
+            kind="body",
+            idx=1,
+            box=(design.PAD_X, BODY_TOP, CONTENT_WIDTH, _FORMULA_HEIGHT),
+            size=design.DISPLAY,
+            align="ctr",
+            anchor="ctr",
+        ),
+        Place(
+            name="Что она говорит",
+            kind="body",
+            idx=2,
+            box=(design.PAD_X, _FORMULA_TEXT_TOP, CONTENT_WIDTH, _FORMULA_TEXT_HEIGHT),
+            size=design.TEXT,
+            leading=design.LEADING,
+            align="ctr",
+            colour=design.INK_SOFT,
+        ),
+        Place(
+            name="Обозначения",
+            kind="body",
+            idx=3,
+            box=(_SYMBOL_X, _TERMS_TOP, _SYMBOL_WIDTH, _TERMS_HEIGHT),
+            size=design.SMALL,
+            leading=design.LEADING,
+            align="r",
+            bold=True,
+        ),
+        Place(
+            name="Расшифровки",
+            kind="body",
+            idx=4,
+            box=(
+                _SYMBOL_X + _SYMBOL_WIDTH + _TERMS_GAP,
+                _TERMS_TOP,
+                _MEANING_WIDTH,
+                _TERMS_HEIGHT,
+            ),
+            size=design.SMALL,
+            leading=design.LEADING,
+            colour=design.INK_SOFT,
+        ),
+    ),
+    ornament=rule(RULE_Y),
+)
+
+#: A worked example: the statement, the steps under it, the answer at the
+#: foot. The answer keeps the same band as a task's, so a lesson that
+#: alternates between the two does not move it.
+_EXAMPLE_STATEMENT_HEIGHT = design.LEAD * design.LEADING * 2.0
+_EXAMPLE_STEPS_TOP = BODY_TOP + _EXAMPLE_STATEMENT_HEIGHT + design.cqh(1.5)
+_EXAMPLE_BOTTOM = _ANSWER_TOP - _TASK_GAP
+
+
+def _example(name: str, title: str, width: float, picture: bool) -> Layout:
+    return Layout(
+        name=name,
+        title=title,
+        places=(
+            Place(
+                name="Условие",
+                kind="title",
+                box=(design.PAD_X, BODY_TOP, width, _EXAMPLE_STATEMENT_HEIGHT),
+                size=design.LEAD,
+                leading=design.LEADING,
+            ),
+            Place(
+                name="Шаги разбора",
+                kind="body",
+                idx=1,
+                box=(design.PAD_X, _EXAMPLE_STEPS_TOP, width, _EXAMPLE_BOTTOM - _EXAMPLE_STEPS_TOP),
+                size=design.TEXT,
+                leading=design.LEADING,
+            ),
+            _ANSWER,
+        ),
+        ornament=rule(RULE_Y) + kicker("Разбор"),
+        picture=(
+            (design.PAD_X + _TEXT_COLUMN + _GAP, BODY_TOP, _PICTURE_COLUMN, _EXAMPLE_BOTTOM - BODY_TOP)
+            if picture
+            else None
+        ),
+    )
+
+
+EXAMPLE = _example("example", "Разбор задачи", CONTENT_WIDTH, picture=False)
+EXAMPLE_SPLIT = _example(
+    "example_split", "Разбор с иллюстрацией", _TEXT_COLUMN, picture=True
+)
+
+
 #: Kept because PowerPoint offers it in «Создать слайд» and a teacher will
 #: reach for it; nothing the skill generates uses it.
 BLANK = Layout(name="blank", title="Пустой", kind="blank", places=())
@@ -450,6 +573,9 @@ LAYOUTS: tuple[Layout, ...] = (
     TASK,
     TASK_SPLIT,
     TASK_STACK,
+    EXAMPLE,
+    EXAMPLE_SPLIT,
+    FORMULA,
     BLANK,
 )
 

@@ -1,8 +1,15 @@
-"""A subset of LaTeX -> OMML, the maths of a Word document.
+"""A subset of LaTeX -> OMML, the maths of an Office document.
 
 The only place `m:` elements are written, exactly as `wml.py` is the only
 place `w:` elements are. If an `f'<m:f>'` appears anywhere else, a constructor
 is missing here.
+
+**Shared by both formats, which is why it sits here.** OMML is Office's maths
+and neither Word nor PowerPoint has one of its own: a sheet and a slide say
+`rac{s}{t}` with the same elements, and only the envelope around them
+differs — `w:p` there, `mc:AlternateContent` inside `a:p` here. It lived under
+the Word backend until a slide needed it, which is exactly when a thing stops
+belonging to one caller.
 
 Two steps, on purpose. `parse` turns LaTeX into a small tree; `omml` prints
 that tree. The split is what makes the subset checkable: what is supported is
@@ -23,7 +30,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional, Union
 
-from physics_svg.document.emit.docx.wml import el, escape
+from physics_svg.ooxml.element import el, escape
 
 #: Word has one maths font, and a formula written in anything else stops
 #: looking like a formula.

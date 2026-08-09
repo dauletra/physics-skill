@@ -141,9 +141,15 @@ class TestDeckCoverage:
 
     A kind either lays itself out as a slide of a deck or is named in
     `PLAYER_ONLY` as one that does not yet. The list is allowed to shrink and
-    nothing else: P4 of docs/pptx.md empties it, and until then a new kind
-    that quietly joins it would be a kind the deck silently drops.
+    nothing else — and P5 of docs/pptx.md emptied it. It stays because the
+    promise does: a new kind that quietly joined it would be a kind the deck
+    silently drops.
     """
+
+    def test_every_kind_lays_itself_out(self) -> None:
+        """The state P4 and P5 were for. Not the same statement as the one
+        below — that one says the list is honest, this one says it is empty."""
+        assert not PLAYER_ONLY, f"вид без раскладки: {sorted(PLAYER_ONLY)}"
 
     def test_the_waiting_list_matches_the_kinds_without_a_layout(self) -> None:
         kinds = load_all()

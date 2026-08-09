@@ -13,9 +13,15 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
+from physics_svg.inline import Math, parse_inline
 from physics_svg.presentation.emit import runs
+from physics_svg.presentation.pptx import Slide, layouts
+from physics_svg.presentation.pptx.text import paragraph, runs_paragraph
 from physics_svg.presentation.slides.registry import register
 from physics_svg.schema import field, spec
+
+#: The genre, for a slide that has no heading of its own to name it.
+KICKER = "Формула"
 
 
 @spec
@@ -63,11 +69,59 @@ def _display(parsed: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{**run, "display": True} if "math" in run else run for run in parsed]
 
 
+def build(model: FormulaSpec) -> Slide:
+    """The formula large, what it says under it, and the symbols spelled out.
+
+    The formula is set in display form here as it is for the player, and for
+    the same reason: `$…$` is how an author writes maths everywhere, and
+    whether this one *is* the slide is a property of the kind, not of how
+    many dollar signs were typed.
+
+    The glossary is two places rather than one — symbols right-aligned in a
+    column of their own, meanings left-aligned in the next. A single
+    placeholder with «$S$ — путь» in every line would leave the dashes on a
+    ragged edge, and the whole point of a glossary is that the eye runs down
+    one column.
+    """
+    layout = layouts.FORMULA
+    notes: list[str] = []
+    shapes = (
+        layout.places[0].on_slide(2, [paragraph(model.heading)])
+        if model.heading is not None
+        else layouts.kicker(KICKER)
+    )
+    shapes += layout.places[1].on_slide(3, [runs_paragraph(_display_math(model.formula), notes=notes)])
+    if model.text is not None:
+        shapes += layout.places[2].on_slide(4, [paragraph(model.text, notes=notes)])
+    if model.terms:
+        shapes += layout.places[3].on_slide(
+            5, [paragraph(term.symbol, notes=notes) for term in model.terms]
+        )
+        shapes += layout.places[4].on_slide(
+            6, [paragraph(term.meaning, notes=notes) for term in model.terms]
+        )
+    return Slide(layout.name, shapes, tuple(notes))
+
+
+def _display_math(formula: str) -> list[object]:
+    """The author's line with its maths marked as display.
+
+    `m:oMathPara` is what makes a fraction stand at full height instead of
+    being squeezed into a line — the OMML counterpart of what the player
+    asked KaTeX for.
+    """
+    return [
+        Math(piece.latex, display=True) if isinstance(piece, Math) else piece
+        for piece in parse_inline(formula)
+    ]
+
+
 register(
     tag="formula",
     title="Формула",
     model=FormulaSpec,
     emit=emit,
+    build=build,
     order=40,
     module=__name__,
 )

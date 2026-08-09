@@ -26,7 +26,6 @@ from typing import Optional, Union
 
 from physics_svg.document.emit.docx import styles as st
 from physics_svg.document.emit.docx.drawing import Ids, drawing
-from physics_svg.document.emit.docx.omml import convert
 from physics_svg.document.emit.docx.wml import cell, para, row, run, tab_run, table
 from physics_svg.document.layout import (
     Answers,
@@ -63,6 +62,7 @@ from physics_svg.document.layout import (
 )
 from physics_svg.document.strings import LETTERS, t
 from physics_svg.draw import Unsupported as DrawUnsupported
+from physics_svg.ooxml.omml import convert
 
 
 class Unsupported(ValueError):

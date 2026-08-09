@@ -48,6 +48,10 @@ class Style:
     leading: Optional[float] = None
     #: A bulleted item; `None` leaves the placeholder's own bullet rule.
     bullet: Optional[bool] = None
+    #: A numbered item. PowerPoint numbers it itself, which is the point: a
+    #: teacher who inserts a step of a worked example gets the rest
+    #: renumbered instead of a list that lies.
+    numbered: bool = False
 
 
 def _run_properties(style: Style, script: str = "") -> str:
@@ -100,26 +104,38 @@ def _paragraph_properties(style: Style) -> str:
             attrs["marL"] = 0
             attrs["indent"] = 0
             body += el("a:buNone")
+    if style.numbered:
+        hang = design.emu((style.size or design.TEXT) * 1.4)
+        attrs["marL"] = hang
+        attrs["indent"] = -hang
+        body += el("a:buAutoNum", {"type": "arabicPeriod"})
     return el("a:pPr", attrs, body) if attrs or body else ""
 
 
-def paragraph(raw: object, style: Style = Style()) -> str:
+def paragraph(raw: object, style: Style = Style(), notes: Optional[list[str]] = None) -> str:
     """One line of author text as `a:p`.
 
-    A formula reaching here is set as its own text for now — OMML arrives in
-    P5 (docs/pptx.md §5.5). A ruled blank is a document control and has no
-    meaning on a slide: nothing on the screen is written on.
+    A ruled blank is a document control and has no meaning on a slide:
+    nothing on the screen is written on.
+
+    `notes` collects what a formula could not say — see `_math`. Passing
+    `None` means nobody is listening, which is right for a heading and wrong
+    for anything that carries author maths.
     """
     pieces = parse_inline(raw)
-    return runs_paragraph(pieces, style)
+    return runs_paragraph(pieces, style, notes)
 
 
-def runs_paragraph(pieces: Sequence[object], style: Style = Style()) -> str:
-    return joined_paragraph([(pieces, style)], style)
+def runs_paragraph(
+    pieces: Sequence[object], style: Style = Style(), notes: Optional[list[str]] = None
+) -> str:
+    return joined_paragraph([(pieces, style)], style, notes)
 
 
 def joined_paragraph(
-    parts: Sequence[tuple[Sequence[object], Style]], style: Style = Style()
+    parts: Sequence[tuple[Sequence[object], Style]],
+    style: Style = Style(),
+    notes: Optional[list[str]] = None,
 ) -> str:
     """One line whose parts are set differently — a label and what it labels.
 
@@ -135,7 +151,7 @@ def joined_paragraph(
             if isinstance(piece, Run):
                 body += _text_run(piece.text, part_style, piece.script)
             elif isinstance(piece, Math):
-                body += _text_run(piece.latex, part_style)
+                body += _math(piece, part_style, notes)
             elif isinstance(piece, Blank):
                 body += _text_run(" ", part_style)
     body += el("a:endParaRPr", {"lang": "ru-RU"} if style.size is None else {
@@ -143,6 +159,26 @@ def joined_paragraph(
         "sz": design.sz(style.size),
     })
     return el("a:p", children=body)
+
+
+def _math(piece: Math, style: Style, notes: Optional[list[str]]) -> str:
+    """A formula, as a formula — or as the author's own text, said out loud.
+
+    The fallback is the text with its dollars still on it: what reaches the
+    screen is then exactly what was typed, and the reason lands in `notes`.
+    A formula that quietly became a line of TeX is the kind of thing a
+    teacher discovers with the class already looking at it.
+    """
+    from physics_svg.presentation.pptx.math import formula
+
+    fence = "$$" if piece.display else "$"
+    plain = f"{fence}{piece.latex}{fence}"
+    xml, reason = formula(piece.latex, _text_run(plain, style), display=piece.display)
+    if xml:
+        return xml
+    if notes is not None:
+        notes.append(f"{plain} — {reason}")
+    return _text_run(plain, style)
 
 
 def _text_run(text: str, style: Style, script: str = "") -> str:

@@ -19,6 +19,9 @@
   <Override PartName="/ppt/slideLayouts/slideLayout12.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
   <Override PartName="/ppt/slideLayouts/slideLayout13.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
   <Override PartName="/ppt/slideLayouts/slideLayout14.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout15.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout16.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout17.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
   <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
   <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
@@ -53,7 +56,10 @@
   <Relationship Id="rId12" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout12.xml"/>
   <Relationship Id="rId13" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout13.xml"/>
   <Relationship Id="rId14" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout14.xml"/>
-  <Relationship Id="rId15" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+  <Relationship Id="rId15" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout15.xml"/>
+  <Relationship Id="rId16" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout16.xml"/>
+  <Relationship Id="rId17" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout17.xml"/>
+  <Relationship Id="rId18" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
 </Relationships>
 ===== ppt/slideLayouts/_rels/slideLayout1.xml.rels
 <?xml version="1.0" ?>
@@ -125,10 +131,25 @@
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
 </Relationships>
+===== ppt/slideLayouts/_rels/slideLayout15.xml.rels
+<?xml version="1.0" ?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>
+===== ppt/slideLayouts/_rels/slideLayout16.xml.rels
+<?xml version="1.0" ?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>
+===== ppt/slideLayouts/_rels/slideLayout17.xml.rels
+<?xml version="1.0" ?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>
 ===== ppt/slides/_rels/slide1.xml.rels
 <?xml version="1.0" ?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout14.xml"/>
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout17.xml"/>
 </Relationships>
 ===== ppt/presentation.xml
 <?xml version="1.0" ?>
@@ -186,6 +207,9 @@
     <p:sldLayoutId id="2147483660" r:id="rId12"/>
     <p:sldLayoutId id="2147483661" r:id="rId13"/>
     <p:sldLayoutId id="2147483662" r:id="rId14"/>
+    <p:sldLayoutId id="2147483663" r:id="rId15"/>
+    <p:sldLayoutId id="2147483664" r:id="rId16"/>
+    <p:sldLayoutId id="2147483665" r:id="rId17"/>
   </p:sldLayoutIdLst>
   <p:txStyles>
     <p:titleStyle>
@@ -1770,6 +1794,694 @@
   </p:clrMapOvr>
 </p:sldLayout>
 ===== ppt/slideLayouts/slideLayout14.xml
+<?xml version="1.0" ?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="obj" preserve="1">
+  <p:cSld name="Разбор задачи">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Условие"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="1371600"/>
+            <a:ext cx="11231880" cy="1113739"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="t">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="l">
+              <a:lnSpc>
+                <a:spcPct val="145000"/>
+              </a:lnSpc>
+              <a:buNone/>
+              <a:defRPr sz="3024">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Условие</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Шаги разбора"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="2588209"/>
+            <a:ext cx="11231880" cy="3128962"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="t">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="l">
+              <a:lnSpc>
+                <a:spcPct val="145000"/>
+              </a:lnSpc>
+              <a:buNone/>
+              <a:defRPr sz="2430">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Шаги разбора</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="Ответ"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="5820042"/>
+            <a:ext cx="11231880" cy="626478"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="b">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="l">
+              <a:buNone/>
+              <a:defRPr sz="2430">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Ответ</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="90" name="Линейка"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="1200150"/>
+            <a:ext cx="11231880" cy="12700"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="D3DAE3"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="91" name="Жанр"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="411480"/>
+            <a:ext cx="11231880" cy="720090"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="b">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" sz="1566" b="1" cap="all" spc="130">
+                <a:solidFill>
+                  <a:srgbClr val="1B5FA8"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:rPr>
+              <a:t>Разбор</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sldLayout>
+===== ppt/slideLayouts/slideLayout15.xml
+<?xml version="1.0" ?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="obj" preserve="1">
+  <p:cSld name="Разбор с иллюстрацией">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Условие"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="1371600"/>
+            <a:ext cx="6014258" cy="1113739"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="t">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="l">
+              <a:lnSpc>
+                <a:spcPct val="145000"/>
+              </a:lnSpc>
+              <a:buNone/>
+              <a:defRPr sz="3024">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Условие</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Шаги разбора"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="2588209"/>
+            <a:ext cx="6014258" cy="3128962"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="t">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="l">
+              <a:lnSpc>
+                <a:spcPct val="145000"/>
+              </a:lnSpc>
+              <a:buNone/>
+              <a:defRPr sz="2430">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Шаги разбора</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="Ответ"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="5820042"/>
+            <a:ext cx="11231880" cy="626478"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="b">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="l">
+              <a:buNone/>
+              <a:defRPr sz="2430">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Ответ</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="90" name="Линейка"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="1200150"/>
+            <a:ext cx="11231880" cy="12700"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="D3DAE3"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="91" name="Жанр"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="411480"/>
+            <a:ext cx="11231880" cy="720090"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:noFill/>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="b">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" sz="1566" b="1" cap="all" spc="130">
+                <a:solidFill>
+                  <a:srgbClr val="1B5FA8"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:rPr>
+              <a:t>Разбор</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sldLayout>
+===== ppt/slideLayouts/slideLayout16.xml
+<?xml version="1.0" ?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="obj" preserve="1">
+  <p:cSld name="Формула">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Заголовок"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="411480"/>
+            <a:ext cx="11231880" cy="720090"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="b">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="ctr">
+              <a:buNone/>
+              <a:defRPr sz="3780" b="1">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Заголовок</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Формула"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="1371600"/>
+            <a:ext cx="11231880" cy="1207008"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="ctr">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="ctr">
+              <a:buNone/>
+              <a:defRPr sz="4752">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Формула</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="Что она говорит"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="2"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="2681478"/>
+            <a:ext cx="11231880" cy="894969"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="t">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="ctr">
+              <a:lnSpc>
+                <a:spcPct val="145000"/>
+              </a:lnSpc>
+              <a:buNone/>
+              <a:defRPr sz="2430">
+                <a:solidFill>
+                  <a:srgbClr val="4A5261"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Что она говорит</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="5" name="Обозначения"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="3"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="2096262" y="3713607"/>
+            <a:ext cx="3032608" cy="2732913"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="t">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="r">
+              <a:lnSpc>
+                <a:spcPct val="145000"/>
+              </a:lnSpc>
+              <a:buNone/>
+              <a:defRPr sz="1944" b="1">
+                <a:solidFill>
+                  <a:srgbClr val="15181D"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Обозначения</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="6" name="Расшифровки"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="4"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="5266030" y="3713607"/>
+            <a:ext cx="4829708" cy="2732913"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square" anchor="t">
+            <a:normAutofit/>
+          </a:bodyPr>
+          <a:lstStyle>
+            <a:lvl1pPr marL="0" indent="0" algn="l">
+              <a:lnSpc>
+                <a:spcPct val="145000"/>
+              </a:lnSpc>
+              <a:buNone/>
+              <a:defRPr sz="1944">
+                <a:solidFill>
+                  <a:srgbClr val="4A5261"/>
+                </a:solidFill>
+                <a:latin typeface="Segoe UI"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p>
+            <a:r>
+              <a:rPr lang="ru-RU" dirty="0"/>
+              <a:t>Расшифровки</a:t>
+            </a:r>
+            <a:endParaRPr lang="ru-RU"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="90" name="Линейка"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="480060" y="1200150"/>
+            <a:ext cx="11231880" cy="12700"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+          <a:solidFill>
+            <a:srgbClr val="D3DAE3"/>
+          </a:solidFill>
+          <a:ln>
+            <a:noFill/>
+          </a:ln>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p/>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sldLayout>
+===== ppt/slideLayouts/slideLayout17.xml
 <?xml version="1.0" ?>
 <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">
   <p:cSld name="Пустой">

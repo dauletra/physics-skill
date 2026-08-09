@@ -65,6 +65,11 @@ class Slide:
 
     layout: str
     shapes: str = ""
+    #: What the slide could not say — a formula outside the OMML subset,
+    #: printed as the author's own text instead. The same channel the Word
+    #: backend has, and for the same reason: silence would mean a teacher
+    #: finding `\int` on the screen with the class already looking at it.
+    notes: tuple[str, ...] = ()
 
     def xml(self) -> str:
         return slide_xml(self.shapes)

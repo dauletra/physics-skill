@@ -199,11 +199,12 @@ def _present(args: argparse.Namespace) -> int:
         status = _write(output_dir / "presentation.html", build_page(data)) or status
     if args.format in ("pptx", "both"):
         try:
-            deck = build_deck(workspace.presentation, workspace.slides)
+            deck, notes = build_deck(workspace.presentation, workspace.slides)
         except NotImplementedError as error:
             print(str(error), file=sys.stderr)
             return 1
         status = _write_bytes(output_dir / "presentation.pptx", deck) or status
+        _report(notes)
     _report_crowding(workspace.slides)
     return status
 

@@ -11,9 +11,17 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.inline import Run, parse_inline
 from physics_svg.presentation.emit import emit_visual, runs
+from physics_svg.presentation.pptx import Slide, design, layouts
+from physics_svg.presentation.pptx.picture import picture
+from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import field, spec
+
+#: What stands before the answer, as on a task slide — the deck says «Ответ»
+#: the same way wherever an answer appears.
+ANSWER_LABEL = "Ответ: "
 
 
 @spec
@@ -43,11 +51,49 @@ def emit(model: ExampleSpec, scope: str) -> dict[str, object]:
     return data
 
 
+def build(model: ExampleSpec) -> Slide:
+    """The statement, the steps numbered under it, the answer at the foot.
+
+    The steps stand open, all of them at once. Showing them one at a time is
+    the whole point of the kind and it comes in P5а — until then a teacher
+    who does not want the solution on the screen leaves the slide for later.
+
+    PowerPoint numbers the steps itself rather than the numbers being drawn
+    into the text: a teacher who inserts a step gets the rest renumbered
+    instead of a list that lies.
+    """
+    layout = layouts.EXAMPLE_SPLIT if model.visual is not None else layouts.EXAMPLE
+    notes: list[str] = []
+    shapes = layout.places[0].on_slide(2, [paragraph(model.text, notes=notes)])
+    shapes += layout.places[1].on_slide(
+        3, [paragraph(step, Style(numbered=True), notes) for step in model.steps]
+    )
+    if model.visual is not None:
+        assert layout.picture is not None
+        shapes += picture(model.visual, layout.picture)
+    if model.answer is not None:
+        shapes += layout.places[2].on_slide(4, [_answer(model.answer, notes)])
+    return Slide(layout.name, shapes, tuple(notes))
+
+
+def _answer(answer: str, notes: list[str]) -> str:
+    """«Ответ: 25 м» — the word auxiliary, the value the point. The same line
+    a task at the board carries, because it is the same thing."""
+    return joined_paragraph(
+        [
+            ([Run(ANSWER_LABEL)], Style(colour=design.INK_FAINT)),
+            (parse_inline(answer), Style(bold=True)),
+        ],
+        notes=notes,
+    )
+
+
 register(
     tag="example",
     title="Разбор задачи",
     model=ExampleSpec,
     emit=emit,
+    build=build,
     order=60,
     module=__name__,
 )

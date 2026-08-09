@@ -215,7 +215,7 @@ class TestLesson:
         from physics_svg.presentation.pptx.deck import build_deck
 
         models = [parse_slide(item, f"s{index}") for index, item in enumerate(slides)]
-        data = build_deck(parse_presentation({"title": "Урок"}), models)
+        data, _ = build_deck(parse_presentation({"title": "Урок"}), models)
         return zipfile.ZipFile(io.BytesIO(data))
 
     @staticmethod
@@ -383,21 +383,64 @@ class TestLesson:
         assert len(ids) > 50, "картинки не нарисовались — тест ничего не проверяет"
         assert len(ids) == len(set(ids)), "повторяющиеся id фигур на слайде"
 
-    def test_a_kind_without_a_layout_says_so(self) -> None:
+    def test_a_formula_is_a_formula(self) -> None:
+        """OMML, not a picture and not a line of TeX — the whole of P5. The
+        `mc:` envelope is what lets a slide hold maths at all, and the
+        fallback is what a reader older than 2010 shows instead."""
+        package = self.deck({"type": "formula", "formula": "$v = \\frac{s}{t}$"})
+        body = package.read("ppt/slides/slide1.xml").decode()
+        assert "<m:f>" in body and "<m:num>" in body and "<m:den>" in body
+        assert "mc:AlternateContent" in body and "<mc:Fallback>" in body
+        # Display form: a fraction at full height, not squeezed into a line.
+        assert "<m:oMathPara" in body
+
+    def test_a_formula_brings_its_own_namespaces(self) -> None:
+        """A slide part declares neither `m:` nor `w:`, and an undeclared
+        prefix is a file PowerPoint refuses outright."""
+        package = self.deck({"type": "formula", "formula": "$a = 2$"})
+        # Parsing is the assertion: ElementTree rejects an unbound prefix.
+        read(package, "ppt/slides/slide1.xml")
+
+    def test_a_formula_outside_the_subset_is_said_out_loud(self) -> None:
+        """The deck is finished and correct; what it could not express is
+        named, exactly as the Word backend names it."""
+        from physics_svg.presentation import parse_presentation, parse_slide
+        from physics_svg.presentation.pptx.deck import build_deck
+
+        models = [parse_slide({"type": "formula", "formula": "$\\int_0^1 x dx$"}, "s1")]
+        data, notes = build_deck(parse_presentation({"title": "Урок"}), models)
+        assert data, "колода всё равно собирается"
+        assert notes and "слайд 1" in notes[0]
+        body = zipfile.ZipFile(io.BytesIO(data)).read("ppt/slides/slide1.xml").decode()
+        assert "$\\int_0^1 x dx$" in body, "текст автора попадает на слайд как есть"
+
+    def test_the_steps_of_an_example_are_numbered_by_powerpoint(self) -> None:
+        """Not drawn into the text: a teacher who inserts a step gets the
+        rest renumbered instead of a list that lies."""
+        package = self.deck(
+            {"type": "example", "text": "Условие", "steps": ["Раз", "Два"]}
+        )
+        body = package.read("ppt/slides/slide1.xml").decode()
+        assert body.count('<a:buAutoNum type="arabicPeriod"/>') == 2
+        assert "1." not in self.texts(package, "ppt/slides/slide1.xml")
+
+    def test_a_kind_without_a_layout_says_so(self, monkeypatch) -> None:
         """Silence would give a lesson with slides missing from the middle.
 
-        The kind is taken from `PLAYER_ONLY` rather than named here: that
-        list shrinks with every phase of P4, and a test naming one of its
-        members would have to be rewritten each time the plan advanced.
+        Every kind lays itself out since P5, so the refusal has to be
+        provoked: a kind is stripped of its `build` for the length of the
+        test. Keeping the check is the point — the next kind somebody adds
+        will arrive without one.
         """
-        from physics_svg.presentation.slides.registry import PLAYER_ONLY, load_all
+        from dataclasses import replace as replace_field
 
-        if not PLAYER_ONLY:  # P4 finished; there is nothing left to refuse
-            return
-        tag = sorted(PLAYER_ONLY)[0]
-        template = load_all()[tag].templates[0]
-        with pytest.raises(NotImplementedError, match=tag):
-            self.deck(template.slide)
+        from physics_svg.presentation.slides import registry
+
+        registry.load_all()  # populate before patching one entry out of it
+        stripped = replace_field(registry._REGISTRY["content"], build=None)
+        monkeypatch.setitem(registry._REGISTRY, "content", stripped)
+        with pytest.raises(NotImplementedError, match="content"):
+            self.deck({"type": "content", "text": "Что-нибудь"})
 
 
 class TestStability:

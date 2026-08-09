@@ -42,15 +42,11 @@ Emitter = Callable[[Any, str], dict[str, Any]]
 #: first; `PLAYER_ONLY` names the ones that still do.
 Builder = Callable[[Any], "Slide"]
 
-#: Kinds that still have no PowerPoint layout. The list only shrinks: P4 of
-#: docs/pptx.md empties it, and `tests/presentation/test_slides.py` fails if
-#: a kind is added to it rather than removed.
-PLAYER_ONLY = frozenset(
-    {
-        "example",
-        "formula",
-    }
-)
+#: Kinds that still have no PowerPoint layout. Empty since P5 of
+#: docs/pptx.md: every kind of slide the skill knows lays itself out in a
+#: deck. It stays as the shape of the promise — `tests/presentation/
+#: test_slides.py` fails if a kind is added to it rather than removed.
+PLAYER_ONLY: frozenset[str] = frozenset()
 
 if TYPE_CHECKING:  # mypy reads this as plain `Any`; at runtime it resolves
     VISUAL = Any

@@ -86,7 +86,7 @@ def build_deck_sheet(destination: Path) -> tuple[Path, int, int, list[str]]:
         for template in entry.templates:
             slides.append(parse_slide(template.slide, f"{tag}-{template.slug}"))
             total += 1
-    deck = build_deck(parse_presentation({"title": "Контрольный лист заготовок"}), slides)
+    deck, _ = build_deck(parse_presentation({"title": "Контрольный лист заготовок"}), slides)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(deck)
     return destination, len(ready), total, waiting

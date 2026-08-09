@@ -40,6 +40,7 @@ from physics_svg.draw import (
     fixed,
     num,
     polar,
+    text_width,
 )
 from physics_svg.elements import ArcAxis, LinearAxis, hatch, liquid, scale_marks, tick_layout
 from physics_svg.elements.scale import Tick
@@ -76,23 +77,40 @@ _DIAL_LABEL_SHIFT = 2.5 / SHEET.label
 _DIAL_INNER_ROW = 11.0 / SHEET.label
 _UNIT_BASELINE = 2.8 / SHEET.caption
 
-#: The clock face: the same two, with the numbers on the inside of the ring.
+#: The clock face: the numbers stand on a ring of their own, the tick circle
+#: clears them from outside, and the rim clears the ticks. So the face is as
+#: wide as its numbers need — the alternative was numbers marching inward onto
+#: the pivot and onto the unit written above it.
+_CLOCK_LABEL_RING = 33.0
 _CLOCK_LABEL_DISTANCE = -14.0 / SHEET.label
 _CLOCK_LABEL_SHIFT = 2.4 / SHEET.label
+_CLOCK_RIM_GAP = 7.0
+_CLOCK_NEEDLE_GAP = 9.0
+#: Where the unit is written on the face, and where the crown sits above it.
+_CLOCK_UNIT_DROP = 21.0
+_CLOCK_CROWN_LIFT = 14.0
+_CLOCK_STEM = 5.0
 
-#: The ruler: numbers hanging under the top edge, and the unit sitting off
-#: the bottom one.
+#: The ruler: numbers hanging under the top edge, the unit a line below them,
+#: and the bottom edge clearing that.
 _RULER_LABEL_DISTANCE = 17.5 / SHEET.label
+_RULER_UNIT_ROW = 10.0 / SHEET.label
 _RULER_UNIT_LIFT = 3.5 / SHEET.label
 
-#: The caliper: numbers under the bar, the unit inside it, and the index of
-#: the vernier under its own marks.
+#: The caliper: numbers inside the bar above its lower edge, the unit a line
+#: above them, the bar's top edge clearing the unit, and the index of the
+#: vernier under its own marks. The unit used to sit at a fixed 8,5 from the
+#: top edge, which put it three quarters of a line from the numbers — they
+#: touched on paper and overlapped outright on a board.
 _CALIPER_LABEL_DISTANCE = 9.5 / SHEET.label
-_CALIPER_UNIT_DROP = 8.5 / SHEET.label
+_CALIPER_UNIT_ROW = 1.2
+_CALIPER_UNIT_LIFT = 0.9
 _VERNIER_INDEX_DROP = 14.5 / SHEET.micro
 
-#: The weight on a balance pan carries its mass just above it.
+#: The weight on a balance pan carries its mass just above it, and two masses
+#: keep this much white between them when they are what sets the spacing.
 _WEIGHT_LABEL_LIFT = 4.0 / SHEET.micro
+_WEIGHT_LABEL_AIR = 0.1
 
 #: The dial's terminals: the sign beside a socket, and the caption above one.
 _TERMINAL_SIGN_GAP = 8.0 / SHEET.caption
@@ -165,10 +183,19 @@ def _unit(at: Pt, model: InstrumentSpec, size: float, anchor: str = "middle") ->
 def _build_ruler(model: InstrumentSpec, canvas: Canvas) -> None:
     """A ruler. Ticks hang down from the top edge of the body; `value` is the
     right-hand end of a hatched block lying on that edge from the scale zero
-    — the setup for "measure the length" and "write it with its error"."""
-    body_top, body_bottom = 17.5, 48.5
+    — the setup for "measure the length" and "write it with its error".
+
+    The body is as deep as what is written in it: a row of numbers under the
+    top edge, the unit a line below them, and the bottom edge clearing that.
+    Held at 31 units the two rows walked into each other as the scale grew —
+    the numbers hang from the top and the unit sits off the bottom, so a
+    fixed depth is a promise the label height gets to break.
+    """
+    body_top = 17.5
     left, right = 12.0, 208.0
     label = canvas.medium.label
+    unit_baseline = body_top + (_RULER_LABEL_DISTANCE + _RULER_UNIT_ROW) * label
+    body_bottom = unit_baseline + _RULER_UNIT_LIFT * label
     canvas.add(Rect(Pt(1.5, body_top), 217, body_bottom - body_top, BODY, radius=2))
     axis = LinearAxis(Pt(left, body_top), Pt(right, body_top), Pt(0, 1))
     canvas.extend(
@@ -183,9 +210,7 @@ def _build_ruler(model: InstrumentSpec, canvas: Canvas) -> None:
             label_size=label,
         )
     )
-    canvas.add(
-        _unit(Pt(right, body_bottom - _RULER_UNIT_LIFT * label), model, label, anchor="end")
-    )
+    canvas.add(_unit(Pt(right, unit_baseline), model, label, anchor="end"))
     if model.value is not None:
         end = left + _value_fraction(model) * (right - left)
         canvas.add(Rect(Pt(left, 4.5), end - left, 13, BODY))
@@ -419,14 +444,24 @@ def _arc_path(axis: ArcAxis, style: Style) -> Node:
 def _build_stopwatch(model: InstrumentSpec, canvas: Canvas) -> None:
     """A mechanical stopwatch: a full circular scale, zero at the top, going
     clockwise. Zero and the limit are the same point, so the zero tick is not
-    drawn and the number at the top is the limit — as on the real thing."""
+    drawn and the number at the top is the limit — as on the real thing.
+
+    The face is sized from the inside out. The numbers keep their ring, the
+    ticks stand off it by the height of a number, and the rim clears the
+    ticks; so a larger scale makes a larger watch instead of pushing its
+    numbers in towards the pivot, which is where the unit is written.
+    """
     center = Pt(60.0, 74.0)
+    label = canvas.medium.label
+    r_ticks = _CLOCK_LABEL_RING - _CLOCK_LABEL_DISTANCE * label
+    r_rim = r_ticks + _CLOCK_RIM_GAP
+    crown_top = center.y - r_rim - _CLOCK_CROWN_LIFT
     canvas.add(
-        Rect(Pt(55, 6), 10, 9, BODY, radius=1.5),
-        Line(Pt(60, 15), Pt(60, 20), OUTLINE),
-        Circle(center, 54, BODY.with_(width=1.2)),
+        Rect(Pt(center.x - 5, crown_top), 10, 9, BODY, radius=1.5),
+        Line(Pt(center.x, center.y - r_rim - _CLOCK_STEM), Pt(center.x, center.y - r_rim), OUTLINE),
+        Circle(center, r_rim, BODY.with_(width=1.2)),
     )
-    axis = ArcAxis(center, 47.0, CLOCK_START, CLOCK_END)
+    axis = ArcAxis(center, r_ticks, CLOCK_START, CLOCK_END)
     canvas.extend(
         scale_marks(
             axis,
@@ -434,15 +469,19 @@ def _build_stopwatch(model: InstrumentSpec, canvas: Canvas) -> None:
             # Ticks point inward on a closed face.
             major_length=-7,
             minor_length=-4,
-            label_distance=_CLOCK_LABEL_DISTANCE * canvas.medium.label,
-            label_shift=_CLOCK_LABEL_SHIFT * canvas.medium.label,
-            label_size=canvas.medium.label,
+            label_distance=_CLOCK_LABEL_DISTANCE * label,
+            label_shift=_CLOCK_LABEL_SHIFT * label,
+            label_size=label,
             skip=(0,),
         )
     )
     canvas.add(
-        _unit(Pt(center.x, center.y + 21), model, canvas.medium.label),
-        Line(center, polar(center, 38, axis.angle(_value_fraction(model))), Style(stroke=BLACK, width=1.3)),
+        _unit(Pt(center.x, center.y + _CLOCK_UNIT_DROP), model, label),
+        Line(
+            center,
+            polar(center, r_ticks - _CLOCK_NEEDLE_GAP, axis.angle(_value_fraction(model))),
+            Style(stroke=BLACK, width=1.3),
+        ),
         Circle(center, 3, SOLID),
     )
 
@@ -458,12 +497,19 @@ def _build_caliper(model: InstrumentSpec, canvas: Canvas) -> None:
     `n*step + k*(step/v)` exactly mark k lines up with a bar tick — the
     classic reading by coincidence. The precision is not printed: the student
     derives it from the number of vernier divisions.
+
+    The bar carries two rows inside it — the numbers along its lower edge and
+    the unit above them — so its top edge is set by what it has to hold. It
+    grows upwards on purpose: everything below the lower edge (the jaws, the
+    sliding frame, the vernier) is measured from that edge and stays put.
     """
     left, right = 14.0, 206.0
-    bar_top, bar_bottom = 16.0, 40.0
+    bar_bottom = 40.0
     frame_bottom, jaw_bottom = 58.0, 78.0
     divisions = model.vernier_divisions
     label, micro = canvas.medium.label, canvas.medium.micro
+    unit_baseline = bar_bottom - (_CALIPER_LABEL_DISTANCE + _CALIPER_UNIT_ROW) * label
+    bar_top = unit_baseline - _CALIPER_UNIT_LIFT * label
     value = model.value if model.value is not None else model.min
 
     def at(quantity: float) -> float:
@@ -486,9 +532,7 @@ def _build_caliper(model: InstrumentSpec, canvas: Canvas) -> None:
             label_size=label,
         )
     )
-    canvas.add(
-        _unit(Pt(right, bar_top + _CALIPER_UNIT_DROP * label), model, label, anchor="end")
-    )
+    canvas.add(_unit(Pt(right, unit_baseline), model, label, anchor="end"))
 
     frame_width = at(value + (divisions - 1) * model.step) - x_value + 8
     canvas.add(
@@ -554,13 +598,24 @@ def _weights(
     weights: list[float], center_x: float, pan_y: float, micro: float
 ) -> list[Node]:
     """Weights on the pan: heaviest first, height proportional to mass, a
-    small knob on top and the mass written above."""
+    small knob on top and the mass written above.
+
+    Two weights stand a body's width apart unless their masses are written
+    wider than that, in which case they stand as far apart as the writing —
+    the weights are all one size but «100» is not the width of «5», and on a
+    board the numbers outgrow the bodies they name.
+    """
     ordered = sorted(weights, reverse=True)
     biggest = ordered[0]
     width, gap = 8.0, 2.0
-    x = center_x - (len(ordered) * width + (len(ordered) - 1) * gap) / 2
+    widths = [text_width(num(weight), micro) for weight in ordered]
+    pitches = [
+        max(width + gap, (widths[i] + widths[i + 1]) / 2 + _WEIGHT_LABEL_AIR * micro)
+        for i in range(len(ordered) - 1)
+    ]
+    x = center_x - (width + sum(pitches)) / 2
     nodes: list[Node] = []
-    for weight in ordered:
+    for index, weight in enumerate(ordered):
         height = 6.0 + 8.0 * weight / biggest
         top = pan_y - height
         nodes.append(Rect(Pt(x, top), width, height, BODY))
@@ -568,7 +623,8 @@ def _weights(
         nodes.append(
             Text(Pt(x + width / 2, top - _WEIGHT_LABEL_LIFT * micro), num(weight), micro)
         )
-        x += width + gap
+        if index < len(pitches):
+            x += pitches[index]
     return nodes
 
 

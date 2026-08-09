@@ -140,6 +140,15 @@ class BBox:
     def expanded(self, pad: float) -> "BBox":
         return BBox(self.x0 - pad, self.y0 - pad, self.x1 + pad, self.y1 + pad)
 
+    def overlaps(self, other: "BBox", tolerance: float = 1e-9) -> bool:
+        """Do the two boxes share any area? Touching edges do not count."""
+        return (
+            self.x0 < other.x1 - tolerance
+            and other.x0 < self.x1 - tolerance
+            and self.y0 < other.y1 - tolerance
+            and other.y0 < self.y1 - tolerance
+        )
+
     def contains(self, other: "BBox", tolerance: float = 1e-9) -> bool:
         return (
             self.x0 <= other.x0 + tolerance

@@ -20,6 +20,7 @@ is pasted.
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from typing import Callable, Sequence
 
@@ -31,6 +32,7 @@ from physics_svg.draw import (
     HEAVY,
     SHEET,
     WHITE,
+    BBox,
     Canvas,
     Circle,
     Line,
@@ -153,13 +155,19 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
     def sy(y: float) -> float:
         return PLOT_HEIGHT - (y - y0) / (y1 - y0) * PLOT_HEIGHT
 
-    number = canvas.medium.number
+    # How the axis is divided never depends on the medium. A student counts
+    # cells and reads off the heavy line, so the ruling is the task itself and
+    # has to be the same picture on paper and on a board — only how many of
+    # those divisions get their number written on them can give way to a
+    # bigger label (docs/visual-scale.md §3.5).
     x_ticks, x_fine = axis_divisions(
-        x0, x1, model.x_step, model.x_label_step, label_budget(PLOT_WIDTH, _LABEL_CLEARANCE_X * number)
+        x0, x1, model.x_step, model.x_label_step, _budget_x(SHEET)
     )
     y_ticks, y_fine = axis_divisions(
-        y0, y1, model.y_step, model.y_label_step, label_budget(PLOT_HEIGHT, _LABEL_CLEARANCE_Y * number)
+        y0, y1, model.y_step, model.y_label_step, _budget_y(SHEET)
     )
+    x_every = _number_every(x_ticks, model.x_label_step, _budget_x(canvas.medium))
+    y_every = _number_every(y_ticks, model.y_label_step, _budget_y(canvas.medium))
 
     if model.grid != "none":
         x_minor, x_major = _grid_values(x_ticks, x_fine, model.grid)
@@ -186,7 +194,12 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
     # Where the axes meet at the origin, both would print a zero of their own.
     # It is one point and it gets one number, from the y axis.
     marks = _ticks_and_numbers(
-        x_ticks, y_ticks, corner, canvas.medium, shared_zero=crossing == Pt(0, 0)
+        x_ticks,
+        y_ticks,
+        corner,
+        canvas.medium,
+        every=(x_every, y_every),
+        shared_zero=crossing == Pt(0, 0),
     )
     canvas.extend([node for node in marks if not isinstance(node, Text)])
 
@@ -214,6 +227,33 @@ def label_budget(length: float, clearance: float) -> int:
     problem of the picture, not of the thinning.
     """
     return max(2, int(length / clearance) + 1)
+
+
+def _budget_x(medium: Medium) -> int:
+    return label_budget(PLOT_WIDTH, _LABEL_CLEARANCE_X * medium.number)
+
+
+def _budget_y(medium: Medium) -> int:
+    return label_budget(PLOT_HEIGHT, _LABEL_CLEARANCE_Y * medium.number)
+
+
+def _number_every(ticks: Sequence[Tick], pinned: float | None, budget: int) -> int:
+    """Print every k-th of the numbers the divisions already carry.
+
+    The divisions are settled by then, and this only decides how many of them
+    say their value out loud — the one thing a larger label scale is allowed
+    to change.
+
+    An author who pinned the label step is obeyed on every medium: that step
+    is usually the question ("read the value off the graph"), and a slide that
+    quietly numbered half as often would be asking something else. If the
+    pinned step crowds on a board, `overlapping_labels` says so out loud
+    instead (docs/visual-scale.md §6.4).
+    """
+    if pinned is not None:
+        return 1
+    numbered = sum(1 for tick in ticks if tick.labeled)
+    return max(1, math.ceil(numbered / budget))
 
 
 def axis_divisions(
@@ -322,6 +362,7 @@ def _ticks_and_numbers(
     corner: Pt,
     medium: Medium,
     *,
+    every: tuple[int, int],
     shared_zero: bool,
 ) -> list[Node]:
     """Ticks on both axes with their numbers, drawn outwards from the corner.
@@ -332,6 +373,13 @@ def _ticks_and_numbers(
     `shared_zero` drops the x axis' zero: its tick would be drawn along the y
     axis, invisible, and its number would repeat the one the y axis prints a
     few units away.
+
+    On a coordinate plane the same corner takes one more number away. The y
+    axis writes its numbers in a column, the x axis writes its own in a row,
+    and where the two cross the row runs through the column: the zero is not
+    the only value that lands there. Which one it is depends on how wide the
+    numbers are set, so it is measured rather than named — on paper nothing
+    is dropped, and the goldens say so.
     """
     nodes = scale_marks(
         LinearAxis(Pt(0, corner.y), Pt(PLOT_WIDTH, corner.y), Pt(0, 1)),
@@ -341,22 +389,31 @@ def _ticks_and_numbers(
         minor_length=_TICK_MINOR,
         label_distance=_LABEL_DISTANCE_X * medium.number,
         label_size=medium.number,
+        number_every=every[0],
         formatter=num,
     )
-    nodes.extend(
-        scale_marks(
-            LinearAxis(Pt(corner.x, PLOT_HEIGHT), Pt(corner.x, 0), Pt(-1, 0)),
-            y_ticks,
-            major_length=_TICK_MAJOR,
-            minor_length=_TICK_MINOR,
-            label_distance=_LABEL_DISTANCE_Y * medium.number,
-            label_anchor="end",
-            label_shift=_LABEL_SHIFT_Y * medium.number,
-            label_size=medium.number,
-            formatter=num,
-        )
+    down = scale_marks(
+        LinearAxis(Pt(corner.x, PLOT_HEIGHT), Pt(corner.x, 0), Pt(-1, 0)),
+        y_ticks,
+        major_length=_TICK_MAJOR,
+        minor_length=_TICK_MINOR,
+        label_distance=_LABEL_DISTANCE_Y * medium.number,
+        label_anchor="end",
+        label_shift=_LABEL_SHIFT_Y * medium.number,
+        label_size=medium.number,
+        number_every=every[1],
+        formatter=num,
     )
-    return nodes
+    column = [box for node in down if isinstance(node, Text) for box in [node.bbox()] if box]
+    return [node for node in nodes if not _stands_in(node, column)] + down
+
+
+def _stands_in(node: Node, boxes: Sequence[BBox]) -> bool:
+    """Is this number written where another one already is?"""
+    if not isinstance(node, Text):
+        return False
+    box = node.bbox()
+    return box is not None and any(box.overlaps(other) for other in boxes)
 
 
 def _series_nodes(

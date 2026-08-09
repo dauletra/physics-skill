@@ -230,6 +230,7 @@ def scale_marks(
     label_anchor: str = "middle",
     label_size: float | None = None,
     label_shift: float = 0.0,
+    number_every: int = 1,
     formatter: Callable[[float], str] = num,
     major_style: Style = LINE,
     minor_style: Style = THIN,
@@ -243,6 +244,11 @@ def scale_marks(
     `skip` drops ticks by index — a full clock face needs it, because its
     first and last tick are the same point.
 
+    `number_every` prints only every k-th of the numbers, leaving every tick
+    exactly as it was. It is how a scale keeps the same divisions while a
+    larger label scale runs out of room for their numbers: what is drawn is
+    the task, what is written on it is presentation.
+
     A number has no size of its own to fall back on: the size belongs to the
     medium the picture is drawn for, and a default here would be one label
     silently drawn at the wrong scale (docs/visual-scale.md §6.1). Ticks
@@ -254,6 +260,7 @@ def scale_marks(
     labeled_indices = [i for i, tick in enumerate(ticks) if tick.labeled]
     every = labeled_indices[1] - labeled_indices[0] if len(labeled_indices) > 1 else 1
     nodes: list[Node] = []
+    numbered = 0
     for i, tick in enumerate(ticks):
         if i in skip:
             continue
@@ -266,7 +273,14 @@ def scale_marks(
         else:
             length, style = minor_length, minor_style
         nodes.append(Line(base, base + outward * length, style))
-        if tick.labeled and label_distance is not None and label_size is not None:
+        if tick.labeled:
+            numbered += 1
+        if (
+            tick.labeled
+            and (numbered - 1) % number_every == 0
+            and label_distance is not None
+            and label_size is not None
+        ):
             towards = (label_direction or outward).normalized()
             at = base + towards * label_distance
             nodes.append(

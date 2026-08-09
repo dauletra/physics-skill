@@ -199,6 +199,23 @@ class TestScaleMarks:
         nodes = scale_marks(axis, tick_layout(0, 2, 1, max_labels=8), major_length=5, minor_length=3)
         assert all(type(n).__name__ == "Line" for n in nodes)
 
+    def test_numbering_every_second_one_leaves_every_tick_alone(self) -> None:
+        """The one thing a bigger label scale may take away is the number.
+        The marks are what a student counts, so they stay to the last one."""
+        axis = LinearAxis(Pt(0, 0), Pt(100, 0), Pt(0, 1))
+        ticks = tick_layout(0, 10, 1, max_labels=16)
+        drawn = {
+            k: scale_marks(
+                axis, ticks, major_length=9, minor_length=5,
+                label_distance=17, label_size=SHEET.label, number_every=k,
+            )
+            for k in (1, 2)
+        }
+        lines = {k: [n for n in nodes if type(n).__name__ == "Line"] for k, nodes in drawn.items()}
+        texts = {k: [n for n in nodes if type(n).__name__ == "Text"] for k, nodes in drawn.items()}
+        assert lines[2] == lines[1]
+        assert [t.content for t in texts[2]] == [t.content for t in texts[1]][::2]
+
 
 class TestFills:
     def test_hatching_stays_inside_the_region(self) -> None:

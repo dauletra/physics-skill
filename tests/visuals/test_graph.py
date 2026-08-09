@@ -9,7 +9,19 @@ so "ticks every 5, numbers every 10" has to come out exactly that way.
 from __future__ import annotations
 
 from library import EXAMPLES
-from physics_svg.draw import BOARD, SHEET, Line, Medium, Polyline, Pt, Text, num
+from physics_svg.draw import (
+    BOARD,
+    GRID,
+    GRID_FINE,
+    SHEET,
+    Canvas,
+    Line,
+    Medium,
+    Polyline,
+    Pt,
+    Text,
+    num,
+)
 from physics_svg.visuals import build_svg, parse_visual
 from physics_svg.visuals.graph.model import (
     MIN_LABEL_GAP_Y,
@@ -22,9 +34,11 @@ from physics_svg.visuals.graph.render import (
     _LABEL_CLEARANCE_Y,
     _LABEL_DISTANCE_X,
     _axes,
+    _number_every,
     axis_divisions,
     label_budget,
 )
+from physics_svg.visuals.registry import render_to_canvas
 
 
 def budget_x(medium: Medium) -> int:
@@ -176,6 +190,53 @@ class TestLabelDensity:
         for (low, high), expected in {(0, 6): 7, (0, 10): 6, (250, 650): 9}.items():
             ticks, _ = axis_divisions(low, high, None, None, budget_x(SHEET))
             assert sum(1 for tick in ticks if tick.labeled) == expected
+
+    def test_a_pinned_step_is_numbered_the_same_on_both_media(self) -> None:
+        """The author's step is the question, not a suggestion: a slide that
+        quietly numbered half as often would be asking something else."""
+        ticks, _ = axis_divisions(0, 40, 2.0, 4.0, budget_x(SHEET))
+        assert sum(1 for tick in ticks if tick.labeled) == 11  # more than a board holds
+        assert _number_every(ticks, 4.0, budget_x(BOARD)) == 1
+        assert _number_every(ticks, None, budget_x(BOARD)) > 1
+
+
+class TestTheRulingIsNotTheNumbering:
+    """A student counts cells and reads off the heavy line — so the ruling is
+    the task, and the task cannot differ between paper and a board. Only how
+    many of the divisions say their value out loud may give way to a larger
+    label (docs/visual-scale.md §3.5)."""
+
+    def each_medium(self, model: object) -> list[tuple[list[str], int]]:
+        drawn = []
+        for medium in (SHEET, BOARD):
+            canvas = Canvas(medium=medium)
+            render_to_canvas(model, canvas)
+            nodes = canvas.flat_nodes()
+            drawn.append(
+                (
+                    [
+                        f"{n.style.stroke} {n.a.x:.2f} {n.a.y:.2f} {n.b.x:.2f} {n.b.y:.2f}"
+                        for n in nodes
+                        if isinstance(n, Line) and n.style in (GRID, GRID_FINE)
+                    ],
+                    sum(1 for n in nodes if isinstance(n, Text)),
+                )
+            )
+        return drawn
+
+    def test_the_grid_is_the_same_picture_on_both_media(self) -> None:
+        for example in EXAMPLES:
+            if example.type.tag != "graph":
+                continue
+            sheet, board = self.each_medium(example.model)
+            assert sheet[0] == board[0], f"{example.name}: сетка разошлась"
+
+    def test_a_board_prints_no_more_numbers_than_a_sheet(self) -> None:
+        for example in EXAMPLES:
+            if example.type.tag != "graph":
+                continue
+            sheet, board = self.each_medium(example.model)
+            assert board[1] <= sheet[1], example.name
 
 
 class TestSharedZero:

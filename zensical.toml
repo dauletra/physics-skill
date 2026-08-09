@@ -39,6 +39,7 @@ nav = [
     { "Презентация к уроку" = "presentation.md" },
     { "Шаблоны слайдов" = "slide-templates.md" },
     { "Дизайн слайда" = "slide-design.md" },
+    { "Масштаб иллюстрации" = "visual-scale.md" },
     { "Справочник: документ" = "reference/document.md" },
     { "Справочник: виды заданий" = "reference/questions.md" },
     { "Справочник: виды слайдов" = "reference/slides.md" },

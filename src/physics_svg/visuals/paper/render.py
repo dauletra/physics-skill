@@ -23,13 +23,11 @@ from __future__ import annotations
 from typing import Callable
 
 from physics_svg.draw import (
-    GREY,
-    GREY_FAINT,
-    GREY_STRONG,
     BBox,
     Canvas,
     Circle,
     Line,
+    Medium,
     Node,
     Path,
     Pt,
@@ -42,16 +40,18 @@ from physics_svg.visuals.paper.model import STEPS, PaperSpec
 from physics_svg.visuals.registry import Layout
 
 #: A ruling is a guide, not a contour: it must stay behind what the student
-#: writes on top of it.
-_FRAME = Style(stroke=GREY_STRONG, width=0.7, fill="none")
-_FRAME_FLUID = Style(stroke=GREY_STRONG, width=1.0, fill="none", non_scaling=True)
+#: writes on top of it. The weights below are the drawing's and never change;
+#: the grey each one is drawn in comes off the canvas, because how weak a
+#: service line may be is the destination's business (draw/medium.py).
+_FRAME = Style(width=0.7, fill="none")
+_FRAME_FLUID = Style(width=1.0, fill="none", non_scaling=True)
 _WRITING_LINE = Style(
     stroke="#000", width=1.0, dash="1,3", fill="none", non_scaling=True
 )
 #: The weights the squared rulings close themselves with — the line of the
 #: cell itself, so the edge of the field is not heavier than what is inside it.
-_GRID_EDGE = Style(stroke=GREY, width=0.5, fill="none")
-_MM_EDGE = Style(stroke=GREY_STRONG, width=0.8, fill="none")
+_GRID_EDGE = Style(width=0.5, fill="none")
+_MM_EDGE = Style(width=0.8, fill="none")
 
 #: Half a unit of slack: the outermost line sits on the edge of the field, and
 #: its stroke would be cut in half by the frame of the SVG without it.
@@ -87,7 +87,7 @@ def _paint_plain(model: PaperSpec, canvas: Canvas, width: float, height: float) 
     The one ruling that keeps its border: with no lines of its own, an empty
     field says how far the drawing may go only by being bounded.
     """
-    canvas.add(_frame(width, height, fluid=model.cols is None))
+    canvas.add(_frame(canvas.medium, width, height, fluid=model.cols is None))
 
 
 def _paint_grid(model: PaperSpec, canvas: Canvas, width: float, height: float) -> None:
@@ -97,11 +97,11 @@ def _paint_grid(model: PaperSpec, canvas: Canvas, width: float, height: float) -
         "grid",
         step,
         step,
-        [Path(f"M{step} 0 L0 0 0 {step}", Style(fill="none", stroke=GREY, width=0.5))],
+        [Path(f"M{step} 0 L0 0 0 {step}", _GRID_EDGE.with_(stroke=canvas.medium.ruling))],
     )
     canvas.add(
         canvas.fill_tiled(BBox(0, 0, width, height), cell),
-        *_closing_edges(width, height, _GRID_EDGE),
+        *_closing_edges(width, height, _GRID_EDGE.with_(stroke=canvas.medium.ruling)),
     )
 
 
@@ -112,7 +112,7 @@ def _paint_dots(model: PaperSpec, canvas: Canvas, width: float, height: float) -
     step = STEPS["dots"]
     half = step / 2
     cell = canvas.tiling(
-        "dots", step, step, [Circle(Pt(half, half), 0.8, Style(fill=GREY))]
+        "dots", step, step, [Circle(Pt(half, half), 0.8, Style(fill=canvas.medium.ruling))]
     )
     canvas.add(canvas.fill_tiled(BBox(0, 0, width, height), cell))
 
@@ -131,7 +131,7 @@ def _paint_mm(model: PaperSpec, canvas: Canvas, width: float, height: float) -> 
         [
             Path(
                 f"M{num(fine)} 0 L0 0 0 {num(fine)}",
-                Style(fill="none", stroke=GREY_FAINT, width=0.3),
+                Style(fill="none", stroke=canvas.medium.grid_fine, width=0.3),
             )
         ],
     )
@@ -142,18 +142,18 @@ def _paint_mm(model: PaperSpec, canvas: Canvas, width: float, height: float) -> 
         [
             Path(
                 f"M{num(mid)} 0 L{num(mid)} {major} M0 {num(mid)} L{major} {num(mid)}",
-                Style(fill="none", stroke=GREY, width=0.4),
+                Style(fill="none", stroke=canvas.medium.ruling, width=0.4),
             ),
             Path(
                 f"M{major} 0 L0 0 0 {major}",
-                Style(fill="none", stroke=GREY_STRONG, width=0.8),
+                Style(fill="none", stroke=canvas.medium.rule, width=0.8),
             ),
         ],
         base=millimetres,
     )
     canvas.add(
         canvas.fill_tiled(BBox(0, 0, width, height), centimetres),
-        *_closing_edges(width, height, _MM_EDGE),
+        *_closing_edges(width, height, _MM_EDGE.with_(stroke=canvas.medium.rule)),
     )
 
 
@@ -171,8 +171,9 @@ def _closing_edges(width: float, height: float, style: Style) -> tuple[Node, Nod
     )
 
 
-def _frame(width: float, height: float, fluid: bool = False) -> Node:
-    return Rect(Pt(0, 0), width, height, _FRAME_FLUID if fluid else _FRAME)
+def _frame(medium: Medium, width: float, height: float, fluid: bool = False) -> Node:
+    style = _FRAME_FLUID if fluid else _FRAME
+    return Rect(Pt(0, 0), width, height, style.with_(stroke=medium.rule))
 
 
 _PAINTERS: dict[str, Callable[[PaperSpec, Canvas, float, float], None]] = {

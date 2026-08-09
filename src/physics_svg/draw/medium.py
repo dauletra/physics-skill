@@ -25,11 +25,29 @@ A renderer picks the step by what the label *is*, never by how it should
 look; a step that no role needs is a step that should not exist. See
 docs/visual-scale.md for where the numbers come from and what the board
 scale has to clear.
+
+**And a second ladder, of service grey.** A gridline, a ruled square, a
+construction line — none of them are the drawing, all of them are there to be
+read *under* it, and how weak «weak» may be is the destination's business
+too. On paper it is a photocopy and a pencil; on a lit panel the faintest of
+them stops existing (§3.7). Four rungs, the same four the library already
+drew with, named by the job rather than by the shade.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from physics_svg.draw.style import (
+    GREY,
+    GREY_BOARD,
+    GREY_FAINT,
+    GREY_FAINT_BOARD,
+    GREY_LIGHT,
+    GREY_LIGHT_BOARD,
+    GREY_STRONG,
+    GREY_STRONG_BOARD,
+)
 
 
 @dataclass(frozen=True)
@@ -45,10 +63,24 @@ class Medium:
     axis: float
     display: float
 
+    #: The border of a ruled field, the centimetre line of graph paper.
+    rule: str
+    #: The ruling itself: an exercise-book square, a dot, a construction line.
+    ruling: str
+    #: A chart's grid at a numbered division.
+    grid: str
+    #: A sub-division inside one step: the millimetre, the fifth of a cell.
+    grid_fine: str
+
     @property
     def steps(self) -> tuple[float, ...]:
         """The scale, ascending — what a test can walk over."""
         return (self.micro, self.label, self.caption, self.number, self.axis, self.display)
+
+    @property
+    def greys(self) -> tuple[str, ...]:
+        """The service ladder, strongest first — what a test can walk over."""
+        return (self.rule, self.ruling, self.grid, self.grid_fine)
 
 
 #: A4 in the hand. These are the sizes the library has always drawn at, and
@@ -62,6 +94,10 @@ SHEET = Medium(
     number=9.0,
     axis=10.0,
     display=15.0,
+    rule=GREY_STRONG,
+    ruling=GREY,
+    grid=GREY_LIGHT,
+    grid_fine=GREY_FAINT,
 )
 
 #: A classroom board, seven metres away. Every step is half again as large,
@@ -81,4 +117,8 @@ BOARD = Medium(
     number=13.5,
     axis=15.0,
     display=19.0,
+    rule=GREY_STRONG_BOARD,
+    ruling=GREY_BOARD,
+    grid=GREY_LIGHT_BOARD,
+    grid_fine=GREY_FAINT_BOARD,
 )

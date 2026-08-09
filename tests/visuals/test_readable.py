@@ -115,3 +115,45 @@ def test_the_board_scale_is_the_sheet_scale_enlarged() -> None:
     is the same drawing set larger, not a different drawing."""
     assert all(board > sheet for board, sheet in zip(BOARD.steps, SHEET.steps))
     assert list(BOARD.steps) == sorted(set(BOARD.steps))
+
+
+#: What a service line has to clear against the slide's paper to be a line at
+#: all, by rung. Not WCAG text minima — a gridline is not text, and it is
+#: *supposed* to be weaker than the drawing over it. These say only that it
+#: exists: on a lit panel in a lit room, below about 1,4:1 there is nothing
+#: to see (docs/visual-scale.md §6.5). The final call is eyes on a real
+#: panel — `evals/pptx.md` — and these hold the floor under that call.
+BOARD_GREY_FLOOR = (4.0, 2.6, 2.0, 1.4)
+
+
+def contrast(one: str, other: str) -> float:
+    values = sorted(_luminance(colour) for colour in (one, other))
+    return (values[1] + 0.05) / (values[0] + 0.05)
+
+
+def _luminance(colour: str) -> float:
+    raw = colour.lstrip("#")
+    if len(raw) == 3:
+        raw = "".join(channel * 2 for channel in raw)
+    linear = [
+        value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+        for value in (int(raw[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    ]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def test_the_board_greys_survive_a_lit_panel() -> None:
+    """Measured against the paper a slide actually has, rung by rung."""
+    paper = f"#{design.PAPER}"
+    for grey, floor in zip(BOARD.greys, BOARD_GREY_FLOOR):
+        assert contrast(paper, grey) >= floor, f"{grey}: {contrast(paper, grey):.2f} при {floor}"
+
+
+def test_the_sheet_greys_would_not_have_survived_it() -> None:
+    """Why the ladder had to move at all. Paper is right to set a ruling
+    faint — it lives under a pencil and goes through a photocopier — and that
+    is exactly what makes it disappear on a panel."""
+    paper = f"#{design.PAPER}"
+    assert any(
+        contrast(paper, grey) < floor for grey, floor in zip(SHEET.greys, BOARD_GREY_FLOOR)
+    )

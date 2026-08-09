@@ -18,11 +18,23 @@ from dataclasses import dataclass, replace
 BLACK = "#000"
 WHITE = "#fff"
 #: Auxiliary rulings and grids: present, but never competing with what the
-#: student writes on top of them.
+#: student writes on top of them. Four rungs, weakest last — the border of a
+#: field, the ruling itself, a chart's grid, a sub-division inside one step.
 GREY_STRONG = "#888"
 GREY = "#bbb"
 GREY_LIGHT = "#ccc"
 GREY_FAINT = "#e6e6e6"
+
+#: The same four rungs for a lit panel. On paper a service line has to stay
+#: under the student's pencil and survive a photocopy, so it is set faint;
+#: on a board there is no pencil and no photocopy, and 1,2:1 against a glowing
+#: white is not «faint», it is absent (docs/visual-scale.md §3.7). Each rung
+#: is darkened until it clears the ratio its job needs, and the ladder keeps
+#: its order — a sub-division still reads weaker than the division it divides.
+GREY_STRONG_BOARD = "#6e6e6e"
+GREY_BOARD = "#919191"
+GREY_LIGHT_BOARD = "#a8a8a8"
+GREY_FAINT_BOARD = "#d0d0d0"
 
 
 @dataclass(frozen=True)

@@ -172,15 +172,20 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
     if model.grid != "none":
         x_minor, x_major = _grid_values(x_ticks, x_fine, model.grid)
         y_minor, y_major = _grid_values(y_ticks, y_fine, model.grid)
+        # The weights are the drawing's; the greys are the medium's — a
+        # service line has to stay under the pencil on paper and has to exist
+        # at all on a lit panel.
+        heavy = GRID.with_(stroke=canvas.medium.grid)
+        thin = GRID_FINE.with_(stroke=canvas.medium.grid_fine)
         # Thin lines first, so the numbered divisions lie on top of them.
         for x in x_minor:
-            canvas.add(Line(Pt(sx(x), 0), Pt(sx(x), PLOT_HEIGHT), GRID_FINE))
+            canvas.add(Line(Pt(sx(x), 0), Pt(sx(x), PLOT_HEIGHT), thin))
         for y in y_minor:
-            canvas.add(Line(Pt(0, sy(y)), Pt(PLOT_WIDTH, sy(y)), GRID_FINE))
+            canvas.add(Line(Pt(0, sy(y)), Pt(PLOT_WIDTH, sy(y)), thin))
         for x in x_major:
-            canvas.add(Line(Pt(sx(x), 0), Pt(sx(x), PLOT_HEIGHT), GRID))
+            canvas.add(Line(Pt(sx(x), 0), Pt(sx(x), PLOT_HEIGHT), heavy))
         for y in y_major:
-            canvas.add(Line(Pt(0, sy(y)), Pt(PLOT_WIDTH, sy(y)), GRID))
+            canvas.add(Line(Pt(0, sy(y)), Pt(PLOT_WIDTH, sy(y)), heavy))
 
     # An axis stands at the other one's zero when the range crosses it, and at
     # the edge of the plot otherwise. A range that starts at zero — nearly

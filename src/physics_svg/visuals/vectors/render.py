@@ -21,7 +21,6 @@ from physics_svg.draw import (
     BLACK,
     BODY,
     DASH,
-    GREY,
     HEAVY,
     SHEET,
     SOLID,
@@ -61,8 +60,10 @@ ANGLE_LABEL_BIAS = 0.3
 _VECTOR = HEAVY
 _CONSTRUCTION = Style(stroke=BLACK, width=1.0, dash=DASH["dashed"], fill="none")
 _RESULTANT = Style(stroke=BLACK, width=2.6, fill="none")
-_GRID = Style(stroke=GREY, width=0.5, fill="none")
-_PARALLELOGRAM = Style(stroke=GREY, width=0.9, dash=DASH["dashed"], fill="none")
+#: Weights of the two service lines; the grey they are drawn in comes off
+#: the canvas, because a lattice has to be countable on a lit panel too.
+_GRID = Style(width=0.5, fill="none")
+_PARALLELOGRAM = Style(width=0.9, dash=DASH["dashed"], fill="none")
 
 #: How far the caption hangs below the drawing, in caption heights — so a
 #: larger caption moves down instead of climbing into the picture.
@@ -92,7 +93,7 @@ def render(model: VectorsSpec, canvas: Canvas) -> Layout:
         return point * cell
 
     if model.grid:
-        canvas.extend(_grid(placed, resultant, cell))
+        canvas.extend(_grid(placed, resultant, cell, canvas.medium))
     if model.body is not None:
         canvas.extend(_body(model.body, cell))
 
@@ -106,7 +107,7 @@ def render(model: VectorsSpec, canvas: Canvas) -> Layout:
 
     if resultant is not None:
         if model.arrangement == "parallelogram":
-            canvas.extend(_parallelogram(placed, resultant, cell))
+            canvas.extend(_parallelogram(placed, resultant, cell, canvas.medium))
         start, end = at(resultant.start), at(resultant.end)
         aside = _aside(resultant.direction)
         if model.arrangement == "common":
@@ -185,18 +186,21 @@ def _cell_size(placed: list[Placed], resultant: Placed | None) -> float:
 # --- parts --------------------------------------------------------------
 
 
-def _grid(placed: list[Placed], resultant: Placed | None, cell: float) -> list[Node]:
+def _grid(
+    placed: list[Placed], resultant: Placed | None, cell: float, medium: Medium
+) -> list[Node]:
     """A lattice covering the drawing, so lengths can be counted off it."""
     box = BBox.of(_points(placed, resultant))
     if box is None:
         return []
     left, right = math.floor(box.x0) - 1, math.ceil(box.x1) + 1
     top, bottom = math.floor(box.y0) - 1, math.ceil(box.y1) + 1
+    style = _GRID.with_(stroke=medium.ruling)
     nodes: list[Node] = []
     for x in range(left, right + 1):
-        nodes.append(Line(Pt(x * cell, top * cell), Pt(x * cell, bottom * cell), _GRID))
+        nodes.append(Line(Pt(x * cell, top * cell), Pt(x * cell, bottom * cell), style))
     for y in range(top, bottom + 1):
-        nodes.append(Line(Pt(left * cell, y * cell), Pt(right * cell, y * cell), _GRID))
+        nodes.append(Line(Pt(left * cell, y * cell), Pt(right * cell, y * cell), style))
     return nodes
 
 
@@ -209,13 +213,16 @@ def _body(kind: str, cell: float) -> list[Node]:
     return [Rect(Pt(-size, -size), size * 2, size * 2, BODY)]
 
 
-def _parallelogram(placed: list[Placed], resultant: Placed, cell: float) -> list[Node]:
+def _parallelogram(
+    placed: list[Placed], resultant: Placed, cell: float, medium: Medium
+) -> list[Node]:
     """The two dashed sides that close the parallelogram."""
     first, second = placed
     corner = resultant.end * cell
+    style = _PARALLELOGRAM.with_(stroke=medium.ruling)
     return [
-        Line(first.end * cell, corner, _PARALLELOGRAM),
-        Line(second.end * cell, corner, _PARALLELOGRAM),
+        Line(first.end * cell, corner, style),
+        Line(second.end * cell, corner, style),
     ]
 
 

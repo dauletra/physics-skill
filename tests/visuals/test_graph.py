@@ -11,8 +11,6 @@ from __future__ import annotations
 from library import EXAMPLES
 from physics_svg.draw import (
     BOARD,
-    GRID,
-    GRID_FINE,
     SHEET,
     Canvas,
     Line,
@@ -207,6 +205,10 @@ class TestTheRulingIsNotTheNumbering:
     label (docs/visual-scale.md §3.5)."""
 
     def each_medium(self, model: object) -> list[tuple[list[str], int]]:
+        """The ruling of one graph on each medium, and how many numbers it
+        carries. A gridline is described by its weight and its place — the
+        grey it is drawn in is the one thing the medium *is* allowed to
+        change (draw/medium.py)."""
         drawn = []
         for medium in (SHEET, BOARD):
             canvas = Canvas(medium=medium)
@@ -215,9 +217,10 @@ class TestTheRulingIsNotTheNumbering:
             drawn.append(
                 (
                     [
-                        f"{n.style.stroke} {n.a.x:.2f} {n.a.y:.2f} {n.b.x:.2f} {n.b.y:.2f}"
+                        f"{n.style.width} {n.a.x:.2f} {n.a.y:.2f} {n.b.x:.2f} {n.b.y:.2f}"
                         for n in nodes
-                        if isinstance(n, Line) and n.style in (GRID, GRID_FINE)
+                        if isinstance(n, Line)
+                        and n.style.stroke in (medium.grid, medium.grid_fine)
                     ],
                     sum(1 for n in nodes if isinstance(n, Text)),
                 )

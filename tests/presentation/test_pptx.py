@@ -157,6 +157,74 @@ class TestDeck:
         assert "ppt/slides/slide1.xml" in empty.namelist()
 
 
+class TestLesson:
+    """A deck built from real slide models, not from hand-written XML."""
+
+    @staticmethod
+    def deck(*slides: object) -> zipfile.ZipFile:
+        from physics_svg.presentation import parse_presentation, parse_slide
+        from physics_svg.presentation.pptx.deck import build_deck
+
+        models = [parse_slide(item, f"s{index}") for index, item in enumerate(slides)]
+        data = build_deck(parse_presentation({"title": "Урок"}), models)
+        return zipfile.ZipFile(io.BytesIO(data))
+
+    @staticmethod
+    def texts(package: zipfile.ZipFile, part: str) -> list[str]:
+        return [
+            node.text or ""
+            for node in read(package, part).iter(
+                "{http://schemas.openxmlformats.org/drawingml/2006/main}t"
+            )
+        ]
+
+    def test_the_title_reaches_its_slide(self) -> None:
+        package = self.deck(
+            {"type": "title", "text": "Равноускоренное движение", "subtitle": "9 класс"}
+        )
+        assert self.texts(package, "ppt/slides/slide1.xml") == [
+            "Равноускоренное движение",
+            "9 класс",
+        ]
+
+    def test_a_slide_stands_on_the_layout_of_its_kind(self) -> None:
+        package = self.deck(
+            {"type": "title", "text": "Урок"},
+            {"type": "section", "text": "Разбор"},
+            {"type": "content", "heading": "Скорость", "text": "Определение"},
+        )
+        wanted = ["slideLayout1.xml", "slideLayout2.xml", "slideLayout3.xml"]
+        for index, layout in enumerate(wanted, start=1):
+            targets = rels_of(package, f"ppt/slides/slide{index}.xml").values()
+            assert any(target.endswith(layout) for target in targets), index
+
+    def test_a_list_becomes_bulleted_paragraphs(self) -> None:
+        package = self.deck(
+            {"type": "content", "heading": "Признаки", "items": ["раз", "два"]}
+        )
+        body = read(package, "ppt/slides/slide1.xml")
+        bullets = list(body.iter("{http://schemas.openxmlformats.org/drawingml/2006/main}buChar"))
+        assert len(bullets) == 2
+        assert self.texts(package, "ppt/slides/slide1.xml") == ["Признаки", "раз", "два"]
+
+    def test_an_index_is_lifted_off_the_baseline(self) -> None:
+        """`<sub>` is the author's own syntax, and it has to survive into a
+        deck the same way it survives into a sheet."""
+        package = self.deck({"type": "content", "text": "скорость υ<sub>0</sub> в начале"})
+        properties = [
+            node.attrib.get("baseline")
+            for node in read(package, "ppt/slides/slide1.xml").iter(
+                "{http://schemas.openxmlformats.org/drawingml/2006/main}rPr"
+            )
+        ]
+        assert "-25000" in properties
+
+    def test_a_kind_without_a_layout_says_so(self) -> None:
+        """Silence would give a lesson with slides missing from the middle."""
+        with pytest.raises(NotImplementedError, match="objectives"):
+            self.deck({"type": "objectives", "items": ["понять", "научиться"]})
+
+
 class TestStability:
     def test_two_builds_are_the_same_file(self) -> None:
         """A golden test of a binary format is only possible if the build is

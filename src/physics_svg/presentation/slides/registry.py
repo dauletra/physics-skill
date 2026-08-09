@@ -27,10 +27,36 @@ from physics_svg.presentation.slides.template import SlideTemplate, load_templat
 from physics_svg.schema import Deferred
 from physics_svg.visuals import visual_annotation
 
+if TYPE_CHECKING:
+    from physics_svg.presentation.pptx import Slide
+
 #: The slide's payload as wire data: parsed runs for author text, an emitted
 #: visual for an illustration. The second argument is the id scope for the
 #: slide's SVG — unique per slide, so two graphs on one page cannot collide.
 Emitter = Callable[[Any, str], dict[str, Any]]
+
+#: The kind laid out as a PowerPoint slide. Where `emit` writes data for the
+#: player to arrange, this arranges: the CSS that used to place `.s-head` and
+#: `.s-body` is Python now, because that is where PowerPoint keeps layout
+#: (docs/pptx.md §5.2). While both emitters exist a kind may bring only the
+#: first; `PLAYER_ONLY` names the ones that still do.
+Builder = Callable[[Any], "Slide"]
+
+#: Kinds that still have no PowerPoint layout. The list only shrinks: P4 of
+#: docs/pptx.md empties it, and `tests/presentation/test_slides.py` fails if
+#: a kind is added to it rather than removed.
+PLAYER_ONLY = frozenset(
+    {
+        "board_task",
+        "compare",
+        "example",
+        "formula",
+        "objectives",
+        "prompt",
+        "reflection",
+        "tasks",
+    }
+)
 
 if TYPE_CHECKING:  # mypy reads this as plain `Any`; at runtime it resolves
     VISUAL = Any
@@ -49,6 +75,9 @@ class SlideType:
     model: type
     #: Serialisation to the wire — data, never markup.
     emit: Emitter
+    #: Layout as a slide of a deck. `None` until the kind is carried over
+    #: to PowerPoint — see `PLAYER_ONLY`.
+    build: "Builder | None"
     #: Place in everything a human reads — the reference index, the site —
     #: by where a slide sits in a lesson, not by its latin tag. Multiples of
     #: ten, so a new kind slots in without renumbering.
@@ -99,7 +128,14 @@ _LOADED = False
 
 
 def register(
-    *, tag: str, title: str, model: type, emit: Emitter, order: int, module: str
+    *,
+    tag: str,
+    title: str,
+    model: type,
+    emit: Emitter,
+    order: int,
+    module: str,
+    build: "Builder | None" = None,
 ) -> None:
     if tag in _REGISTRY:
         raise RuntimeError(f"slide type {tag!r} is already registered")
@@ -107,7 +143,7 @@ def register(
     if order in taken:
         raise RuntimeError(f"order {order} is already taken by {taken[order]!r}")
     directory = Path(importlib.import_module(module).__file__ or "").parent
-    _REGISTRY[tag] = SlideType(tag, title, model, emit, order, directory)
+    _REGISTRY[tag] = SlideType(tag, title, model, emit, build, order, directory)
 
 
 def load_all() -> dict[str, SlideType]:

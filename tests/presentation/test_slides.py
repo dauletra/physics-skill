@@ -15,6 +15,7 @@ import pytest
 
 from physics_svg.presentation import parse_slide
 from physics_svg.presentation.slides import load_all, load_template, slide_annotation
+from physics_svg.presentation.slides.registry import PLAYER_ONLY
 from physics_svg.schema import SchemaError, emit_schema, spec_meta
 
 KINDS = list(load_all().values())
@@ -133,3 +134,31 @@ class TestInvariants:
                 {"type": "board_task", "text": "Найдите путь.", "visual": {"type": "graph"}},
                 "s",
             )
+
+
+class TestDeckCoverage:
+    """The migration from the player to PowerPoint, held to one direction.
+
+    A kind either lays itself out as a slide of a deck or is named in
+    `PLAYER_ONLY` as one that does not yet. The list is allowed to shrink and
+    nothing else: P4 of docs/pptx.md empties it, and until then a new kind
+    that quietly joins it would be a kind the deck silently drops.
+    """
+
+    def test_the_waiting_list_matches_the_kinds_without_a_layout(self) -> None:
+        kinds = load_all()
+        waiting = {tag for tag, entry in kinds.items() if entry.build is None}
+        assert waiting == set(PLAYER_ONLY), (
+            "PLAYER_ONLY разошёлся с реальностью: вид получил раскладку — "
+            "убери его из списка; вид появился без раскладки — сделай её"
+        )
+
+    def test_every_kind_that_can_be_laid_out_survives_its_own_templates(self) -> None:
+        """The templates are the kind's own examples, so a layout that only
+        works on hand-written data is a layout that does not work."""
+        for tag, entry in load_all().items():
+            if entry.build is None:
+                continue
+            for template in entry.templates:
+                model = parse_slide(template.slide, f"{tag}-{template.slug}")
+                assert entry.build(model).layout, f"{tag}/{template.slug}"

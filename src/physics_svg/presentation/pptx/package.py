@@ -12,7 +12,7 @@ says nothing useful when it fails:
     presentation.xml     -> the master, every slide, the theme
     slideMaster1.xml     -> every layout, the theme
     slideLayoutN.xml     -> the master
-    slideN.xml           -> its layout
+    slideN.xml           -> the layout it stands on
 
 Both directions are required. A slide that names its layout while the master
 does not name that layout is a file PowerPoint offers to repair.
@@ -34,8 +34,9 @@ from physics_svg.ooxml import (
     zip_package,
 )
 from physics_svg.presentation.pptx import design
-from physics_svg.presentation.pptx.master import MASTER_ID, blank_layout, slide_master
-from physics_svg.presentation.pptx.slide import NS, slide
+from physics_svg.presentation.pptx.layouts import LAYOUTS, layout_index
+from physics_svg.presentation.pptx.master import MASTER_ID, slide_master
+from physics_svg.presentation.pptx.slide import NS, Slide, slide
 from physics_svg.presentation.pptx.theme import theme
 
 _TYPE = "application/vnd.openxmlformats-officedocument.presentationml"
@@ -68,31 +69,46 @@ def presentation(slide_rels: Sequence[str], master_rel: str) -> str:
     )
 
 
-def build_pptx(slides: Sequence[str], *, title: str) -> bytes:
-    """The finished .pptx from a list of `p:sld` parts.
+def build_pptx(slides: Sequence[Slide], *, title: str) -> bytes:
+    """The finished .pptx.
 
     An empty list still produces a valid deck of one blank slide: a
     presentation with no slides at all opens, but there is nothing to look
-    at, and every phase of docs/pptx.md is checked by looking.
+    at, and every phase of docs/pptx.md is accepted by looking.
     """
-    bodies = list(slides) or [slide()]
+    deck = list(slides) or [slide()]
 
     # Relationship ids of ppt/presentation.xml: the master first, then the
-    # slides in order, then the theme. Fixed rather than clever, so that a
-    # golden file changes only when the deck does.
+    # layouts, then the slides, then the theme. Fixed rather than clever, so
+    # that a golden file changes only when the deck does.
     master_rel = "rId1"
-    slide_rels = [f"rId{index + 2}" for index in range(len(bodies))]
-    theme_rel = f"rId{len(bodies) + 2}"
+    slide_rels = [f"rId{index + 2}" for index in range(len(deck))]
+    theme_rel = f"rId{len(deck) + 2}"
+    layout_rels = [f"rId{index + 1}" for index in range(len(LAYOUTS))]
+    master_theme_rel = f"rId{len(LAYOUTS) + 1}"
 
     parts = [
-        Part("ppt/presentation.xml", f"{_TYPE}.presentation.main+xml",
-             presentation(slide_rels, master_rel)),
-        Part("ppt/slideMasters/slideMaster1.xml", f"{_TYPE}.slideMaster+xml",
-             slide_master(["rId1"])),
-        Part("ppt/slideLayouts/slideLayout1.xml", f"{_TYPE}.slideLayout+xml", blank_layout()),
+        Part(
+            "ppt/presentation.xml",
+            f"{_TYPE}.presentation.main+xml",
+            presentation(slide_rels, master_rel),
+        ),
+        Part(
+            "ppt/slideMasters/slideMaster1.xml",
+            f"{_TYPE}.slideMaster+xml",
+            slide_master(layout_rels),
+        ),
         *[
-            Part(f"ppt/slides/slide{index + 1}.xml", f"{_TYPE}.slide+xml", body)
-            for index, body in enumerate(bodies)
+            Part(
+                f"ppt/slideLayouts/slideLayout{index + 1}.xml",
+                f"{_TYPE}.slideLayout+xml",
+                layout.xml(),
+            )
+            for index, layout in enumerate(LAYOUTS)
+        ],
+        *[
+            Part(f"ppt/slides/slide{index + 1}.xml", f"{_TYPE}.slide+xml", item.xml())
+            for index, item in enumerate(deck)
         ],
         Part("ppt/theme/theme1.xml", _THEME_TYPE, theme()),
         Part("docProps/core.xml", CORE_PROPERTIES_TYPE, core_properties(title)),
@@ -115,8 +131,7 @@ def build_pptx(slides: Sequence[str], *, title: str) -> bytes:
             "",
             relationships(
                 [
-                    (master_rel, f"{OFFICE_RELS}/slideMaster",
-                     "slideMasters/slideMaster1.xml"),
+                    (master_rel, f"{OFFICE_RELS}/slideMaster", "slideMasters/slideMaster1.xml"),
                     *[
                         (rid, f"{OFFICE_RELS}/slide", f"slides/slide{index + 1}.xml")
                         for index, rid in enumerate(slide_rels)
@@ -130,27 +145,43 @@ def build_pptx(slides: Sequence[str], *, title: str) -> bytes:
             "",
             relationships(
                 [
-                    ("rId1", f"{OFFICE_RELS}/slideLayout", "../slideLayouts/slideLayout1.xml"),
-                    ("rId2", f"{OFFICE_RELS}/theme", "../theme/theme1.xml"),
+                    *[
+                        (
+                            rid,
+                            f"{OFFICE_RELS}/slideLayout",
+                            f"../slideLayouts/slideLayout{index + 1}.xml",
+                        )
+                        for index, rid in enumerate(layout_rels)
+                    ],
+                    (master_theme_rel, f"{OFFICE_RELS}/theme", "../theme/theme1.xml"),
                 ]
             ),
         ),
-        Part(
-            "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
-            "",
-            relationships(
-                [("rId1", f"{OFFICE_RELS}/slideMaster", "../slideMasters/slideMaster1.xml")]
-            ),
-        ),
+        *[
+            Part(
+                f"ppt/slideLayouts/_rels/slideLayout{index + 1}.xml.rels",
+                "",
+                relationships(
+                    [("rId1", f"{OFFICE_RELS}/slideMaster", "../slideMasters/slideMaster1.xml")]
+                ),
+            )
+            for index in range(len(LAYOUTS))
+        ],
         *[
             Part(
                 f"ppt/slides/_rels/slide{index + 1}.xml.rels",
                 "",
                 relationships(
-                    [("rId1", f"{OFFICE_RELS}/slideLayout", "../slideLayouts/slideLayout1.xml")]
+                    [
+                        (
+                            "rId1",
+                            f"{OFFICE_RELS}/slideLayout",
+                            f"../slideLayouts/slideLayout{layout_index(item.layout)}.xml",
+                        )
+                    ]
                 ),
             )
-            for index in range(len(bodies))
+            for index, item in enumerate(deck)
         ],
         *parts,
     ]

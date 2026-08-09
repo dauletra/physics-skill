@@ -105,19 +105,5 @@ def _colour_map() -> str:
     )
 
 
-def blank_layout() -> str:
-    """`ppt/slideLayouts/slideLayout1.xml` — a slide with nothing on it.
-
-    `preserve="1"` keeps PowerPoint from deleting the layout when no slide
-    in the deck happens to use it.
-    """
-    return el(
-        "p:sldLayout",
-        {**NS, "type": "blank", "preserve": "1"},
-        el("p:cSld", {"name": "Пустой"}, shape_tree())
-        + el("p:clrMapOvr", children=el("a:masterClrMapping")),
-    )
-
-
 #: The master id used in `ppt/presentation.xml`.
 MASTER_ID = _MASTER_ID

@@ -11,6 +11,8 @@ Ids inside a tree start at 2: the group itself is 1.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from physics_svg.ooxml import el
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -38,7 +40,7 @@ def shape_tree(shapes: str = "") -> str:
     )
 
 
-def slide(shapes: str = "") -> str:
+def slide_xml(shapes: str = "") -> str:
     """`ppt/slides/slideN.xml`.
 
     `p:clrMapOvr` with `a:masterClrMapping` says «no override» — the slide
@@ -50,3 +52,25 @@ def slide(shapes: str = "") -> str:
         el("p:cSld", children=shape_tree(shapes))
         + el("p:clrMapOvr", children=el("a:masterClrMapping")),
     )
+
+
+@dataclass(frozen=True)
+class Slide:
+    """One slide of the deck: which layout it stands on, and what fills it.
+
+    The layout is named, not numbered: a slide kind knows it wants «the
+    explanation layout», and which part number that is depends on the order
+    in `layouts.py`, which is not its business.
+    """
+
+    layout: str
+    shapes: str = ""
+
+    def xml(self) -> str:
+        return slide_xml(self.shapes)
+
+
+def slide(shapes: str = "") -> Slide:
+    """A blank slide — what a deck falls back to when it has no content
+    yet, and what the package tests are built from."""
+    return Slide("blank", shapes)

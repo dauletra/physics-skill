@@ -1,0 +1,166 @@
+"""Author text as DrawingML paragraphs.
+
+The counterpart of `document/emit/docx/wml.py:run()`, one vocabulary over:
+Word sets text in `w:p`/`w:r`, everything on a slide is set in `a:p`/`a:r`.
+The parsing is not repeated — `inline.py` has already turned the author's
+line into runs, and this module only writes them down.
+
+Two things DrawingML does differently from WordprocessingML and both bite:
+
+* **A superscript is a percentage, not a flag.** `w:vertAlign` names the
+  position; `a:rPr baseline` is a per-mille offset, and the run keeps its
+  own size unless it is also made smaller. So an index has to carry both.
+* **`a:endParaRPr` matters.** A paragraph whose properties live only on its
+  runs loses them when the teacher puts the caret at the end and types.
+  Copying the paragraph's own size there is what makes an edited slide keep
+  looking like the rest of the deck.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional, Sequence
+
+from physics_svg.inline import Blank, Math, Run, Text, parse_inline
+from physics_svg.ooxml import el, escape
+from physics_svg.presentation.pptx import design
+
+#: How far an index sits off the baseline, in per mille, and how much of the
+#: parent size it keeps. The ratio is the one the SVG uses (`draw/text.py`),
+#: so an index looks the same on a slide as on the picture beside it.
+_SUPER = 30000
+_SUB = -25000
+_SCRIPT_RATIO = 0.72
+
+
+@dataclass(frozen=True)
+class Style:
+    """How one paragraph is set. Sizes are in points; `None` inherits from
+    the placeholder, which is where a slide's defaults belong."""
+
+    size: Optional[float] = None
+    colour: Optional[str] = None
+    bold: bool = False
+    align: Optional[str] = None  # ctr | r — left is the default
+    #: Space above the paragraph, in points.
+    space_before: Optional[float] = None
+    #: Line spacing as a multiple of the size.
+    leading: Optional[float] = None
+    #: A bulleted item; `None` leaves the placeholder's own bullet rule.
+    bullet: Optional[bool] = None
+
+
+def _run_properties(style: Style, script: str = "") -> str:
+    attrs: dict[str, object] = {"lang": "ru-RU", "dirty": "0"}
+    size = style.size
+    if script:
+        attrs["baseline"] = _SUPER if script == "sup" else _SUB
+        if size is not None:
+            size = size * _SCRIPT_RATIO
+    if size is not None:
+        attrs["sz"] = design.sz(size)
+    if style.bold:
+        attrs["b"] = 1
+    fill = (
+        el("a:solidFill", children=el("a:srgbClr", {"val": style.colour}))
+        if style.colour
+        else ""
+    )
+    return el("a:rPr", attrs, fill)
+
+
+def _paragraph_properties(style: Style) -> str:
+    attrs: dict[str, object] = {}
+    if style.align:
+        attrs["algn"] = style.align
+    body = ""
+    if style.space_before is not None:
+        body += el(
+            "a:spcBef",
+            children=el("a:spcPts", {"val": design.sz(style.space_before)}),
+        )
+    if style.leading is not None:
+        body = el(
+            "a:lnSpc",
+            children=el("a:spcPct", {"val": round(style.leading * 100000)}),
+        ) + body
+    if style.bullet is not None:
+        # An explicit «no bullet» is needed as often as a bullet: a heading
+        # inside a body placeholder inherits one otherwise.
+        #
+        # The indent is not decoration either. A bullet with no hanging
+        # indent puts the second line of an item under its dash, and a list
+        # read from eight metres stops looking like a list.
+        if style.bullet:
+            hang = design.emu((style.size or design.TEXT) * 1.2)
+            attrs["marL"] = hang
+            attrs["indent"] = -hang
+            body += el("a:buChar", {"char": "—"})
+        else:
+            attrs["marL"] = 0
+            attrs["indent"] = 0
+            body += el("a:buNone")
+    return el("a:pPr", attrs, body) if attrs or body else ""
+
+
+def paragraph(raw: object, style: Style = Style()) -> str:
+    """One line of author text as `a:p`.
+
+    A formula reaching here is set as its own text for now — OMML arrives in
+    P5 (docs/pptx.md §5.5). A ruled blank is a document control and has no
+    meaning on a slide: nothing on the screen is written on.
+    """
+    pieces = parse_inline(raw)
+    return runs_paragraph(pieces, style)
+
+
+def runs_paragraph(pieces: Sequence[object], style: Style = Style()) -> str:
+    body = _paragraph_properties(style)
+    for piece in pieces:
+        if isinstance(piece, Run):
+            body += _text_run(piece.text, style, piece.script)
+        elif isinstance(piece, Math):
+            body += _text_run(piece.latex, style)
+        elif isinstance(piece, Blank):
+            body += _text_run(" ", style)
+    body += el("a:endParaRPr", {"lang": "ru-RU"} if style.size is None else {
+        "lang": "ru-RU",
+        "sz": design.sz(style.size),
+    })
+    return el("a:p", children=body)
+
+
+def _text_run(text: str, style: Style, script: str = "") -> str:
+    return el(
+        "a:r",
+        children=_run_properties(style, script)
+        + el("a:t", {"xml:space": "preserve"} if text.strip() != text else None, escape(text)),
+    )
+
+
+def empty_paragraph(style: Style = Style()) -> str:
+    """A paragraph with nothing in it — what an empty placeholder holds so
+    that PowerPoint shows its prompt instead of collapsing it."""
+    return el("a:p", children=_paragraph_properties(style))
+
+
+def text_body(paragraphs: Sequence[str], *, anchor: str = "t", wrap: bool = True) -> str:
+    """`p:txBody` — the paragraphs plus how the box holds them.
+
+    `normAutofit` is on by design: PowerPoint decides what to do with text
+    that does not fit, and without it the text simply leaves the slide. The
+    player refused autofit because it could measure; here nothing can
+    (docs/pptx.md §6.3).
+    """
+    body = el(
+        "a:bodyPr",
+        {"wrap": "square" if wrap else "none", "anchor": anchor},
+        el("a:normAutofit"),
+    )
+    return el("p:txBody", children=body + el("a:lstStyle") + "".join(paragraphs))
+
+
+def lines(raw: Text) -> list[str]:
+    """Author text already parsed, as one paragraph — the shape callers with
+    a `Text` need."""
+    return [runs_paragraph(raw)]

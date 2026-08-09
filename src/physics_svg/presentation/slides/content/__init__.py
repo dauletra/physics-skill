@@ -11,6 +11,8 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.presentation.emit import emit_visual, runs
+from physics_svg.presentation.pptx import Slide, layouts
+from physics_svg.presentation.pptx.text import Style, paragraph
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import Invalid, field, spec
 
@@ -47,11 +49,34 @@ def emit(model: ContentSpec, scope: str) -> dict[str, object]:
     return data
 
 
+def build(model: ContentSpec) -> Slide:
+    """Heading, then whatever explains it.
+
+    A paragraph and a list live in the same place, one after the other: they
+    are both the body of the explanation, and giving each its own box would
+    make the gap between them a decision nobody took. The list is bulleted,
+    the paragraph is not — that is the only difference the layout draws.
+    """
+    heading, body = layouts.CONTENT.places
+    shapes = ""
+    if model.heading is not None:
+        shapes += heading.on_slide(2, [paragraph(model.heading)])
+    paragraphs = []
+    if model.text is not None:
+        paragraphs.append(paragraph(model.text, Style(bullet=False)))
+    for item in model.items or []:
+        paragraphs.append(paragraph(item, Style(bullet=True)))
+    if paragraphs:
+        shapes += body.on_slide(3, paragraphs)
+    return Slide("content", shapes)
+
+
 register(
     tag="content",
     title="Объяснение",
     model=ContentSpec,
     emit=emit,
+    build=build,
     order=30,
     module=__name__,
 )

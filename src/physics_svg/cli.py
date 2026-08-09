@@ -18,7 +18,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import fields, is_dataclass
 from pathlib import Path
+from typing import Any, Iterator
 
 from physics_svg import __version__
 from physics_svg.document import (
@@ -30,13 +32,19 @@ from physics_svg.document import (
 )
 from physics_svg.document.blocks import doc_block_annotation
 from physics_svg.document.emit.docx import Unsupported
-from physics_svg.draw import SCREEN_SCALE
+from physics_svg.draw import BOARD, SCREEN_SCALE, Canvas, overlapping_labels
 from physics_svg.presentation import WorkspaceError as PresentationError
 from physics_svg.presentation import build_data, build_page, data_json
 from physics_svg.presentation import load_workspace as load_presentation
 from physics_svg.presentation.pptx.deck import build_deck
 from physics_svg.schema import SchemaError, emit_schema
-from physics_svg.visuals import build_svg, parse_visual, visual_annotation
+from physics_svg.visuals import (
+    build_svg,
+    load_all,
+    parse_visual,
+    render_to_canvas,
+    visual_annotation,
+)
 
 #: Output formats, named once: SKILL.md tells the model about them, and the
 #: bundle test checks it promises nothing this list does not have.
@@ -196,7 +204,64 @@ def _present(args: argparse.Namespace) -> int:
             print(str(error), file=sys.stderr)
             return 1
         status = _write_bytes(output_dir / "presentation.pptx", deck) or status
+    _report_crowding(workspace.slides)
     return status
+
+
+def _report_crowding(slides: list[Any]) -> None:
+    """Labels a lesson's pictures write over each other, said out loud.
+
+    On a board every label is set half again as large, and a step the author
+    pinned is obeyed there as it is on paper — that step is usually the
+    question. So a picture can come out crowded and still be exactly what was
+    asked for, and the only honest thing to do is name it: the lesson is
+    built, and the teacher decides whether to widen the step.
+
+    The same shape as `_report`: the file is finished, this is what it could
+    not do quietly.
+    """
+    crowded = [
+        (slide_id, found)
+        for slide_id, model in _slide_visuals(slides)
+        for found in [_crowding(model)]
+        if found
+    ]
+    if not crowded:
+        return
+    print("Подписи наезжают друг на друга (шаг задан автором):", file=sys.stderr)
+    for slide_id, found in crowded:
+        print(f"  {slide_id}: {', '.join(found)}", file=sys.stderr)
+
+
+def _crowding(model: Any) -> list[str]:
+    canvas = Canvas(medium=BOARD)
+    render_to_canvas(model, canvas)
+    return overlapping_labels(canvas)
+
+
+def _slide_visuals(slides: list[Any]) -> Iterator[tuple[str, Any]]:
+    """Every illustration in the lesson, with the slide it stands on.
+
+    Walked over the parsed models rather than over a list of fields: a slide
+    kind is free to carry a picture wherever its shape wants one, and a new
+    kind must not have to be added here to be checked.
+    """
+    types = load_all()
+    for index, slide in enumerate(slides):
+        slide_id = getattr(slide, "id", None) or f"слайд {index + 1}"
+        for value in _walk(slide):
+            if getattr(value, "type", None) in types:
+                yield slide_id, value
+
+
+def _walk(value: Any) -> Iterator[Any]:
+    if is_dataclass(value) and not isinstance(value, type):
+        yield value
+        for entry in fields(value):
+            yield from _walk(getattr(value, entry.name))
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from _walk(item)
 
 
 def _visual(args: argparse.Namespace) -> int:

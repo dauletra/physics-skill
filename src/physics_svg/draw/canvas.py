@@ -25,11 +25,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Callable, Sequence
+from typing import Callable, Iterable, Iterator, Sequence
 
 from physics_svg.draw.geometry import BBox, Pt, Transform, union_all
 from physics_svg.draw.medium import SHEET, Medium
-from physics_svg.draw.nodes import Group, Line, Node, Path, Rect
+from physics_svg.draw.nodes import Group, Line, Node, Path, Rect, Text
 from physics_svg.draw.pathdata import LineTo, Move
 from physics_svg.draw.style import Style
 from physics_svg.draw.text import FONT_STACK, num
@@ -313,6 +313,52 @@ class Canvas:
             # degenerate but valid box rather than emitting broken markup.
             return BBox(0.0, 0.0, 1.0, 1.0)
         return _snap_out(content.expanded(padding))
+
+
+def overlapping_labels(canvas: Canvas) -> list[str]:
+    """Pairs of labels that are written on top of each other, named.
+
+    A picture is drawn once and shown at two label scales, and the larger one
+    can crowd what fitted on paper. Most of that the renderers now handle by
+    themselves — a number's clearance is a fraction of its own height, and
+    there are fewer numbers when they are set larger. What no renderer can
+    handle is an author who pinned the label step, because that step is
+    usually the question and is obeyed on every medium.
+
+    So the crowding that remains is real and reportable, not preventable:
+    this measures the finished canvas and hands back a list a test and the
+    command line can both say out loud. It never changes anything and never
+    raises — a picture that is a little tight is still a picture.
+
+    Two labels drawn at the same spot with the same content are one label
+    (a graph prints every number twice, once as its own white halo).
+    """
+    unique: dict[tuple[float, float, str, float, str, float], Text] = {}
+    for label in _texts(canvas.flat_nodes()):
+        key = (
+            label.at.x,
+            label.at.y,
+            label.content,
+            label.size,
+            label.anchor,
+            label.rotate,
+        )
+        unique.setdefault(key, label)
+    labels = [(label, box) for label in unique.values() if (box := label.bbox()) is not None]
+    return [
+        f"«{one.content}» и «{other.content}»"
+        for index, (one, box) in enumerate(labels)
+        for other, other_box in labels[index + 1 :]
+        if box.overlaps(other_box)
+    ]
+
+
+def _texts(nodes: Iterable[Node]) -> Iterator[Text]:
+    for node in nodes:
+        if isinstance(node, Group):
+            yield from _texts(node.flattened())
+        elif isinstance(node, Text):
+            yield node
 
 
 def _snap_out(box: BBox) -> BBox:

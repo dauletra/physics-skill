@@ -80,3 +80,47 @@ def test_every_problem_is_reported_at_once(tmp_path: Path) -> None:
     assert "s2" in report, "недостающий файл слайда должен быть назван"
     assert "не-s1" in report, "расхождение id с именем файла должно быть названо"
     assert "items" in report, "невалидный слайд должен попасть в тот же отчёт"
+
+
+class TestCrowdingIsReported:
+    """A label step the author pinned is obeyed on a board too — that step is
+    usually the question. So the lesson is built and the crowding is named,
+    the same shape the Word backend reports what OMML could not express."""
+
+    CROWDED = {
+        "type": "content",
+        "id": "s1",
+        "heading": "График",
+        "text": "Определи скорость.",
+        "visual": {
+            "type": "graph",
+            "x_label": "t, с",
+            "y_label": "s, м",
+            "x_range": [0, 40],
+            "y_range": [0, 28],
+            "x_step": 5,
+            "y_step": 2,
+            # Valid for a sheet, tight for a board: it is the author's call.
+            "y_label_step": 4,
+            "series": [{"points": [[0, 0], [40, 28]]}],
+        },
+    }
+
+    def build(self, tmp_path: Path, slide: dict) -> tuple[int, str]:
+        draft = write_draft(tmp_path, {"title": "Проба", "order": ["s1"]}, {"s1": slide})
+        from physics_svg.cli import main
+
+        code = main(["present", str(draft), "-o", str(tmp_path / "out")])
+        return code, (tmp_path / "out" / "presentation.json").exists()
+
+    def test_a_crowded_lesson_is_still_built(self, tmp_path: Path, capsys) -> None:
+        code, built = self.build(tmp_path, self.CROWDED)
+        assert code == 0 and built
+        assert "Подписи наезжают" in capsys.readouterr().err
+
+    def test_a_roomy_lesson_says_nothing(self, tmp_path: Path, capsys) -> None:
+        roomy = json.loads(json.dumps(self.CROWDED))
+        del roomy["visual"]["y_label_step"]
+        code, built = self.build(tmp_path, roomy)
+        assert code == 0 and built
+        assert "наезжают" not in capsys.readouterr().err

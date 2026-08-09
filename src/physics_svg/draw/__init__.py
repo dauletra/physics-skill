@@ -4,7 +4,12 @@ Knows nothing about physics, schemas or documents — everything above builds
 on this vocabulary rather than formatting SVG strings directly.
 """
 
-from physics_svg.draw.canvas import DEFAULT_PADDING, SCREEN_SCALE, Canvas
+from physics_svg.draw.canvas import (
+    DEFAULT_PADDING,
+    SCREEN_SCALE,
+    Canvas,
+    overlapping_labels,
+)
 from physics_svg.draw.geometry import (
     IDENTITY,
     ORIGIN,
@@ -112,6 +117,7 @@ __all__ = [
     "esc",
     "fixed",
     "num",
+    "overlapping_labels",
     "polar",
     "svg_text",
     "text_width",

@@ -7,8 +7,21 @@ two instruments on one page defining the same id.
 """
 
 import re
+from dataclasses import replace
 
-from physics_svg.draw import BBox, Canvas, Circle, Line, Pt, Rect, Style, Text
+from physics_svg.draw import (
+    BBox,
+    Canvas,
+    Circle,
+    Group,
+    Line,
+    Pt,
+    Rect,
+    Style,
+    Text,
+    Transform,
+    overlapping_labels,
+)
 from physics_svg.draw.canvas import SCREEN_SCALE
 
 
@@ -116,3 +129,34 @@ class TestRendering:
             return canvas.render()
 
         assert build() == build()
+
+
+class TestOverlappingLabels:
+    """The measure a crowded picture is reported by. It answers one question
+    and changes nothing — a picture that is tight is still a picture."""
+
+    def test_labels_apart_are_not_reported(self) -> None:
+        canvas = Canvas()
+        canvas.add(Text(Pt(0, 0), "10", size=9), Text(Pt(60, 0), "20", size=9))
+        assert overlapping_labels(canvas) == []
+
+    def test_labels_on_the_same_spot_are_reported_by_name(self) -> None:
+        canvas = Canvas()
+        canvas.add(Text(Pt(0, 0), "10", size=9), Text(Pt(2, 1), "20", size=9))
+        assert overlapping_labels(canvas) == ["«10» и «20»"]
+
+    def test_a_label_drawn_twice_is_one_label(self) -> None:
+        """A graph prints every number twice — once as the white halo under
+        it — and a number is not crowded by its own shadow."""
+        canvas = Canvas()
+        label = Text(Pt(0, 0), "10", size=9)
+        canvas.add(replace(label, style=Style(fill="#fff", stroke="#fff", width=2)), label)
+        assert overlapping_labels(canvas) == []
+
+    def test_a_group_hides_nothing(self) -> None:
+        canvas = Canvas()
+        canvas.add(
+            Group((Text(Pt(0, 0), "10", size=9),), Transform.translate(5, 0)),
+            Text(Pt(6, 1), "20", size=9),
+        )
+        assert overlapping_labels(canvas) == ["«10» и «20»"]

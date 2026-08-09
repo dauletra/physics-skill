@@ -18,9 +18,12 @@ slide *looks* — six metres and `evals/pptx.md` say that.
 
 from __future__ import annotations
 
+import pytest
+
 from library import EACH_EXAMPLE, EXAMPLES
+from physics_svg.draw import BOARD, SHEET, Canvas, Medium, overlapping_labels
 from physics_svg.presentation.pptx import design, layouts
-from physics_svg.visuals import label_metrics
+from physics_svg.visuals import label_metrics, render_to_canvas
 
 #: The boxes a slide offers an illustration, narrowest first.
 BOXES = {
@@ -92,10 +95,23 @@ def test_moving_a_picture_out_of_the_column_helps() -> None:
         assert above > in_column, example.name
 
 
+@EACH_EXAMPLE
+@pytest.mark.parametrize("medium", [SHEET, BOARD], ids=["sheet", "board"])
+def test_no_label_is_written_over_another(example, medium: Medium) -> None:
+    """A label under a label is a label that is not there.
+
+    Over the whole library, on both media. Nothing here is a matter of taste:
+    the boxes either share area or they do not, and a picture that fails this
+    is a picture where a number cannot be read at all.
+    """
+    canvas = Canvas(medium=medium)
+    render_to_canvas(example.model, canvas)
+    found = overlapping_labels(canvas)
+    assert not found, f"{example.name} на носителе «{medium.name}»: {', '.join(found)}"
+
+
 def test_the_board_scale_is_the_sheet_scale_enlarged() -> None:
     """Every step grows and the ladder keeps its order: a picture on a board
     is the same drawing set larger, not a different drawing."""
-    from physics_svg.draw import BOARD, SHEET
-
     assert all(board > sheet for board, sheet in zip(BOARD.steps, SHEET.steps))
     assert list(BOARD.steps) == sorted(set(BOARD.steps))

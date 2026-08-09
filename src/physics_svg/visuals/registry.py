@@ -18,10 +18,11 @@ import importlib
 import pkgutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Union
+from typing import Any, Callable, Iterable, Iterator, Union
 
-from physics_svg.draw import DEFAULT_PADDING, SCREEN_SCALE, WHITE, BBox, Canvas
-from physics_svg.draw.shapes import EMU_PER_PX, Drawing, Frame
+from physics_svg.draw import BOARD, DEFAULT_PADDING, SCREEN_SCALE, WHITE, BBox, Canvas
+from physics_svg.draw.nodes import Group, Node, Text
+from physics_svg.draw.shapes import EMU_PER_PX, Frame, SlideDrawing, WordDrawing
 from physics_svg.schema import parse
 
 #: EMU per user unit at the size the library is calibrated to. The picture is
@@ -160,5 +161,55 @@ def build_shapes(model: Any, *, width_emu: int) -> tuple[str, int, int]:
         factor = min(1.0, width_emu / needed) if needed else 1.0
         sx = sy = EMU_PER_UNIT * factor
     frame = Frame(box, sx, sy)
-    drawing = Drawing(frame)
+    drawing = WordDrawing(frame)
+    return drawing.group(canvas.flat_nodes()), frame.width, frame.height
+
+
+def label_metrics(model: Any) -> tuple[float, float, float]:
+    """The picture as a slide has to reason about it: (smallest label, width,
+    height) in user units, on the board scale.
+
+    A slide chooses where to put an illustration by whether its labels will
+    be legible there, and that question cannot be answered without drawing
+    the picture first — the frame grows with the labels. So the picture is
+    drawn, measured and thrown away; it costs one render and it replaces a
+    rule that would otherwise be guessed (docs/pptx.md §6.3).
+    """
+    canvas = Canvas(medium=BOARD)
+    layout = render_to_canvas(model, canvas)
+    box = canvas.frame_box(layout.viewbox, layout.padding)
+    sizes = [node.size for node in _labels(canvas.flat_nodes())]
+    return (min(sizes) if sizes else 0.0), box.width, box.height
+
+
+def _labels(nodes: Iterable[Node]) -> Iterator[Text]:
+    for node in nodes:
+        if isinstance(node, Group):
+            yield from _labels(node.flattened())
+        elif isinstance(node, Text):
+            yield node
+
+
+def build_slide_shapes(model: Any, *, width_emu: int, height_emu: int) -> tuple[str, int, int]:
+    """Render one visual as shapes on a slide: (group, width, height) in EMU.
+
+    Two things differ from the Word path, and both follow from where the
+    picture is going.
+
+    **It is fitted into a box, not into a column.** A sheet gives a picture
+    its width and as much height as it needs; a slide gives it a rectangle,
+    and the picture takes the smaller of the two ratios so that it fits
+    whole. The print calibration does not apply — on a board the picture is
+    as large as the room it is given, not 1,5 px per unit.
+
+    **It is drawn on the board medium.** The labels are set at the scale a
+    class reads from seven metres, which is the whole of
+    docs/visual-scale.md: the same drawing, a different label scale.
+    """
+    canvas = Canvas(medium=BOARD)
+    layout = render_to_canvas(model, canvas)
+    box = canvas.frame_box(layout.viewbox, layout.padding)
+    scale = min(width_emu / box.width, height_emu / box.height)
+    frame = Frame(box, scale, scale)
+    drawing = SlideDrawing(frame)
     return drawing.group(canvas.flat_nodes()), frame.width, frame.height

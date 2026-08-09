@@ -12,6 +12,7 @@ from typing import Literal, Optional
 
 from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, layouts
+from physics_svg.presentation.pptx.picture import picture
 from physics_svg.presentation.pptx.text import Style, paragraph
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import Invalid, field, spec
@@ -49,6 +50,30 @@ def emit(model: ContentSpec, scope: str) -> dict[str, object]:
     return data
 
 
+def _layout_for(model: ContentSpec) -> "layouts.Layout":
+    """Which of the three shapes of this kind the slide takes.
+
+    The player decided this by measuring — it laid the slide out and moved
+    the picture out of the text column if it had been squeezed. That much
+    measurement survives: the picture is drawn before the slide is, so its
+    frame and its smallest label are known, and whether the label will be
+    legible beside the text is arithmetic rather than a guess.
+
+    Beside the text, then, only if it reads there. A tall instrument does;
+    a wide graph does not — fitted into the column it loses its height, and
+    its numbers land under the size a class reads at. Those go above the
+    picture instead, with the frame's full width beneath them.
+    """
+    if model.visual is None:
+        return layouts.CONTENT
+    if model.text is None and model.items is None:
+        return layouts.CONTENT_FIGURE
+    assert layouts.CONTENT_SPLIT.picture is not None
+    if layouts.reads_in(layouts.CONTENT_SPLIT.picture, model.visual):
+        return layouts.CONTENT_SPLIT
+    return layouts.CONTENT_STACK
+
+
 def build(model: ContentSpec) -> Slide:
     """Heading, then whatever explains it.
 
@@ -57,18 +82,21 @@ def build(model: ContentSpec) -> Slide:
     make the gap between them a decision nobody took. The list is bulleted,
     the paragraph is not — that is the only difference the layout draws.
     """
-    heading, body = layouts.CONTENT.places
+    layout = _layout_for(model)
     shapes = ""
     if model.heading is not None:
-        shapes += heading.on_slide(2, [paragraph(model.heading)])
+        shapes += layout.places[0].on_slide(2, [paragraph(model.heading)])
     paragraphs = []
     if model.text is not None:
         paragraphs.append(paragraph(model.text, Style(bullet=False)))
     for item in model.items or []:
         paragraphs.append(paragraph(item, Style(bullet=True)))
     if paragraphs:
-        shapes += body.on_slide(3, paragraphs)
-    return Slide("content", shapes)
+        shapes += layout.places[1].on_slide(3, paragraphs)
+    if model.visual is not None:
+        assert layout.picture is not None
+        shapes += picture(model.visual, layout.picture)
+    return Slide(layout.name, shapes)
 
 
 register(

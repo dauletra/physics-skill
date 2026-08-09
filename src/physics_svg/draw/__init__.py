@@ -16,7 +16,7 @@ from physics_svg.draw.geometry import (
     polar,
     union_all,
 )
-from physics_svg.draw.medium import SHEET, Medium
+from physics_svg.draw.medium import BOARD, SHEET, Medium
 from physics_svg.draw.nodes import (
     Circle,
     Ellipse,
@@ -65,6 +65,7 @@ from physics_svg.draw.text import (
 __all__ = [
     "BBox",
     "BLACK",
+    "BOARD",
     "BODY",
     "Canvas",
     "Circle",

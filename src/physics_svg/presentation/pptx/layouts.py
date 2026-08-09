@@ -51,6 +51,11 @@ class Layout:
     background: str | None = None
     #: Decoration that is not a place: the rule under the heading.
     ornament: str = ""
+    #: Where an illustration goes, in points. Not a placeholder: PowerPoint
+    #: has one for pictures, and a group of native shapes is not a picture.
+    #: The box is declared here anyway so that the layout, and not the slide
+    #: kind, stays the one place that knows where things sit.
+    picture: tuple[float, float, float, float] | None = None
 
     def xml(self) -> str:
         shapes = "".join(
@@ -153,11 +158,117 @@ CONTENT = Layout(
     ornament=rule(RULE_Y),
 )
 
+#: Text beside the illustration. The proportion is the player's, and it was
+#: measured rather than guessed: 1.2 to 1 in favour of the text, because at
+#: the reverse the explanation dropped below the size a class reads at while
+#: the picture gained percentages of width it could not use
+#: (docs/slide-design.md §6.3).
+_GAP = design.cqh(3.0)
+_TEXT_COLUMN = (CONTENT_WIDTH - _GAP) * 1.2 / 2.2
+_PICTURE_COLUMN = (CONTENT_WIDTH - _GAP) / 2.2
+
+CONTENT_SPLIT = Layout(
+    name="content_split",
+    title="Объяснение с иллюстрацией",
+    places=(
+        Place(
+            name="Заголовок",
+            kind="title",
+            box=(design.PAD_X, HEAD_TOP, CONTENT_WIDTH, HEAD_HEIGHT),
+            size=design.HEADING,
+            bold=True,
+            anchor="b",
+        ),
+        Place(
+            name="Содержание",
+            kind="body",
+            idx=1,
+            box=(design.PAD_X, BODY_TOP, _TEXT_COLUMN, BODY_HEIGHT),
+            size=design.TEXT,
+            leading=design.LEADING,
+        ),
+    ),
+    ornament=rule(RULE_Y),
+    picture=(
+        design.PAD_X + _TEXT_COLUMN + _GAP,
+        BODY_TOP,
+        _PICTURE_COLUMN,
+        BODY_HEIGHT,
+    ),
+)
+
+#: Text above the illustration, the illustration across the frame. Where a
+#: picture cannot be read beside the text this is where it goes: measured,
+#: eleven specs of the library came out at 16–19 pt in the narrow column
+#: against a threshold of 19, and every one of them clears it here.
+_STACK_TEXT_HEIGHT = design.TEXT * design.LEADING * 2.4
+_STACK_PICTURE_TOP = BODY_TOP + _STACK_TEXT_HEIGHT + design.cqh(1.5)
+
+CONTENT_STACK = Layout(
+    name="content_stack",
+    title="Объяснение над иллюстрацией",
+    places=(
+        Place(
+            name="Заголовок",
+            kind="title",
+            box=(design.PAD_X, HEAD_TOP, CONTENT_WIDTH, HEAD_HEIGHT),
+            size=design.HEADING,
+            bold=True,
+            anchor="b",
+        ),
+        Place(
+            name="Содержание",
+            kind="body",
+            idx=1,
+            box=(design.PAD_X, BODY_TOP, CONTENT_WIDTH, _STACK_TEXT_HEIGHT),
+            size=design.TEXT,
+            leading=design.LEADING,
+        ),
+    ),
+    ornament=rule(RULE_Y),
+    picture=(
+        design.PAD_X,
+        _STACK_PICTURE_TOP,
+        CONTENT_WIDTH,
+        HEIGHT - _STACK_PICTURE_TOP - design.PAD_Y,
+    ),
+)
+
+
+#: Nothing but the picture: the slide whose whole point is what is drawn on
+#: it. The illustration gets the width of the frame, which is the only way a
+#: graph reaches the size the back row reads it at.
+CONTENT_FIGURE = Layout(
+    name="content_figure",
+    title="Иллюстрация",
+    places=(
+        Place(
+            name="Заголовок",
+            kind="title",
+            box=(design.PAD_X, HEAD_TOP, CONTENT_WIDTH, HEAD_HEIGHT),
+            size=design.HEADING,
+            bold=True,
+            anchor="b",
+        ),
+    ),
+    ornament=rule(RULE_Y),
+    picture=(design.PAD_X, BODY_TOP, CONTENT_WIDTH, BODY_HEIGHT),
+)
+
+
 #: Kept because PowerPoint offers it in «Создать слайд» and a teacher will
 #: reach for it; nothing the skill generates uses it.
 BLANK = Layout(name="blank", title="Пустой", kind="blank", places=())
 
-LAYOUTS: tuple[Layout, ...] = (TITLE, SECTION, CONTENT, BLANK)
+LAYOUTS: tuple[Layout, ...] = (
+    TITLE,
+    SECTION,
+    CONTENT,
+    CONTENT_SPLIT,
+    CONTENT_STACK,
+    CONTENT_FIGURE,
+    BLANK,
+)
 
 
 def layout_index(name: str) -> int:
@@ -171,3 +282,20 @@ def layout_index(name: str) -> int:
 
 def places(name: str) -> Sequence[Place]:
     return LAYOUTS[layout_index(name) - 1].places
+
+
+def reads_in(picture: tuple[float, float, float, float], model: object) -> bool:
+    """Would the picture's smallest label be legible in this box?
+
+    The one measurement the deck backend can still make. The player laid a
+    slide out and looked at the result; here the picture is drawn, its
+    frame and its smallest label are known, and fitting it into a rectangle
+    is arithmetic. Everything else about the slide is guessed — this is not.
+    """
+    from physics_svg.visuals import label_metrics
+
+    size, width, height = label_metrics(model)
+    if not size:  # ruled paper carries no labels; any box will do
+        return True
+    _, _, box_width, box_height = picture
+    return size * min(box_width / width, box_height / height) >= design.SMALL

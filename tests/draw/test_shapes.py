@@ -33,7 +33,7 @@ from physics_svg.draw.nodes import (
     arc,
 )
 from physics_svg.draw.pathdata import ArcTo, LineTo, Move, arc_geometry, parse, to_d
-from physics_svg.draw.shapes import Drawing, Frame
+from physics_svg.draw.shapes import Frame, SlideDrawing, WordDrawing
 
 FRAME = Frame(BBox(0, 0, 100, 100), 10000.0, 10000.0)
 
@@ -51,30 +51,61 @@ SAMPLES: dict[type, Node] = {
 }
 
 
+#: The two dialects, with the element each wraps a shape in. A node has to
+#: draw in both: one that works in Word and not on a slide is a picture that
+#: appears on the sheet and is missing from the lesson.
+DIALECTS = {"word": (WordDrawing, "<wps:wsp>"), "slide": (SlideDrawing, "<p:sp>")}
+
+
 class TestCoverage:
     def test_every_node_kind_has_a_sample(self) -> None:
         # `Raw` is SVG-only by decision: arbitrary markup has no equivalent
         # among shapes, and a type that needs something new gets a node.
         kinds = {kind for kind in Node.__subclasses__() if kind is not Raw}
         assert kinds == set(SAMPLES), (
-            "у узла нет перевода в фигуры Word: добавьте его в draw/shapes.py "
+            "у узла нет перевода в фигуры: добавьте его в draw/shapes.py "
             "и образец в SAMPLES"
         )
 
+    @pytest.mark.parametrize("dialect", list(DIALECTS))
     @pytest.mark.parametrize("kind", list(SAMPLES), ids=lambda k: k.__name__)
-    def test_every_node_kind_draws(self, kind: type) -> None:
-        xml = Drawing(FRAME).group([SAMPLES[kind]])
-        assert "<wps:wsp>" in xml
-        # Every shape needs an extent, and a zero one makes Word refuse the
-        # whole document.
+    def test_every_node_kind_draws(self, kind: type, dialect: str) -> None:
+        drawing, envelope = DIALECTS[dialect]
+        xml = drawing(FRAME).group([SAMPLES[kind]])
+        assert envelope in xml
+        # Every shape needs an extent, and a zero one makes Office refuse the
+        # whole file.
         for cx, cy in re.findall(r'<a:ext cx="(-?\d+)" cy="(-?\d+)"/>', xml):
             assert int(cx) > 0 and int(cy) > 0
+
+    @pytest.mark.parametrize("kind", list(SAMPLES), ids=lambda k: k.__name__)
+    def test_the_two_dialects_draw_the_same_geometry(self, kind: type) -> None:
+        """The envelope may differ; where things are may not.
+
+        Positions, extents and path points are what an envelope could
+        plausibly shift, and the day they shift is the day a graph on a
+        slide stops being the graph on the sheet. Fills and strokes are not
+        compared here because they cannot differ — both dialects call the
+        same two functions for them.
+        """
+        geometry = re.compile(r'<a:(?:off|ext|pt|prstGeom)[^>]*>')
+        word = geometry.findall(WordDrawing(FRAME).group([SAMPLES[kind]]))
+        slide = geometry.findall(SlideDrawing(FRAME).group([SAMPLES[kind]]))
+        assert word == slide
+
+    def test_a_label_on_a_slide_is_set_in_drawingml(self) -> None:
+        """Word puts a label in `w:p` inside a text box; a slide has no such
+        thing and sets it in `a:p` of a `p:txBody`."""
+        xml = SlideDrawing(FRAME).group([SAMPLES[Text]])
+        assert "<w:p>" not in xml and "<p:txBody>" in xml
+        # The index the author typed survives as an offset, not as a tag.
+        assert 'baseline="-25000"' in xml
 
     def test_raw_is_refused_with_a_way_out(self) -> None:
         with pytest.raises(Unsupported, match="заведи узел"):
             Raw("<circle/>").transformed(Transform.translate(1, 1))
         with pytest.raises(Unsupported, match="draw/shapes.py"):
-            Drawing(FRAME).group([Raw("<circle/>")])
+            WordDrawing(FRAME).group([Raw("<circle/>")])
 
 
 class TestTransforms:

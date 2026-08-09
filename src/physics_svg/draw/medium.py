@@ -63,3 +63,22 @@ SHEET = Medium(
     axis=10.0,
     display=15.0,
 )
+
+#: A classroom board, seven metres away. Every step is half again as large,
+#: which is not a taste but a measurement: at ×1,5 the smallest label of
+#: every picture in the library reaches the threshold the class reads at,
+#: fitted into the narrower of the two places a slide gives it
+#: (docs/visual-scale.md §6.1).
+#:
+#: The display is the exception at ×1,27: it is the largest thing on an
+#: instrument already, and its job is to be read as a number rather than to
+#: compete with the scale beside it.
+BOARD = Medium(
+    name="board",
+    micro=9.0,
+    label=10.5,
+    caption=12.0,
+    number=13.5,
+    axis=15.0,
+    display=19.0,
+)

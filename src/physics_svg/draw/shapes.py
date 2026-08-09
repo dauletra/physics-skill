@@ -21,6 +21,14 @@ The escape hatch is closed on purpose: `Raw` has no equivalent here and never
 will. A type that needs something new gets a node, and a node gets both
 serialisers — that is what keeps «one drawing, two formats» true as the
 library grows.
+
+**Two dialects, one geometry.** Word and PowerPoint read the same DrawingML
+for shape and path — `a:xfrm`, `a:custGeom`, `a:pathLst`, the fills and the
+strokes are identical to the letter. What differs is the envelope each puts
+around a shape, and how text gets inside one: Word sets a label in
+WordprocessingML paragraphs inside a text box, PowerPoint in `a:p` of a
+`p:txBody`. So `Drawing` owns the geometry and leaves exactly three things
+to its two subclasses — the group, the envelope, the label.
 """
 
 from __future__ import annotations
@@ -102,7 +110,12 @@ class Frame:
 
 
 class Drawing:
-    """One picture: shapes with ids unique inside it."""
+    """One picture: shapes with ids unique inside it.
+
+    Abstract in the three places the two dialects differ; everything below
+    them — paths, presets, fills, strokes — is shared, and keeping it shared
+    is what makes a picture on a slide the same picture as on a sheet.
+    """
 
     def __init__(self, frame: Frame) -> None:
         self.frame = frame
@@ -115,17 +128,29 @@ class Drawing:
     # --- the group ------------------------------------------------------
 
     def group(self, nodes: Sequence[Node]) -> str:
-        """`wpg:wgp` — the whole picture as one group of shapes."""
-        extent = (
+        """The whole picture as one group of shapes."""
+        return self._group("".join(self.shape(node) for node in _flatten(nodes)))
+
+    @property
+    def _extent(self) -> str:
+        """The group's own box and the coordinate space its children use.
+        The two are equal, which is what lets every child hold absolute
+        coordinates of the picture."""
+        return (
             f'<a:off x="0" y="0"/><a:ext cx="{self.frame.width}" cy="{self.frame.height}"/>'
             f'<a:chOff x="0" y="0"/><a:chExt cx="{self.frame.width}" cy="{self.frame.height}"/>'
         )
-        body = "".join(self.shape(node) for node in _flatten(nodes))
-        return (
-            "<wpg:wgp><wpg:cNvGrpSpPr/>"
-            f"<wpg:grpSpPr><a:xfrm>{extent}</a:xfrm></wpg:grpSpPr>"
-            f"{body}</wpg:wgp>"
-        )
+
+    # --- what a dialect brings -------------------------------------------
+
+    def _group(self, body: str) -> str:
+        raise NotImplementedError
+
+    def _wrap(self, properties: str) -> str:
+        raise NotImplementedError
+
+    def _text_shape(self, node: Text) -> str:
+        raise NotImplementedError
 
     # --- one node -------------------------------------------------------
 
@@ -183,8 +208,8 @@ class Drawing:
         placement = f'<a:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
         return self._wrap(placement + geometry + _fill(style) + _stroke(style, frame))
 
-    def _text_shape(self, node: Text) -> str:
-        """A label as a text box.
+    def _label_box(self, node: Text) -> str:
+        """Where a label's invisible box sits.
 
         Placement is exact even though the width is only estimated: the box is
         anchored by the edge the label is anchored by, and the text is aligned
@@ -200,10 +225,31 @@ class Drawing:
         cx = max(1, round(width * frame.sx))
         cy = max(1, round(node.size * _LINE_BOX * frame.sy))
         rotation = f' rot="{round(-node.rotate * _ANGLE)}"' if node.rotate else ""
-        placement = (
+        return (
             f"<a:xfrm{rotation}><a:off x=\"{x}\" y=\"{y}\"/>"
             f'<a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
         )
+
+    @staticmethod
+    def _label_geometry() -> str:
+        """A label's box: rectangular, invisible, and not in the way."""
+        return (
+            '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+            "<a:noFill/><a:ln><a:noFill/></a:ln>"
+        )
+
+
+class WordDrawing(Drawing):
+    """The dialect Word reads: `wpg`/`wps` shapes, a label in `w:p`."""
+
+    def _group(self, body: str) -> str:
+        return (
+            "<wpg:wgp><wpg:cNvGrpSpPr/>"
+            f"<wpg:grpSpPr><a:xfrm>{self._extent}</a:xfrm></wpg:grpSpPr>"
+            f"{body}</wpg:wgp>"
+        )
+
+    def _text_shape(self, node: Text) -> str:
         body = (
             '<wps:bodyPr rot="0" vert="horz" wrap="none" lIns="0" tIns="0" rIns="0" '
             'bIns="0" anchor="t" anchorCtr="0"><a:noAutofit/></wps:bodyPr>'
@@ -211,17 +257,56 @@ class Drawing:
         return (
             f'<wps:wsp><wps:cNvPr id="{self._id()}" name="Подпись"/>'
             '<wps:cNvSpPr txBox="1"/>'
-            f"<wps:spPr>{placement}"
-            '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln>'
-            "</wps:spPr>"
-            f"<wps:txbx><w:txbxContent>{_label_paragraph(node, frame)}</w:txbxContent></wps:txbx>"
-            f"{body}</wps:wsp>"
+            f"<wps:spPr>{self._label_box(node)}{self._label_geometry()}</wps:spPr>"
+            f"<wps:txbx><w:txbxContent>{_label_paragraph(node, self.frame)}</w:txbxContent>"
+            f"</wps:txbx>{body}</wps:wsp>"
         )
 
     def _wrap(self, properties: str) -> str:
         return (
             f'<wps:wsp><wps:cNvPr id="{self._id()}" name="Фигура"/><wps:cNvSpPr/>'
             f"<wps:spPr>{properties}</wps:spPr><wps:bodyPr/></wps:wsp>"
+        )
+
+
+class SlideDrawing(Drawing):
+    """The dialect PowerPoint reads: `p:sp` shapes, a label in `a:p`.
+
+    Three differences and no more. The name block is three elements where
+    Word has one and a half; a shape carries a `p:txBody` even when it holds
+    no text; and a size is in hundredths of a point rather than in halves.
+    """
+
+    def _group(self, body: str) -> str:
+        return (
+            f'<p:grpSp><p:nvGrpSpPr><p:cNvPr id="{self._id()}" name="Иллюстрация"/>'
+            "<p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>"
+            f"<p:grpSpPr><a:xfrm>{self._extent}</a:xfrm></p:grpSpPr>"
+            f"{body}</p:grpSp>"
+        )
+
+    def _names(self, name: str) -> str:
+        return (
+            f'<p:nvSpPr><p:cNvPr id="{self._id()}" name="{name}"/>'
+            "<p:cNvSpPr/><p:nvPr/></p:nvSpPr>"
+        )
+
+    def _text_shape(self, node: Text) -> str:
+        body = (
+            '<a:bodyPr rot="0" wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" '
+            'anchor="t" anchorCtr="0"><a:noAutofit/></a:bodyPr><a:lstStyle/>'
+        )
+        return (
+            f"<p:sp>{self._names('Подпись')}"
+            f"<p:spPr>{self._label_box(node)}{self._label_geometry()}</p:spPr>"
+            f"<p:txBody>{body}{_slide_label(node, self.frame)}</p:txBody></p:sp>"
+        )
+
+    def _wrap(self, properties: str) -> str:
+        return (
+            f"<p:sp>{self._names('Фигура')}"
+            f"<p:spPr>{properties}</p:spPr>"
+            "<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>"
         )
 
 
@@ -371,6 +456,44 @@ def _label_paragraph(node: Text, frame: Frame) -> str:
         f'<w:jc w:val="{_ALIGN[node.anchor]}"/>'
         f"</w:pPr>{runs}</w:p>"
     )
+
+
+def _slide_label(node: Text, frame: Frame) -> str:
+    """The same label, set the way a slide sets text.
+
+    Sizes are hundredths of a point here against halves in Word, and an index
+    is an offset in per mille rather than a named position — the two places
+    where the dialects are not simply renamed elements.
+    """
+    size = max(1, round(frame.points(node.size) * 100))
+    colour = _colour(node.style.fill or "#000")
+    bold = ' b="1"' if node.style.font_weight == "bold" else ""
+    # Letter spacing is in user units here and in hundredths of a point
+    # there: one unit is 1.5 px is 1.125 pt.
+    spacing = (
+        f' spc="{round(node.style.letter_spacing * 112.5)}"'
+        if node.style.letter_spacing
+        else ""
+    )
+    font = FONT_STACK.split(",")[0]
+    runs = "".join(
+        f'<a:r><a:rPr lang="ru-RU" sz="{size}"{bold}{spacing}{_slide_script(script)}>'
+        f'<a:solidFill><a:srgbClr val="{colour}"/></a:solidFill>'
+        f'<a:latin typeface="{font}"/></a:rPr>'
+        f'<a:t xml:space="preserve">{_xml_text(chunk)}</a:t></a:r>'
+        for chunk, script in split_scripts(node.content)
+    )
+    return f'<a:p><a:pPr algn="{_SLIDE_ALIGN[node.anchor]}"/>{runs}</a:p>'
+
+
+def _slide_script(script: str) -> str:
+    if not script:
+        return ""
+    return f' baseline="{30000 if script == "sup" else -25000}"'
+
+
+#: How a label's anchor becomes a paragraph alignment on a slide.
+_SLIDE_ALIGN = {"start": "l", "middle": "ctr", "end": "r"}
 
 
 def _script(script: str) -> str:

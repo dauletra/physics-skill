@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from physics_svg.presentation.emit import runs
 from physics_svg.presentation.pptx import Slide, layouts
 from physics_svg.presentation.pptx.text import paragraph
 from physics_svg.presentation.slides.registry import register
@@ -26,10 +25,6 @@ class SectionSpec:
     id: Optional[str] = None
 
 
-def emit(model: SectionSpec, scope: str) -> dict[str, object]:
-    return {"type": "section", "text": runs(model.text)}
-
-
 def build(model: SectionSpec) -> Slide:
     """The stage's name, alone on a dark slide."""
     place = layouts.SECTION.places[0]
@@ -40,7 +35,6 @@ register(
     tag="section",
     title="Разделитель этапа",
     model=SectionSpec,
-    emit=emit,
     build=build,
     order=110,
     module=__name__,

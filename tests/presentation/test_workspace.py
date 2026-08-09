@@ -111,7 +111,7 @@ class TestCrowdingIsReported:
         from physics_svg.cli import main
 
         code = main(["present", str(draft), "-o", str(tmp_path / "out")])
-        return code, (tmp_path / "out" / "presentation.json").exists()
+        return code, (tmp_path / "out" / "presentation.pptx").exists()
 
     def test_a_crowded_lesson_is_still_built(self, tmp_path: Path, capsys) -> None:
         code, built = self.build(tmp_path, self.CROWDED)

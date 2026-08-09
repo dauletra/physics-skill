@@ -6,13 +6,14 @@ so adding a slide kind is adding a directory; the union of allowed types,
 the JSON Schema, the reference, the template catalogue and the conformance
 tests are all derived from the registry.
 
-What a slide type does **not** declare: a renderer. Slides are rendered by
-the player, in the browser, from the emitted JSON — Python never writes
-slide markup. What a type does declare is **emit**: which of its fields are
-author text to be parsed into runs, and which are visuals — serialisation
-to the wire, markup-free by construction because the vocabulary it writes
-into is JSON. That is the boundary that lets the player move to a server
-later without the data noticing (docs/presentation.md §3).
+What a slide type declares is **build**: how its fields lay themselves out
+as a slide of a deck. Not markup by hand — the layout declares the places
+and the kind fills them, which is the same boundary the document keeps
+between a block and its backend (docs/pptx.md §5.2).
+
+There used to be a second output, `emit`, which wrote wire data for an
+HTML player to arrange. The player is gone (§3 of the same plan) and so is
+it: one model, one destination.
 """
 
 from __future__ import annotations
@@ -30,23 +31,10 @@ from physics_svg.visuals import visual_annotation
 if TYPE_CHECKING:
     from physics_svg.presentation.pptx import Slide
 
-#: The slide's payload as wire data: parsed runs for author text, an emitted
-#: visual for an illustration. The second argument is the id scope for the
-#: slide's SVG — unique per slide, so two graphs on one page cannot collide.
-Emitter = Callable[[Any, str], dict[str, Any]]
-
-#: The kind laid out as a PowerPoint slide. Where `emit` writes data for the
-#: player to arrange, this arranges: the CSS that used to place `.s-head` and
-#: `.s-body` is Python now, because that is where PowerPoint keeps layout
-#: (docs/pptx.md §5.2). While both emitters exist a kind may bring only the
-#: first; `PLAYER_ONLY` names the ones that still do.
+#: The kind laid out as a PowerPoint slide — the one output a kind has. The
+#: CSS that used to place `.s-head` and `.s-body` is Python now, because that
+#: is where PowerPoint keeps layout (docs/pptx.md §5.2).
 Builder = Callable[[Any], "Slide"]
-
-#: Kinds that still have no PowerPoint layout. Empty since P5 of
-#: docs/pptx.md: every kind of slide the skill knows lays itself out in a
-#: deck. It stays as the shape of the promise — `tests/presentation/
-#: test_slides.py` fails if a kind is added to it rather than removed.
-PLAYER_ONLY: frozenset[str] = frozenset()
 
 if TYPE_CHECKING:  # mypy reads this as plain `Any`; at runtime it resolves
     VISUAL = Any
@@ -63,11 +51,10 @@ class SlideType:
     #: Human name for the generated reference.
     title: str
     model: type
-    #: Serialisation to the wire — data, never markup.
-    emit: Emitter
-    #: Layout as a slide of a deck. `None` until the kind is carried over
-    #: to PowerPoint — see `PLAYER_ONLY`.
-    build: "Builder | None"
+    #: Layout as a slide of a deck. Required: a kind that cannot lay itself
+    #: out is a kind the deck would drop, and there is no second output for
+    #: it to fall back to any more.
+    build: "Builder"
     #: Place in everything a human reads — the reference index, the site —
     #: by where a slide sits in a lesson, not by its latin tag. Multiples of
     #: ten, so a new kind slots in without renumbering.
@@ -122,10 +109,9 @@ def register(
     tag: str,
     title: str,
     model: type,
-    emit: Emitter,
+    build: "Builder",
     order: int,
     module: str,
-    build: "Builder | None" = None,
 ) -> None:
     if tag in _REGISTRY:
         raise RuntimeError(f"slide type {tag!r} is already registered")
@@ -133,7 +119,7 @@ def register(
     if order in taken:
         raise RuntimeError(f"order {order} is already taken by {taken[order]!r}")
     directory = Path(importlib.import_module(module).__file__ or "").parent
-    _REGISTRY[tag] = SlideType(tag, title, model, emit, build, order, directory)
+    _REGISTRY[tag] = SlideType(tag, title, model, build, order, directory)
 
 
 def load_all() -> dict[str, SlideType]:

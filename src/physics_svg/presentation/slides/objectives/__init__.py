@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from physics_svg.presentation.emit import runs
 from physics_svg.presentation.pptx import Slide, layouts
 from physics_svg.presentation.pptx.text import Style, paragraph
 from physics_svg.presentation.slides.registry import register
@@ -27,10 +26,6 @@ class ObjectivesSpec:
     id: Optional[str] = None
 
 
-def emit(model: ObjectivesSpec, scope: str) -> dict[str, object]:
-    return {"type": "objectives", "items": [runs(item) for item in model.items]}
-
-
 def build(model: ObjectivesSpec) -> Slide:
     """The genre in the heading, the objectives under it.
 
@@ -51,7 +46,6 @@ register(
     tag="objectives",
     title=HEADING,
     model=ObjectivesSpec,
-    emit=emit,
     build=build,
     order=20,
     module=__name__,

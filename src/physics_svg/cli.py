@@ -4,7 +4,7 @@
     physics-svg build <draft> --handout  the same document without answers
     physics-svg build <draft> --format docx   the same document as a Word file
     physics-svg build <draft> --block ID a preview of one block
-    physics-svg present <draft>          presentation.html (player) + presentation.json
+    physics-svg present <draft>          presentation.pptx (колода PowerPoint)
     physics-svg visual <spec.json>       one standalone SVG
     physics-svg schema                   the published JSON Schema
 
@@ -34,7 +34,6 @@ from physics_svg.document.blocks import doc_block_annotation
 from physics_svg.document.emit.docx import Unsupported
 from physics_svg.draw import BOARD, SCREEN_SCALE, Canvas, overlapping_labels
 from physics_svg.presentation import WorkspaceError as PresentationError
-from physics_svg.presentation import build_data, build_page, data_json
 from physics_svg.presentation import load_workspace as load_presentation
 from physics_svg.presentation.pptx.deck import build_deck
 from physics_svg.schema import SchemaError, emit_schema
@@ -75,13 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("-o", "--out", help="куда положить результат (по умолчанию <draft>/output)")
 
     present = commands.add_parser(
-        "present", help="собрать презентацию урока (HTML-плеер и JSON) из папки-черновика"
-    )
-    present.add_argument(
-        "--format",
-        choices=("html", "pptx", "both"),
-        default="html",
-        help="что собрать: плеер, PowerPoint или оба (по умолчанию html)",
+        "present", help="собрать презентацию урока (файл PowerPoint) из папки-черновика"
     )
     present.add_argument("draft", help="папка с presentation.json и slides/")
     present.add_argument(
@@ -189,22 +182,13 @@ def _present(args: argparse.Namespace) -> int:
     draft = Path(args.draft)
     workspace = load_presentation(draft)
     output_dir = Path(args.out) if args.out else draft / "output"
-    status = 0
-    if args.format in ("html", "both"):
-        data = build_data(workspace.presentation, workspace.slides)
-        # The JSON beside the page is the same data the page embeds — the
-        # canon a future server receives, written out so nothing has to dig
-        # it out.
-        status = _write(output_dir / "presentation.json", data_json(data))
-        status = _write(output_dir / "presentation.html", build_page(data)) or status
-    if args.format in ("pptx", "both"):
-        try:
-            deck, notes = build_deck(workspace.presentation, workspace.slides)
-        except NotImplementedError as error:
-            print(str(error), file=sys.stderr)
-            return 1
-        status = _write_bytes(output_dir / "presentation.pptx", deck) or status
-        _report(notes)
+    try:
+        deck, notes = build_deck(workspace.presentation, workspace.slides)
+    except NotImplementedError as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    status = _write_bytes(output_dir / "presentation.pptx", deck)
+    _report(notes)
     _report_crowding(workspace.slides)
     return status
 

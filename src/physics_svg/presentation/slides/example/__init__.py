@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.inline import Run, parse_inline
-from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, design, layouts
 from physics_svg.presentation.pptx.picture import picture
 from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
@@ -37,19 +36,6 @@ class ExampleSpec:
     )
     visual: Optional[VISUAL] = field(default=None, doc="Иллюстрация к условию")
     id: Optional[str] = None
-
-
-def emit(model: ExampleSpec, scope: str) -> dict[str, object]:
-    data: dict[str, object] = {
-        "type": "example",
-        "text": runs(model.text),
-        "steps": [runs(step) for step in model.steps],
-    }
-    if model.visual is not None:
-        data["visual"] = emit_visual(model.visual, scope)
-    if model.answer is not None:
-        data["answer"] = runs(model.answer)
-    return data
 
 
 def build(model: ExampleSpec) -> Slide:
@@ -97,7 +83,6 @@ register(
     tag="example",
     title="Разбор задачи",
     model=ExampleSpec,
-    emit=emit,
     build=build,
     order=60,
     module=__name__,

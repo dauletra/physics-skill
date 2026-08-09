@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from physics_svg.presentation.emit import runs
 from physics_svg.presentation.pptx import Slide, layouts
 from physics_svg.presentation.pptx.text import Style, paragraph
 from physics_svg.presentation.slides.registry import register
@@ -32,10 +31,6 @@ class PromptSpec:
     id: Optional[str] = None
 
 
-def emit(model: PromptSpec, scope: str) -> dict[str, object]:
-    return {"type": "prompt", "items": [runs(item) for item in model.items]}
-
-
 def build(model: PromptSpec) -> Slide:
     """The genre in the heading, the questions under it — the same shape
     as `objectives` and `reflection`, because on the screen it *is* the same
@@ -53,7 +48,6 @@ register(
     tag="prompt",
     title=HEADING,
     model=PromptSpec,
-    emit=emit,
     build=build,
     order=90,
     module=__name__,

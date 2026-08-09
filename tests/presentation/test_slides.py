@@ -15,7 +15,6 @@ import pytest
 
 from physics_svg.presentation import parse_slide
 from physics_svg.presentation.slides import load_all, load_template, slide_annotation
-from physics_svg.presentation.slides.registry import PLAYER_ONLY
 from physics_svg.schema import SchemaError, emit_schema, spec_meta
 
 KINDS = list(load_all().values())
@@ -137,34 +136,50 @@ class TestInvariants:
 
 
 class TestDeckCoverage:
-    """The migration from the player to PowerPoint, held to one direction.
+    """Every kind is a slide of a deck, and nothing else.
 
-    A kind either lays itself out as a slide of a deck or is named in
-    `PLAYER_ONLY` as one that does not yet. The list is allowed to shrink and
-    nothing else — and P5 of docs/pptx.md emptied it. It stays because the
-    promise does: a new kind that quietly joined it would be a kind the deck
-    silently drops.
+    There used to be a second output — data for an HTML player — and a list of
+    kinds that had not been carried over yet. Both are gone: `register` will
+    not take a kind without a layout, so the only thing left to check is that
+    the layouts work on the kinds' own examples.
     """
 
-    def test_every_kind_lays_itself_out(self) -> None:
-        """The state P4 and P5 were for. Not the same statement as the one
-        below — that one says the list is honest, this one says it is empty."""
-        assert not PLAYER_ONLY, f"вид без раскладки: {sorted(PLAYER_ONLY)}"
-
-    def test_the_waiting_list_matches_the_kinds_without_a_layout(self) -> None:
-        kinds = load_all()
-        waiting = {tag for tag, entry in kinds.items() if entry.build is None}
-        assert waiting == set(PLAYER_ONLY), (
-            "PLAYER_ONLY разошёлся с реальностью: вид получил раскладку — "
-            "убери его из списка; вид появился без раскладки — сделай её"
-        )
-
-    def test_every_kind_that_can_be_laid_out_survives_its_own_templates(self) -> None:
+    def test_every_kind_survives_its_own_templates(self) -> None:
         """The templates are the kind's own examples, so a layout that only
         works on hand-written data is a layout that does not work."""
         for tag, entry in load_all().items():
-            if entry.build is None:
-                continue
             for template in entry.templates:
                 model = parse_slide(template.slide, f"{tag}-{template.slug}")
                 assert entry.build(model).layout, f"{tag}/{template.slug}"
+
+
+class TestAuthorTextGate:
+    """The payload fuzz, field by field — the mirror of the document's.
+
+    A slide's author text ends up inside XML, and a string that closes a tag
+    early makes a file PowerPoint refuses outright. The gate used to be JSON
+    (the player's blob); it is the same gate one vocabulary over, and it is
+    checked the same way: through every template of every kind, because a
+    field only one of them fills is still a field author text arrives in.
+    """
+
+    PAYLOAD = '</a:t></a:r><a:r><a:t>подмена & "кавычки" <b>'
+
+    def test_no_field_can_close_a_tag(self) -> None:
+        from xml.etree import ElementTree
+
+        for tag, entry in load_all().items():
+            for template in entry.templates:
+                for key, value in template.slide.items():
+                    if not isinstance(value, str) or key in ("type", "id"):
+                        continue
+                    try:
+                        model = parse_slide({**template.slide, key: self.PAYLOAD}, "s")
+                    except SchemaError:
+                        continue  # a closed vocabulary, not free text
+                    xml = entry.build(model).xml()
+                    ElementTree.fromstring(
+                        f'<r xmlns:a="a" xmlns:p="p" xmlns:r="r" xmlns:mc="m" '
+                        f'xmlns:a14="a14">{xml}</r>'
+                    )
+                    assert "<b>" not in xml, f"'{tag}': поле '{key}'"

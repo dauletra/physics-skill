@@ -18,7 +18,6 @@ sys.path.insert(0, str(REPO / "tools"))
 
 import build_site  # noqa: E402
 from physics_svg.document.assets import BASE_CSS  # noqa: E402
-from physics_svg.presentation import build_data, build_page  # noqa: E402
 from physics_svg.presentation import load_workspace as load_lesson  # noqa: E402
 from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
@@ -51,24 +50,23 @@ class TestGalleryCards:
 
 
 class TestSlidesPage:
-    """The one page the site does not render for itself.
+    """The one page the site cannot render for itself.
 
-    Everything else in the showcase is produced by the renderer a teacher's
-    files go through; a slide is drawn by the player, in a browser. So the
-    page embeds the player itself — one built presentation per template —
-    and its job is to carry every card, every template and the whole example.
+    Everything else in the showcase is HTML, so the page shows it. A slide is
+    a `.pptx`, and a page cannot show one — drawing a picture of a slide
+    would mean a second renderer, which is the one thing the design forbids.
+    So the page names every template and hands over the deck that holds them.
     """
 
-    def test_every_template_is_shown_by_the_player(self) -> None:
+    def test_every_template_is_named_and_shipped(self) -> None:
         page = build_site._slides_page()
         for entry in load_slides().values():
+            name = f"slides-{entry.tag}.pptx"
+            assert name in page, f"колода вида '{entry.tag}' не попала на страницу"
+            deck = build_site.DOCS / "assets" / name
+            assert deck.read_bytes().startswith(b"PK"), name
             for template in entry.templates:
-                name = f"slide-{entry.tag}-{template.slug}.html"
-                assert name in page, f"заготовка '{entry.tag}/{template.slug}' не попала на страницу"
-                asset = build_site.DOCS / "assets" / name
-                # A real built page, not a picture of one: the blob is what
-                # proves the player draws this preview at runtime.
-                assert 'id="presentation-data"' in asset.read_text(encoding="utf-8")
+                assert template.slug in page, f"'{entry.tag}/{template.slug}' не назван"
 
     def test_every_kind_reaches_the_page(self) -> None:
         page = build_site._slides_page()
@@ -76,12 +74,14 @@ class TestSlidesPage:
             heading = entry.card.read_text(encoding="utf-8").splitlines()[0].lstrip("# ")
             assert f"## {heading}" in page, f"карточка вида '{entry.tag}' не попала на страницу"
 
-    def test_it_opens_a_presentation_that_builds(self) -> None:
-        assert "assets/example-presentation.html" in build_site._slides_page()
+    def test_it_offers_a_presentation_that_builds(self) -> None:
+        assert "assets/example-presentation.pptx" in build_site._slides_page()
         # The link is only worth anything if the lesson behind it still builds.
+        from physics_svg.presentation.pptx.deck import build_deck
+
         lesson = load_lesson(build_site.EXAMPLE)
-        page = build_page(build_data(lesson.presentation, lesson.slides))
-        assert 'id="presentation-data"' in page
+        deck, _ = build_deck(lesson.presentation, lesson.slides)
+        assert deck.startswith(b"PK")
 
 
 class TestScopedStylesheet:

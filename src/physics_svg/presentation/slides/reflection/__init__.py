@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from physics_svg.presentation.emit import runs
 from physics_svg.presentation.pptx import Slide, layouts
 from physics_svg.presentation.pptx.text import Style, paragraph
 from physics_svg.presentation.slides.registry import register
@@ -32,10 +31,6 @@ class ReflectionSpec:
     id: Optional[str] = None
 
 
-def emit(model: ReflectionSpec, scope: str) -> dict[str, object]:
-    return {"type": "reflection", "items": [runs(item) for item in model.items]}
-
-
 def build(model: ReflectionSpec) -> Slide:
     """The genre in the heading, the closing questions under it."""
     layout = layouts.CONTENT
@@ -51,7 +46,6 @@ register(
     tag="reflection",
     title=HEADING,
     model=ReflectionSpec,
-    emit=emit,
     build=build,
     order=100,
     module=__name__,

@@ -11,11 +11,13 @@ machine that has never seen this project.
 from __future__ import annotations
 
 import ast
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -53,13 +55,6 @@ class TestContents:
             "templates.md",
             "visuals.md",
         }
-
-    def test_the_player_ships(self, bundle: Path) -> None:
-        # The player is the only data file the package cannot work without,
-        # and the only one the stdlib-imports test would not miss: `present`
-        # fails at the last step if the copy rules ever swallow it.
-        player = bundle / "physics_svg" / "presentation" / "player" / "player.html"
-        assert player.exists() and "__PRESENTATION_DATA__" in player.read_text(encoding="utf-8")
 
     def test_the_spec_library_ships(self, bundle: Path) -> None:
         for entry in load_visuals().values():
@@ -268,9 +263,10 @@ class TestEndToEnd:
     def test_it_builds_the_shipped_lesson_presentation(
         self, bundle: Path, clean_env: dict[str, str], tmp_path: Path
     ) -> None:
-        """The third artefact, end to end: the player template has to travel
-        with the package and the page has to come out whole — a picture drawn
-        offline, formulas parsed, data extractable."""
+        """The third artefact, end to end: a deck that opens, built by the
+        packaged copy with nothing but the standard library — the picture
+        drawn offline as native shapes, the formulas as OMML inside the
+        file."""
         result = subprocess.run(
             [
                 sys.executable,
@@ -283,12 +279,15 @@ class TestEndToEnd:
             capture_output=True, text=True, encoding="utf-8", env=clean_env, cwd=tmp_path,
         )
         assert result.returncode == 0, result.stderr
-        page = (tmp_path / "out" / "presentation.html").read_text(encoding="utf-8")
-        assert 'id="presentation-data"' in page
-        assert "__PRESENTATION_DATA__" not in page
-        assert "<svg" in page, "иллюстрация не дошла до слайда"
-        data = json.loads((tmp_path / "out" / "presentation.json").read_text(encoding="utf-8"))
-        assert data["format"] >= 1 and len(data["slides"]) > 1
+        deck = (tmp_path / "out" / "presentation.pptx").read_bytes()
+        assert deck[:2] == b"PK"
+        with zipfile.ZipFile(io.BytesIO(deck)) as package:
+            names = package.namelist()
+            slides = [name for name in names if name.startswith("ppt/slides/slide")]
+            assert len(slides) > 1, "урок собрался в один слайд"
+            body = "".join(package.read(name).decode("utf-8") for name in slides)
+        assert "a:custGeom" in body, "иллюстрация не дошла до слайда фигурами"
+        assert "<m:oMath" in body, "формула не дошла до слайда как формула"
 
     def test_it_draws_a_library_spec(
         self, bundle: Path, clean_env: dict[str, str], tmp_path: Path

@@ -14,7 +14,6 @@ from __future__ import annotations
 from typing import Any, Literal, Optional
 
 from physics_svg.inline import Math, parse_inline
-from physics_svg.presentation.emit import runs
 from physics_svg.presentation.pptx import Slide, layouts
 from physics_svg.presentation.pptx.text import paragraph, runs_paragraph
 from physics_svg.presentation.slides.registry import register
@@ -44,19 +43,6 @@ class FormulaSpec:
         default=None, min_items=1, doc="Обозначения: по паре «символ — расшифровка»"
     )
     id: Optional[str] = None
-
-
-def emit(model: FormulaSpec, scope: str) -> dict[str, object]:
-    data: dict[str, object] = {"type": "formula", "formula": _display(runs(model.formula))}
-    if model.heading is not None:
-        data["heading"] = runs(model.heading)
-    if model.text is not None:
-        data["text"] = runs(model.text)
-    if model.terms is not None:
-        data["terms"] = [
-            {"symbol": runs(term.symbol), "meaning": runs(term.meaning)} for term in model.terms
-        ]
-    return data
 
 
 def _display(parsed: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -120,7 +106,6 @@ register(
     tag="formula",
     title="Формула",
     model=FormulaSpec,
-    emit=emit,
     build=build,
     order=40,
     module=__name__,

@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.inline import Run, parse_inline
-from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, design, layouts
 from physics_svg.presentation.pptx.picture import picture
 from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
@@ -35,15 +34,6 @@ class BoardTaskSpec:
         default=None, doc="Ответ для учителя; когда его показать, решает плеер"
     )
     id: Optional[str] = None
-
-
-def emit(model: BoardTaskSpec, scope: str) -> dict[str, object]:
-    data: dict[str, object] = {"type": "board_task", "text": runs(model.text)}
-    if model.visual is not None:
-        data["visual"] = emit_visual(model.visual, scope)
-    if model.answer is not None:
-        data["answer"] = runs(model.answer)
-    return data
 
 
 def _layout_for(model: BoardTaskSpec) -> "layouts.Layout":
@@ -101,7 +91,6 @@ register(
     tag="board_task",
     title="Задача у доски",
     model=BoardTaskSpec,
-    emit=emit,
     build=build,
     order=70,
     module=__name__,

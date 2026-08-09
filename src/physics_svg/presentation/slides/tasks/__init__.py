@@ -15,7 +15,6 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.inline import Run, parse_inline
-from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, design, layouts
 from physics_svg.presentation.pptx.cell import IDS_PER_CELL, LINE, cell
 from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
@@ -58,23 +57,6 @@ class TasksSpec:
     )
     heading: Optional[str] = field(default=None, doc="Заголовок: «Решите в парах»")
     id: Optional[str] = None
-
-
-def emit(model: TasksSpec, scope: str) -> dict[str, object]:
-    tasks = []
-    for index, task in enumerate(model.tasks):
-        item: dict[str, object] = {"text": runs(task.text)}
-        if task.visual is not None:
-            # One scope per picture: ids inside two SVGs on one slide must
-            # not collide.
-            item["visual"] = emit_visual(task.visual, f"{scope}v{index + 1}")
-        if task.answer is not None:
-            item["answer"] = runs(task.answer)
-        tasks.append(item)
-    data: dict[str, object] = {"type": "tasks", "tasks": tasks}
-    if model.heading is not None:
-        data["heading"] = runs(model.heading)
-    return data
 
 
 def build(model: TasksSpec) -> Slide:
@@ -147,7 +129,6 @@ register(
     tag="tasks",
     title="Набор задач",
     model=TasksSpec,
-    emit=emit,
     build=build,
     order=80,
     module=__name__,

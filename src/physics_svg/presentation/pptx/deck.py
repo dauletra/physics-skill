@@ -5,10 +5,8 @@ same shape — one pass over the validated models, each handing its own kind
 the work. What differs is the destination: there the lesson became data for
 the player to arrange, here it becomes the arrangement.
 
-Every kind lays itself out since P5 of docs/pptx.md; `PLAYER_ONLY` is empty
-and the refusal below is what keeps it that way. A kind that arrives without
-a layout is named loudly rather than dropped — silence would produce a lesson
-with slides missing from the middle and nothing to say why.
+Every kind lays itself out — `register` will not take one that does not, so
+there is no case here where a slide could be silently dropped.
 """
 
 from __future__ import annotations
@@ -34,13 +32,7 @@ def build_deck(
     built = []
     notes: list[str] = []
     for number, model in enumerate(slides, start=1):
-        kind = registry[model.type]
-        if kind.build is None:
-            raise NotImplementedError(
-                f"слайд {number}: вид '{model.type}' не раскладывается в "
-                "PowerPoint — у вида нет 'build' (docs/pptx.md §5.2)"
-            )
-        slide = kind.build(model)
+        slide = registry[model.type].build(model)
         built.append(slide)
         notes.extend(f"слайд {number}: {note}" for note in slide.notes)
     return build_pptx(built, title=presentation.title), tuple(notes)

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, design, layouts
 from physics_svg.presentation.pptx.cell import IDS_PER_CELL, LEAD_LINE, LINE, cell
 from physics_svg.presentation.pptx.text import Style, paragraph
@@ -60,25 +59,6 @@ class CompareSpec:
     id: Optional[str] = None
 
 
-def emit(model: CompareSpec, scope: str) -> dict[str, object]:
-    cases = []
-    for index, case in enumerate(model.cases):
-        item: dict[str, object] = {"label": runs(case.label)}
-        if case.text is not None:
-            item["text"] = runs(case.text)
-        if case.items is not None:
-            item["items"] = [runs(line) for line in case.items]
-        if case.visual is not None:
-            # One scope per picture, not per slide: two graphs on one screen
-            # would otherwise share ids inside their SVG.
-            item["visual"] = emit_visual(case.visual, f"{scope}v{index + 1}")
-        cases.append(item)
-    data: dict[str, object] = {"type": "compare", "cases": cases}
-    if model.heading is not None:
-        data["heading"] = runs(model.heading)
-    return data
-
-
 def build(model: CompareSpec) -> Slide:
     """The cases side by side, one cell each.
 
@@ -116,7 +96,6 @@ register(
     tag="compare",
     title="Сопоставление",
     model=CompareSpec,
-    emit=emit,
     build=build,
     order=50,
     module=__name__,

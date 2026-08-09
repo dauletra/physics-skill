@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, layouts
 from physics_svg.presentation.pptx.picture import picture
 from physics_svg.presentation.pptx.text import Style, paragraph
@@ -35,19 +34,6 @@ class ContentSpec:
         # minimal valid form does not print emptiness).
         if self.text is None and self.items is None and self.visual is None:
             raise Invalid("слайд пуст: нужно хотя бы одно из 'text', 'items', 'visual'")
-
-
-def emit(model: ContentSpec, scope: str) -> dict[str, object]:
-    data: dict[str, object] = {"type": "content"}
-    if model.heading is not None:
-        data["heading"] = runs(model.heading)
-    if model.text is not None:
-        data["text"] = runs(model.text)
-    if model.items is not None:
-        data["items"] = [runs(item) for item in model.items]
-    if model.visual is not None:
-        data["visual"] = emit_visual(model.visual, scope)
-    return data
 
 
 def _layout_for(model: ContentSpec) -> "layouts.Layout":
@@ -103,7 +89,6 @@ register(
     tag="content",
     title="Объяснение",
     model=ContentSpec,
-    emit=emit,
     build=build,
     order=30,
     module=__name__,

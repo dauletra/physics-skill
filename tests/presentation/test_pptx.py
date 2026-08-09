@@ -499,24 +499,6 @@ class TestLesson:
         node_ids = [node.attrib["id"] for node in root.iter(f"{p}cTn")]
         assert len(node_ids) == len(set(node_ids)), "повторяющиеся id узлов анимации"
 
-    def test_a_kind_without_a_layout_says_so(self, monkeypatch) -> None:
-        """Silence would give a lesson with slides missing from the middle.
-
-        Every kind lays itself out since P5, so the refusal has to be
-        provoked: a kind is stripped of its `build` for the length of the
-        test. Keeping the check is the point — the next kind somebody adds
-        will arrive without one.
-        """
-        from dataclasses import replace as replace_field
-
-        from physics_svg.presentation.slides import registry
-
-        registry.load_all()  # populate before patching one entry out of it
-        stripped = replace_field(registry._REGISTRY["content"], build=None)
-        monkeypatch.setitem(registry._REGISTRY, "content", stripped)
-        with pytest.raises(NotImplementedError, match="content"):
-            self.deck({"type": "content", "text": "Что-нибудь"})
-
 
 class TestStability:
     def test_two_builds_are_the_same_file(self) -> None:

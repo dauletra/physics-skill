@@ -15,6 +15,7 @@ from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, design, layouts
 from physics_svg.presentation.pptx.picture import picture
 from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
+from physics_svg.presentation.pptx.timing import Reveal
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import field, spec
 
@@ -65,19 +66,19 @@ def _layout_for(model: BoardTaskSpec) -> "layouts.Layout":
 def build(model: BoardTaskSpec) -> Slide:
     """The statement, the picture, the answer — the player's own order.
 
-    The answer stands open. Hiding it is P5а of docs/pptx.md, where it
-    becomes an animation triggered by a click; until then a teacher who does
-    not want it on the screen leaves the field out, which is what the
-    `without-answer` template is for.
+    The answer waits for a click. The class gets the task and the picture
+    when the slide comes up, and the answer only when the teacher decides —
+    which is the whole reason a task is a slide of its own.
     """
     layout = _layout_for(model)
     shapes = layout.places[0].on_slide(2, [paragraph(model.text)])
     if model.visual is not None:
         assert layout.picture is not None
         shapes += picture(model.visual, layout.picture)
-    if model.answer is not None:
-        shapes += layout.places[1].on_slide(3, [_answer(model.answer)])
-    return Slide(layout.name, shapes)
+    if model.answer is None:
+        return Slide(layout.name, shapes)
+    shapes += layout.places[1].on_slide(3, [_answer(model.answer)])
+    return Slide(layout.name, shapes, reveals=(Reveal(3),))
 
 
 def _answer(answer: str) -> str:

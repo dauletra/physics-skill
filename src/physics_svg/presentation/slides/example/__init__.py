@@ -16,6 +16,7 @@ from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, design, layouts
 from physics_svg.presentation.pptx.picture import picture
 from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
+from physics_svg.presentation.pptx.timing import Reveal
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import field, spec
 
@@ -54,9 +55,11 @@ def emit(model: ExampleSpec, scope: str) -> dict[str, object]:
 def build(model: ExampleSpec) -> Slide:
     """The statement, the steps numbered under it, the answer at the foot.
 
-    The steps stand open, all of them at once. Showing them one at a time is
-    the whole point of the kind and it comes in P5а — until then a teacher
-    who does not want the solution on the screen leaves the slide for later.
+    The steps come one click at a time and the answer last, so the class
+    follows the reasoning instead of reading the end of it. That order is not
+    a preference: PowerPoint has one queue of clicks and no way past it, so
+    an answer anywhere but last could be opened by a teacher who only meant
+    to show the next step (docs/pptx.md §6.2).
 
     PowerPoint numbers the steps itself rather than the numbers being drawn
     into the text: a teacher who inserts a step gets the rest renumbered
@@ -71,9 +74,11 @@ def build(model: ExampleSpec) -> Slide:
     if model.visual is not None:
         assert layout.picture is not None
         shapes += picture(model.visual, layout.picture)
+    reveals = [Reveal(3, tuple(range(len(model.steps))))]
     if model.answer is not None:
         shapes += layout.places[2].on_slide(4, [_answer(model.answer, notes)])
-    return Slide(layout.name, shapes, tuple(notes))
+        reveals.append(Reveal(4))
+    return Slide(layout.name, shapes, tuple(notes), tuple(reveals))
 
 
 def _answer(answer: str, notes: list[str]) -> str:

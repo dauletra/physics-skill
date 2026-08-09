@@ -424,6 +424,81 @@ class TestLesson:
         assert body.count('<a:buAutoNum type="arabicPeriod"/>') == 2
         assert "1." not in self.texts(package, "ppt/slides/slide1.xml")
 
+    def test_an_answer_waits_for_a_click(self) -> None:
+        """A task whose answer is already on the screen is not a task."""
+        package = self.deck(
+            {"type": "board_task", "text": "За какое время?", "answer": "12 с"}
+        )
+        body = package.read("ppt/slides/slide1.xml").decode()
+        assert "<p:timing>" in body
+        assert 'nodeType="clickEffect"' in body
+        assert 'presetClass="entr"' in body
+
+    def test_a_slide_with_nothing_to_reveal_has_no_timing(self) -> None:
+        """The most fragile XML the deck writes is simply absent where it is
+        not needed, so a slide that does not animate cannot be broken by it."""
+        for quiet in (
+            {"type": "content", "text": "Объяснение"},
+            {"type": "board_task", "text": "Постройте график."},
+        ):
+            body = self.deck(quiet).read("ppt/slides/slide1.xml").decode()
+            assert "p:timing" not in body, quiet["type"]
+
+    def test_the_answer_is_the_last_click(self) -> None:
+        """PowerPoint has one queue and no key that skips it, so an answer
+        anywhere but last could be opened by a teacher who only meant to show
+        the next step (docs/pptx.md §6.2)."""
+        package = self.deck(
+            {
+                "type": "example",
+                "text": "Условие",
+                "steps": ["Раз", "Два"],
+                "answer": "25 м",
+            }
+        )
+        targets = [
+            node.attrib["spid"]
+            for node in read(package, "ppt/slides/slide1.xml").iter(
+                "{http://schemas.openxmlformats.org/presentationml/2006/main}spTgt"
+            )
+        ]
+        assert targets == ["3", "3", "4"], "шаги, потом ответ"
+
+    @pytest.mark.parametrize(
+        "slide",
+        [
+            {"type": "board_task", "text": "Задача", "answer": "12 с"},
+            {"type": "example", "text": "У", "steps": ["Раз", "Два"], "answer": "5 м"},
+            {
+                "type": "tasks",
+                "tasks": [
+                    {"text": "Первая", "answer": "1"},
+                    {"text": "Вторая", "answer": "2"},
+                ],
+            },
+        ],
+        ids=["board_task", "example", "tasks"],
+    )
+    def test_the_timing_tree_points_at_shapes_that_exist(self, slide: dict) -> None:
+        """A dangling `spid` is the classic way to lose a slide show — and
+        unlike the show itself, it is checkable. The node ids inside the tree
+        have to be distinct for the same reason."""
+        package = self.deck(slide)
+        root = read(package, "ppt/slides/slide1.xml")
+        p = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
+        shapes = {
+            node.attrib["id"]
+            for node in root.iter()
+            if node.tag.endswith("}cNvPr") and "id" in node.attrib
+        }
+        targets = {node.attrib["spid"] for node in root.iter(f"{p}spTgt")}
+        assert targets, "анимации нет — тест ничего не проверяет"
+        assert targets <= shapes, f"анимация целится в несуществующие фигуры: {targets - shapes}"
+        builds = {node.attrib["spid"] for node in root.iter(f"{p}bldP")}
+        assert builds <= shapes
+        node_ids = [node.attrib["id"] for node in root.iter(f"{p}cTn")]
+        assert len(node_ids) == len(set(node_ids)), "повторяющиеся id узлов анимации"
+
     def test_a_kind_without_a_layout_says_so(self, monkeypatch) -> None:
         """Silence would give a lesson with slides missing from the middle.
 

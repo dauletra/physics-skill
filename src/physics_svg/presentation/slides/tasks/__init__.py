@@ -19,6 +19,7 @@ from physics_svg.presentation.emit import emit_visual, runs
 from physics_svg.presentation.pptx import Slide, design, layouts
 from physics_svg.presentation.pptx.cell import IDS_PER_CELL, LINE, cell
 from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
+from physics_svg.presentation.pptx.timing import Reveal
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import field, spec
 
@@ -85,22 +86,32 @@ def build(model: TasksSpec) -> Slide:
 
     The answer band is reserved for every cell as soon as one task has an
     answer: a row of answers at different heights reads as broken typesetting
-    rather than as a row. Like `board_task`, they stand open until P5а.
+    rather than as a row.
+
+    The answers wait for a click, and they open **in order** — first task
+    first. The player let the teacher open the one the class had got to;
+    PowerPoint has one queue and no way to pick out of it, so a set whose
+    tasks are solved out of order is a set to give without answers on the
+    screen (docs/pptx.md §4).
     """
     layout = _layout_for(model)
     answers = any(task.answer is not None for task in model.tasks)
     shapes = _head(model.heading, layout)
+    reveals = []
     for index, (task, box) in enumerate(zip(model.tasks, layout.cells)):
+        number = 10 + index * IDS_PER_CELL
+        if task.answer:
+            reveals.append(Reveal(number + 2))
         shapes += cell(
             box,
             [_statement(index, task.text)],
-            number=10 + index * IDS_PER_CELL,
+            number=number,
             text_height=_STATEMENT_LINES * LINE,
             visual=task.visual,
             answer=[paragraph(task.answer, Style(bold=True))] if task.answer else (),
             reserve_answer=answers,
         )
-    return Slide(layout.name, shapes)
+    return Slide(layout.name, shapes, reveals=tuple(reveals))
 
 
 def _layout_for(model: TasksSpec) -> "layouts.Layout":

@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from physics_svg.ooxml import el
+from physics_svg.presentation.pptx.timing import Reveal, timing
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -40,17 +41,22 @@ def shape_tree(shapes: str = "") -> str:
     )
 
 
-def slide_xml(shapes: str = "") -> str:
+def slide_xml(shapes: str = "", timing: str = "") -> str:
     """`ppt/slides/slideN.xml`.
 
     `p:clrMapOvr` with `a:masterClrMapping` says «no override» — the slide
     reads colours the way the master maps them. It is not optional.
+
+    Order is: what is on the slide, how it reads colour, when things appear.
+    OOXML fixes it, and a `p:timing` written before `p:clrMapOvr` is a file
+    PowerPoint refuses.
     """
     return el(
         "p:sld",
         NS,
         el("p:cSld", children=shape_tree(shapes))
-        + el("p:clrMapOvr", children=el("a:masterClrMapping")),
+        + el("p:clrMapOvr", children=el("a:masterClrMapping"))
+        + timing,
     )
 
 
@@ -70,9 +76,13 @@ class Slide:
     #: backend has, and for the same reason: silence would mean a teacher
     #: finding `\int` on the screen with the class already looking at it.
     notes: tuple[str, ...] = ()
+    #: What waits for a click — the steps of a solution, an answer. Kept as
+    #: intent rather than as XML: a slide kind says «this appears on a
+    #: click», and `timing.py` knows what that costs in OOXML.
+    reveals: tuple[Reveal, ...] = ()
 
     def xml(self) -> str:
-        return slide_xml(self.shapes)
+        return slide_xml(self.shapes, timing(self.reveals))
 
 
 def slide(shapes: str = "") -> Slide:

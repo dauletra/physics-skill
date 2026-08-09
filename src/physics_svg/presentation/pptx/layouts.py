@@ -56,6 +56,10 @@ class Layout:
     #: The box is declared here anyway so that the layout, and not the slide
     #: kind, stays the one place that knows where things sit.
     picture: tuple[float, float, float, float] | None = None
+    #: Equal pieces of the slide, in reading order — a comparison's cases, a
+    #: set's tasks. Same reason as `picture`: what is inside one is drawn by
+    #: the slide, but where they sit is the layout's to know (`cell.py`).
+    cells: tuple[tuple[float, float, float, float], ...] = ()
 
     def xml(self) -> str:
         shapes = "".join(
@@ -371,6 +375,63 @@ TASK_STACK = Layout(
 )
 
 
+#: A slide of equal pieces: cases held side by side, tasks solved in parallel.
+#: The layout declares only where the pieces sit — what goes inside one is
+#: drawn by the slide, and why is in `cell.py`.
+#:
+#: The gaps are the player's: three steps across, one and a half down. Across
+#: is the wider one because a column of text needs more air beside it than
+#: above it to stop reading as one paragraph.
+_CELL_GAP_X = design.cqh(4.5)
+_CELL_GAP_Y = design.cqh(2.25)
+_GRID_HEIGHT = HEIGHT - BODY_TOP - design.PAD_Y
+
+
+def _grid(columns: int, rows: int, count: int) -> tuple[tuple[float, float, float, float], ...]:
+    """`count` equal boxes filling the body, left to right and top to bottom."""
+    width = (CONTENT_WIDTH - _CELL_GAP_X * (columns - 1)) / columns
+    height = (_GRID_HEIGHT - _CELL_GAP_Y * (rows - 1)) / rows
+    return tuple(
+        (
+            design.PAD_X + (index % columns) * (width + _CELL_GAP_X),
+            BODY_TOP + (index // columns) * (height + _CELL_GAP_Y),
+            width,
+            height,
+        )
+        for index in range(count)
+    )
+
+
+def _cells_layout(name: str, title: str, cells: tuple[tuple[float, ...], ...]) -> Layout:
+    return Layout(
+        name=name,
+        title=title,
+        places=(
+            Place(
+                name="Заголовок",
+                kind="title",
+                box=(design.PAD_X, HEAD_TOP, CONTENT_WIDTH, HEAD_HEIGHT),
+                size=design.HEADING,
+                bold=True,
+                anchor="b",
+            ),
+        ),
+        ornament=rule(RULE_Y),
+        cells=cells,  # type: ignore[arg-type]
+    )
+
+
+#: Two pieces side by side — two cases, or two tasks.
+CELLS_2 = _cells_layout("cells_2", "Две части", _grid(2, 1, 2))
+#: Three across. Only a comparison goes here: three tasks read better as a
+#: square than as a row, and a third of the frame is too narrow for a picture.
+CELLS_3 = _cells_layout("cells_3", "Три части", _grid(3, 1, 3))
+#: Two by two, three pieces or four. A column narrower than half the frame is
+#: not read from the back row, so a set of tasks folds instead of thinning.
+CELLS_4 = _cells_layout("cells_4", "Четыре части", _grid(2, 2, 4))
+CELLS_3_SQUARE = _cells_layout("cells_3_square", "Три части в два ряда", _grid(2, 2, 3))
+
+
 #: Kept because PowerPoint offers it in «Создать слайд» and a teacher will
 #: reach for it; nothing the skill generates uses it.
 BLANK = Layout(name="blank", title="Пустой", kind="blank", places=())
@@ -382,6 +443,10 @@ LAYOUTS: tuple[Layout, ...] = (
     CONTENT_SPLIT,
     CONTENT_STACK,
     CONTENT_FIGURE,
+    CELLS_2,
+    CELLS_3,
+    CELLS_3_SQUARE,
+    CELLS_4,
     TASK,
     TASK_SPLIT,
     TASK_STACK,

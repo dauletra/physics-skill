@@ -24,11 +24,17 @@ from physics_svg.presentation.pptx import design
 from physics_svg.visuals import build_slide_shapes
 
 
-def picture(model: Any, box: tuple[float, float, float, float]) -> str:
-    """One illustration, laid into `box` — (x, y, width, height) in points."""
+def picture(model: Any, box: tuple[float, float, float, float], *, first_id: int = 1000) -> str:
+    """One illustration, laid into `box` — (x, y, width, height) in points.
+
+    `first_id` is where the picture numbers its shapes from. A slide part
+    needs every shape id distinct, and a picture is a few dozen of them, so
+    each one is given a range of its own — a thousand apart, which is more
+    than any drawing in the library uses and leaves the numbers readable.
+    """
     x, y, width, height = box
     group, cx, cy = build_slide_shapes(
-        model, width_emu=design.emu(width), height_emu=design.emu(height)
+        model, width_emu=design.emu(width), height_emu=design.emu(height), first_id=first_id
     )
     left = design.emu(x) + (design.emu(width) - cx) // 2
     top = design.emu(y) + (design.emu(height) - cy) // 2

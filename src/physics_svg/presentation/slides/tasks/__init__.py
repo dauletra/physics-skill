@@ -14,9 +14,26 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from physics_svg.inline import Run, parse_inline
 from physics_svg.presentation.emit import emit_visual, runs
+from physics_svg.presentation.pptx import Slide, design, layouts
+from physics_svg.presentation.pptx.cell import IDS_PER_CELL, LINE, cell
+from physics_svg.presentation.pptx.text import Style, joined_paragraph, paragraph
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import field, spec
+
+#: The genre, for a slide that has no heading of its own to name it.
+KICKER = "Задачи"
+
+#: A task numbers itself by where it stands, exactly as on a sheet. The number
+#: is what the teacher says out loud — «решаем вторую» — so it is set in the
+#: accent rather than in the faintest grey on the slide.
+_NUMBER = Style(bold=True, colour=design.ACCENT)
+
+#: How much of a cell the statement keeps when a picture shares it with it.
+#: Two lines, and the number is measured: at two, twenty-three specs of the
+#: library still read in the cell; at three, thirteen (docs/pptx.md §7, P4в).
+_STATEMENT_LINES = 2.0
 
 
 @spec
@@ -59,11 +76,68 @@ def emit(model: TasksSpec, scope: str) -> dict[str, object]:
     return data
 
 
+def build(model: TasksSpec) -> Slide:
+    """A grid of tasks, one cell each.
+
+    Two stand side by side; three or four fold into two rows, because a column
+    narrower than half the frame is not read from the back row — the player's
+    rule, and the reason it thinned instead of adding columns.
+
+    The answer band is reserved for every cell as soon as one task has an
+    answer: a row of answers at different heights reads as broken typesetting
+    rather than as a row. Like `board_task`, they stand open until P5а.
+    """
+    layout = _layout_for(model)
+    answers = any(task.answer is not None for task in model.tasks)
+    shapes = _head(model.heading, layout)
+    for index, (task, box) in enumerate(zip(model.tasks, layout.cells)):
+        shapes += cell(
+            box,
+            [_statement(index, task.text)],
+            number=10 + index * IDS_PER_CELL,
+            text_height=_STATEMENT_LINES * LINE,
+            visual=task.visual,
+            answer=[paragraph(task.answer, Style(bold=True))] if task.answer else (),
+            reserve_answer=answers,
+        )
+    return Slide(layout.name, shapes)
+
+
+def _layout_for(model: TasksSpec) -> "layouts.Layout":
+    if len(model.tasks) == 2:
+        return layouts.CELLS_2
+    return layouts.CELLS_3_SQUARE if len(model.tasks) == 3 else layouts.CELLS_4
+
+
+def _head(heading: str | None, layout: "layouts.Layout") -> str:
+    """The heading if there is one, the genre word if there is not.
+
+    The horizon carries one line. A heading already says what this slide is —
+    «Решите в парах» is not going to be mistaken for an explanation — so
+    printing «Задачи» above it would be the same statement twice.
+    """
+    if heading is None:
+        return layouts.kicker(KICKER)
+    return layout.places[0].on_slide(2, [paragraph(heading)])
+
+
+def _statement(index: int, text: str) -> str:
+    """«2. Поезд длиной 240 м…» — the number drawn, not stored.
+
+    Where a task stands is not a property of the task, so the data does not
+    carry it, exactly as on a sheet (principle 2).
+    """
+    return joined_paragraph(
+        [([Run(f"{index + 1}. ")], _NUMBER), (parse_inline(text), Style())]
+    )
+
+
 register(
     tag="tasks",
     title="Набор задач",
     model=TasksSpec,
     emit=emit,
+    build=build,
     order=80,
     module=__name__,
 )

@@ -13,8 +13,23 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from physics_svg.presentation.emit import emit_visual, runs
+from physics_svg.presentation.pptx import Slide, design, layouts
+from physics_svg.presentation.pptx.cell import IDS_PER_CELL, LEAD_LINE, LINE, cell
+from physics_svg.presentation.pptx.text import Style, paragraph
 from physics_svg.presentation.slides.registry import VISUAL, register
 from physics_svg.schema import Invalid, field, spec
+
+#: The genre, for a slide that has no heading of its own to name it.
+KICKER = "Сравнение"
+
+#: The name of a case is set a step above its body: it is what the class
+#: reads first when the eye moves from one column to the next.
+_LABEL = Style(size=design.LEAD, bold=True)
+
+#: What a case keeps for its words when a picture shares the cell: the name
+#: and two lines. Measured — at two lines twenty-three specs of the library
+#: still read in a cell, at three thirteen (docs/pptx.md §7, P4в).
+_CASE_LINES = 2.0
 
 
 @spec
@@ -64,11 +79,45 @@ def emit(model: CompareSpec, scope: str) -> dict[str, object]:
     return data
 
 
+def build(model: CompareSpec) -> Slide:
+    """The cases side by side, one cell each.
+
+    Columns, not rows: the frame is divided equally between the cases, and
+    equally is what «рядом» means for things the schema calls peers. Three is
+    the limit the kind already sets, and the deck agrees with it for its own
+    reason — a third of the frame has no room left for a picture (§7, P4в).
+    """
+    layout = layouts.CELLS_2 if len(model.cases) == 2 else layouts.CELLS_3
+    shapes = _head(model.heading, layout)
+    for index, (case, box) in enumerate(zip(model.cases, layout.cells)):
+        paragraphs = [paragraph(case.label, _LABEL)]
+        if case.text is not None:
+            paragraphs.append(paragraph(case.text))
+        paragraphs.extend(paragraph(item, Style(bullet=True)) for item in case.items or [])
+        shapes += cell(
+            box,
+            paragraphs,
+            number=10 + index * IDS_PER_CELL,
+            text_height=LEAD_LINE + _CASE_LINES * LINE,
+            visual=case.visual,
+        )
+    return Slide(layout.name, shapes)
+
+
+def _head(heading: str | None, layout: "layouts.Layout") -> str:
+    """The heading if there is one, the genre word if there is not — the
+    horizon carries one line."""
+    if heading is None:
+        return layouts.kicker(KICKER)
+    return layout.places[0].on_slide(2, [paragraph(heading)])
+
+
 register(
     tag="compare",
     title="Сопоставление",
     model=CompareSpec,
     emit=emit,
+    build=build,
     order=50,
     module=__name__,
 )

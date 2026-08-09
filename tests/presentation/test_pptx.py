@@ -99,6 +99,19 @@ class TestPackage:
                     broken.append(f"{owner} {rid} -> {target}")
         assert not broken, f"отношения в никуда: {broken}"
 
+    def test_shape_ids_are_unique_inside_a_part(self, package: zipfile.ZipFile) -> None:
+        """Two shapes with one id is a slide PowerPoint renumbers on save —
+        silently, and not necessarily the way it was meant. A picture is a few
+        dozen shapes and a slide of tasks holds four pictures, so this stops
+        being theoretical the moment cells exist."""
+        for part in [name for name in package.namelist() if name.endswith(".xml")]:
+            ids = [
+                node.attrib["id"]
+                for node in read(package, part).iter()
+                if node.tag.endswith("}cNvPr") and "id" in node.attrib
+            ]
+            assert len(ids) == len(set(ids)), f"{part}: повторяющиеся id фигур"
+
     def test_every_referenced_id_is_declared(self, package: zipfile.ZipFile) -> None:
         """`r:id` on a slide list or a layout list must exist in the part's
         own `.rels`, and this is the mistake that is easiest to make."""
@@ -169,7 +182,11 @@ class TestLayouts:
     def boxes(layout: object) -> list[tuple[str, tuple[float, float, float, float]]]:
         named = [(place.name, place.box) for place in getattr(layout, "places")]
         picture = getattr(layout, "picture")
-        return named + ([("Иллюстрация", picture)] if picture else [])
+        named += [("Иллюстрация", picture)] if picture else []
+        return named + [
+            (f"ячейка {index + 1}", box)
+            for index, box in enumerate(getattr(layout, "cells"))
+        ]
 
     @pytest.mark.parametrize("layout", layouts.LAYOUTS, ids=[e.name for e in layouts.LAYOUTS])
     def test_no_two_boxes_share_room(self, layout: object) -> None:
@@ -297,6 +314,74 @@ class TestLesson:
         part = f"ppt/slideLayouts/slideLayout{layouts.layout_index('task')}.xml"
         assert "Задача" in self.texts(package, part)
         assert "Задача" not in self.texts(package, "ppt/slides/slide1.xml")
+
+    def test_a_set_of_tasks_numbers_itself(self) -> None:
+        """The number is where the task stands, not something the data
+        carries — exactly as on a sheet."""
+        package = self.deck(
+            {"type": "tasks", "tasks": [{"text": "Первая"}, {"text": "Вторая"}]}
+        )
+        assert self.texts(package, "ppt/slides/slide1.xml") == [
+            "Задачи",  # no heading, so the genre names the slide
+            "1. ",
+            "Первая",
+            "2. ",
+            "Вторая",
+        ]
+
+    @pytest.mark.parametrize(
+        "count,layout",
+        [(2, "cells_2"), (3, "cells_3_square"), (4, "cells_4")],
+    )
+    def test_a_set_folds_instead_of_thinning(self, count: int, layout: str) -> None:
+        """Two stand side by side; three and four go into two rows, because a
+        column narrower than half the frame is not read from the back row."""
+        package = self.deck(
+            {"type": "tasks", "tasks": [{"text": f"Задача {i}"} for i in range(count)]}
+        )
+        targets = rels_of(package, "ppt/slides/slide1.xml").values()
+        wanted = layouts.layout_index(layout)
+        assert any(target.endswith(f"slideLayout{wanted}.xml") for target in targets)
+
+    def test_the_horizon_carries_one_line(self) -> None:
+        """A heading if there is one, the genre word if there is not — never
+        both, because a heading already says what the slide is."""
+        cases = [{"label": "Было", "text": "раз"}, {"label": "Стало", "text": "два"}]
+        without = self.texts(self.deck({"type": "compare", "cases": cases}), "ppt/slides/slide1.xml")
+        titled = self.texts(
+            self.deck({"type": "compare", "heading": "Найдите разницу", "cases": cases}),
+            "ppt/slides/slide1.xml",
+        )
+        assert without[0] == "Сравнение"
+        assert titled[0] == "Найдите разницу" and "Сравнение" not in titled
+
+    def test_a_slide_full_of_pictures_keeps_its_ids_apart(self) -> None:
+        """The case the empty deck cannot show: every picture is a few dozen
+        shapes, and they all live in one slide part."""
+        graph = {
+            "type": "graph",
+            "x_label": "t, с",
+            "y_label": "υ, м/с",
+            "x_range": [0, 6],
+            "y_range": [0, 8],
+            "series": [{"points": [[0, 0], [6, 8]]}],
+        }
+        package = self.deck(
+            {
+                "type": "tasks",
+                "tasks": [
+                    {"text": "Первая", "visual": graph, "answer": "12 м"},
+                    {"text": "Вторая", "visual": graph, "answer": "8 м"},
+                ],
+            }
+        )
+        ids = [
+            node.attrib["id"]
+            for node in read(package, "ppt/slides/slide1.xml").iter()
+            if node.tag.endswith("}cNvPr") and "id" in node.attrib
+        ]
+        assert len(ids) > 50, "картинки не нарисовались — тест ничего не проверяет"
+        assert len(ids) == len(set(ids)), "повторяющиеся id фигур на слайде"
 
     def test_a_kind_without_a_layout_says_so(self) -> None:
         """Silence would give a lesson with slides missing from the middle.

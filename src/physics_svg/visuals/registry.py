@@ -190,7 +190,9 @@ def _labels(nodes: Iterable[Node]) -> Iterator[Text]:
             yield node
 
 
-def build_slide_shapes(model: Any, *, width_emu: int, height_emu: int) -> tuple[str, int, int]:
+def build_slide_shapes(
+    model: Any, *, width_emu: int, height_emu: int, first_id: int = 1
+) -> tuple[str, int, int]:
     """Render one visual as shapes on a slide: (group, width, height) in EMU.
 
     Two things differ from the Word path, and both follow from where the
@@ -205,11 +207,15 @@ def build_slide_shapes(model: Any, *, width_emu: int, height_emu: int) -> tuple[
     **It is drawn on the board medium.** The labels are set at the scale a
     class reads from seven metres, which is the whole of
     docs/visual-scale.md: the same drawing, a different label scale.
+
+    `first_id` numbers its shapes from where the slide has room. A slide part
+    needs every shape id in it distinct, and a picture is a few dozen of them;
+    the caller is the only one who knows how many are already spoken for.
     """
     canvas = Canvas(medium=BOARD)
     layout = render_to_canvas(model, canvas)
     box = canvas.frame_box(layout.viewbox, layout.padding)
     scale = min(width_emu / box.width, height_emu / box.height)
     frame = Frame(box, scale, scale)
-    drawing = SlideDrawing(frame)
+    drawing = SlideDrawing(frame, first_id)
     return drawing.group(canvas.flat_nodes()), frame.width, frame.height

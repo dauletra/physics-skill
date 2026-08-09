@@ -110,16 +110,22 @@ class Frame:
 
 
 class Drawing:
-    """One picture: shapes with ids unique inside it.
+    """One picture: shapes with ids unique inside the part that holds it.
 
     Abstract in the three places the two dialects differ; everything below
     them — paths, presets, fills, strokes — is shared, and keeping it shared
     is what makes a picture on a slide the same picture as on a sheet.
+
+    `first_id` is where the numbering starts. A picture used to number from
+    one, which is right for a Word drawing — it is a part of its own — and
+    wrong for a slide, where the ids have to be unique across everything the
+    slide holds. Four pictures on one slide of tasks made that impossible to
+    keep ignoring.
     """
 
-    def __init__(self, frame: Frame) -> None:
+    def __init__(self, frame: Frame, first_id: int = 1) -> None:
         self.frame = frame
-        self._ids = 0
+        self._ids = first_id - 1
 
     def _id(self) -> int:
         self._ids += 1

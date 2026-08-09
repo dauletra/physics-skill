@@ -12,6 +12,13 @@ instruments on one worksheet cannot both define `#hatch`. Every id goes
 through `uid()`, which prefixes it with the canvas scope; the document layer
 gives each block a distinct scope. This is what makes `<defs>`, patterns and
 markers usable in the library at all — they do not have to be avoided.
+
+**The medium rides along.** Like the scope, it is context the caller sets
+once and every renderer reads: how far away this picture will be read from,
+and therefore which label scale it is drawn on (see `draw/medium.py`). It
+sits here rather than in a renderer's signature because both serialisers
+work off the canvas, and a label scale they disagreed about would be a
+picture that differs between HTML and Word.
 """
 
 from __future__ import annotations
@@ -21,6 +28,7 @@ from dataclasses import dataclass
 from typing import Callable, Sequence
 
 from physics_svg.draw.geometry import BBox, Pt, Transform, union_all
+from physics_svg.draw.medium import SHEET, Medium
 from physics_svg.draw.nodes import Group, Line, Node, Path, Rect
 from physics_svg.draw.pathdata import LineTo, Move
 from physics_svg.draw.style import Style
@@ -144,8 +152,9 @@ class Tiling:
 class Canvas:
     """A drawing surface for one illustration."""
 
-    def __init__(self, scope: str = "") -> None:
+    def __init__(self, scope: str = "", medium: Medium = SHEET) -> None:
         self.scope = scope
+        self.medium = medium
         self._nodes: list[Node] = []
         self._defs: dict[str, str] = {}
         self._tilings: dict[str, Tiling] = {}

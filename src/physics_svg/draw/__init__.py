@@ -16,6 +16,7 @@ from physics_svg.draw.geometry import (
     polar,
     union_all,
 )
+from physics_svg.draw.medium import SHEET, Medium
 from physics_svg.draw.nodes import (
     Circle,
     Ellipse,
@@ -84,6 +85,7 @@ __all__ = [
     "IDENTITY",
     "LINE",
     "Line",
+    "Medium",
     "Node",
     "ORIGIN",
     "OUTLINE",
@@ -94,6 +96,7 @@ __all__ = [
     "Raw",
     "Rect",
     "SCREEN_SCALE",
+    "SHEET",
     "SOLID",
     "Style",
     "THIN",

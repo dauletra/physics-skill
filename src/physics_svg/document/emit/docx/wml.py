@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
-from physics_svg.draw import clean
+from physics_svg.ooxml import el, escape
 
 #: The subsets of CT_PPr / CT_RPr / … the backend uses, in schema order.
 P_ORDER = (
@@ -60,26 +60,6 @@ _TBL_ORDER = (
 )
 _TR_ORDER = ("w:cantSplit", "w:trHeight", "w:tblHeader")
 _TC_ORDER = ("w:tcW", "w:tcBorders", "w:shd", "w:tcMar", "w:vAlign")
-
-
-def escape(value: object) -> str:
-    """Author text -> XML text.
-
-    `clean()` first: the characters XML cannot hold are the drawing layer's
-    rule too, and one definition of «what author text may contain» is the
-    point — a node has two serialisers and they must agree.
-    """
-    text = clean(value)
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
-def el(tag: str, attrs: Optional[dict[str, object]] = None, children: str = "") -> str:
-    """One element. Attribute order is the caller's, and callers pass literals,
-    so the output is byte-stable across runs."""
-    rendered = "".join(f' {name}="{escape(value)}"' for name, value in (attrs or {}).items())
-    if not children:
-        return f"<{tag}{rendered}/>"
-    return f"<{tag}{rendered}>{children}</{tag}>"
 
 
 def props(tag: str, order: tuple[str, ...], parts: dict[str, str]) -> str:

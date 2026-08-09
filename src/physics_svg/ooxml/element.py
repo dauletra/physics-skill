@@ -12,7 +12,7 @@ presentation backend. This module knows angle brackets and nothing else.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Mapping, Optional
 
 from physics_svg.draw import clean
 
@@ -28,9 +28,14 @@ def escape(value: object) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def el(tag: str, attrs: Optional[dict[str, object]] = None, children: str = "") -> str:
+def el(tag: str, attrs: Optional[Mapping[str, object]] = None, children: str = "") -> str:
     """One element. Attribute order is the caller's, and callers pass literals,
-    so the output is byte-stable across runs."""
+    so the output is byte-stable across runs.
+
+    `Mapping`, not `dict`: a caller with a `dict[str, str]` of namespaces has
+    one that every slide-like part reuses, and an invariant `dict[str, object]`
+    would make it copy the thing on every call.
+    """
     rendered = "".join(f' {name}="{escape(value)}"' for name, value in (attrs or {}).items())
     if not children:
         return f"<{tag}{rendered}/>"

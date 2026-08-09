@@ -29,10 +29,12 @@ from physics_svg.draw import (
     GRID,
     GRID_FINE,
     HEAVY,
+    SHEET,
     WHITE,
     Canvas,
     Circle,
     Line,
+    Medium,
     Node,
     PathBuilder,
     Polyline,
@@ -62,22 +64,24 @@ from physics_svg.visuals.graph.model import (
 )
 from physics_svg.visuals.registry import Layout
 
-_TICK_LABEL_SIZE = 9.0
-_AXIS_LABEL_SIZE = 10.0
-_LEGEND_SIZE = 7.0
-
 #: Tick lengths on an axis: a numbered division earns a longer stroke, the
 #: way it does on any instrument scale.
 _TICK_MAJOR = 4.0
 _TICK_MINOR = 2.5
 
+#: Everything that exists to clear a label is measured in label heights, so
+#: that a bigger scale moves the numbers away from the axis instead of onto
+#: it. The ratios are written as the tuned sheet value over the sheet step
+#: they were tuned against: on paper the product is that value exactly, and
+#: the goldens hold it to that.
+
 #: How far a number sits from the axis it belongs to — past the tick, with
 #: room to breathe.
-_LABEL_DISTANCE_X = 13.0
-_LABEL_DISTANCE_Y = 7.5
+_LABEL_DISTANCE_X = 13.0 / SHEET.number
+_LABEL_DISTANCE_Y = 7.5 / SHEET.number
 
 #: Numbers beside a horizontal tick sit on it, not under it.
-_LABEL_SHIFT_Y = 3.0
+_LABEL_SHIFT_Y = 3.0 / SHEET.number
 
 #: How far each axis runs past the plot rectangle, and the head it ends in.
 #: The head has to clear the last division line — sitting on it, it would read
@@ -90,7 +94,16 @@ _OVERSHOOT_Y = 14.0
 _AXIS_HEAD = 5.5
 
 #: Gap between the tip of an axis and the quantity named after it.
-_CAPTION_GAP = 3.0
+_CAPTION_GAP = 3.0 / SHEET.axis
+
+#: The legend line: how far below the plot it sits, the space between two
+#: entries, and how far the mark is lifted to sit against the label rather
+#: than on its baseline. All three are label-relative; the mark's own slot
+#: is not (see `_legend`).
+_LEGEND_DROP = 26.0 / SHEET.number
+_LEGEND_GAP = 10.0 / SHEET.number
+_SAMPLE_LIFT = 2.5 / SHEET.number
+_SAMPLE_WIDTH = 16.0
 
 #: How many numbers the renderer prints along an axis when nobody pinned the
 #: label step. Not the same as how finely the axis is divided: divisions carry
@@ -111,8 +124,14 @@ _LABEL = Style(fill=BLACK)
 
 #: A copy of a number drawn underneath it in white, thickened into a halo:
 #: the glyphs clear whatever they are printed over. On white paper behind
-#: nothing it is invisible, so every number carries one.
-_HALO = Style(fill=WHITE, stroke=WHITE, width=2.4)
+#: nothing it is invisible, so every number carries one. The thickening is a
+#: fraction of the glyph, not a fixed width — otherwise a larger number would
+#: wear the halo of a smaller one.
+_HALO_WIDTH = 2.4 / SHEET.number
+
+
+def _halo(size: float) -> Style:
+    return Style(fill=WHITE, stroke=WHITE, width=_HALO_WIDTH * size)
 
 
 def render(model: GraphSpec, canvas: Canvas) -> Layout:
@@ -149,10 +168,12 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
     crossing = Pt(0 if x0 < 0 < x1 else x0, 0 if y0 < 0 < y1 else y0)
     corner = Pt(sx(crossing.x), sy(crossing.y))
 
-    canvas.extend(_axes(model, corner))
+    canvas.extend(_axes(model, corner, canvas.medium))
     # Where the axes meet at the origin, both would print a zero of their own.
     # It is one point and it gets one number, from the y axis.
-    marks = _ticks_and_numbers(x_ticks, y_ticks, corner, shared_zero=crossing == Pt(0, 0))
+    marks = _ticks_and_numbers(
+        x_ticks, y_ticks, corner, canvas.medium, shared_zero=crossing == Pt(0, 0)
+    )
     canvas.extend([node for node in marks if not isinstance(node, Text)])
 
     for index, series in enumerate(model.series):
@@ -163,10 +184,10 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
     # strike through them, and a value struck through is a value not read.
     for node in marks:
         if isinstance(node, Text):
-            canvas.add(replace(node, style=_HALO), node)
+            canvas.add(replace(node, style=_halo(node.size)), node)
 
     if any(series.label for series in model.series):
-        canvas.extend(_legend(model, PLOT_HEIGHT + 26))
+        canvas.extend(_legend(model, canvas.medium))
     return Layout(padding=2.0)
 
 
@@ -225,7 +246,7 @@ def _grid_values(
     return [tick.value for tick in ticks if not tick.labeled] + list(fine), major
 
 
-def _axes(model: GraphSpec, corner: Pt) -> list[Node]:
+def _axes(model: GraphSpec, corner: Pt, medium: Medium) -> list[Node]:
     """Both axes, each running past the last division into an arrow, and the
     quantity each measures named in line with its own numbers.
 
@@ -241,21 +262,29 @@ def _axes(model: GraphSpec, corner: Pt) -> list[Node]:
     """
     x_tip = Pt(PLOT_WIDTH + _OVERSHOOT_X, corner.y)
     y_tip = Pt(corner.x, -_OVERSHOOT_Y)
+    # The captions stand in the row and the column the numbers make, so they
+    # are placed by the numbers' step, not by their own.
     return [
         *arrow(Pt(0, corner.y), x_tip, HEAVY, _AXIS_HEAD),
         *arrow(Pt(corner.x, PLOT_HEIGHT), y_tip, HEAVY, _AXIS_HEAD),
         Text(
-            Pt(x_tip.x + _CAPTION_GAP, corner.y + _LABEL_DISTANCE_X),
+            Pt(
+                x_tip.x + _CAPTION_GAP * medium.axis,
+                corner.y + _LABEL_DISTANCE_X * medium.number,
+            ),
             model.x_label,
-            _AXIS_LABEL_SIZE,
+            medium.axis,
             "start",
             _LABEL,
         ),
         Text(
             # Level with the tip, like a number is level with its tick.
-            Pt(corner.x - _LABEL_DISTANCE_Y, y_tip.y + _LABEL_SHIFT_Y),
+            Pt(
+                corner.x - _LABEL_DISTANCE_Y * medium.number,
+                y_tip.y + _LABEL_SHIFT_Y * medium.number,
+            ),
             model.y_label,
-            _AXIS_LABEL_SIZE,
+            medium.axis,
             "end",
             _LABEL,
         ),
@@ -263,7 +292,12 @@ def _axes(model: GraphSpec, corner: Pt) -> list[Node]:
 
 
 def _ticks_and_numbers(
-    x_ticks: Sequence[Tick], y_ticks: Sequence[Tick], corner: Pt, *, shared_zero: bool
+    x_ticks: Sequence[Tick],
+    y_ticks: Sequence[Tick],
+    corner: Pt,
+    medium: Medium,
+    *,
+    shared_zero: bool,
 ) -> list[Node]:
     """Ticks on both axes with their numbers, drawn outwards from the corner.
 
@@ -280,8 +314,8 @@ def _ticks_and_numbers(
         skip=[i for i, tick in enumerate(x_ticks) if shared_zero and tick.value == 0],
         major_length=_TICK_MAJOR,
         minor_length=_TICK_MINOR,
-        label_distance=_LABEL_DISTANCE_X,
-        label_size=_TICK_LABEL_SIZE,
+        label_distance=_LABEL_DISTANCE_X * medium.number,
+        label_size=medium.number,
         formatter=num,
     )
     nodes.extend(
@@ -290,10 +324,10 @@ def _ticks_and_numbers(
             y_ticks,
             major_length=_TICK_MAJOR,
             minor_length=_TICK_MINOR,
-            label_distance=_LABEL_DISTANCE_Y,
+            label_distance=_LABEL_DISTANCE_Y * medium.number,
             label_anchor="end",
-            label_shift=_LABEL_SHIFT_Y,
-            label_size=_TICK_LABEL_SIZE,
+            label_shift=_LABEL_SHIFT_Y * medium.number,
+            label_size=medium.number,
             formatter=num,
         )
     )
@@ -346,22 +380,29 @@ def marker(shape: str, at: Pt) -> list[Node]:
     ]
 
 
-def _legend(model: GraphSpec, baseline: float) -> list[Node]:
+def _legend(model: GraphSpec, medium: Medium) -> list[Node]:
     """Series labels on one centred line, each with the mark that identifies
-    its series on the plot."""
+    its series on the plot.
+
+    The label is set at the same step as the numbers on the axes: it names a
+    line of the drawing, and nothing about it is more auxiliary than they
+    are. The room the mark occupies is not scaled with it — the mark is a
+    specimen of what is drawn on the plot and has to stay the same size as
+    the thing it stands for.
+    """
     labelled = [(i, s) for i, s in enumerate(model.series) if s.label]
-    gap, sample_width = 10.0, 16.0
-    widths = [
-        sample_width + text_width(series.label or "", _LEGEND_SIZE) for _, series in labelled
-    ]
+    size = medium.number
+    baseline = PLOT_HEIGHT + _LEGEND_DROP * size
+    gap = _LEGEND_GAP * size
+    widths = [_SAMPLE_WIDTH + text_width(series.label or "", size) for _, series in labelled]
     total = sum(widths) + gap * (len(labelled) - 1)
     x = (PLOT_WIDTH - total) / 2
     nodes: list[Node] = []
     for (index, series), width in zip(labelled, widths):
-        sample_y = baseline - 2.5
+        sample_y = baseline - _SAMPLE_LIFT * size
         nodes.extend(_legend_sample(model, series, index, x, sample_y))
         nodes.append(
-            Text(Pt(x + sample_width, baseline), series.label or "", _LEGEND_SIZE, "start", _LABEL)
+            Text(Pt(x + _SAMPLE_WIDTH, baseline), series.label or "", size, "start", _LABEL)
         )
         x += width + gap
     return nodes

@@ -9,7 +9,7 @@ so "ticks every 5, numbers every 10" has to come out exactly that way.
 from __future__ import annotations
 
 from library import EXAMPLES
-from physics_svg.draw import Line, Polyline, Pt, Text, num
+from physics_svg.draw import SHEET, Line, Polyline, Pt, Text, num
 from physics_svg.visuals import build_svg, parse_visual
 from physics_svg.visuals.graph.model import (
     MIN_LABEL_GAP_Y,
@@ -99,7 +99,7 @@ class TestAxes:
     """Everything about an axis lives outside the rectangle the data fills."""
 
     def test_the_quantities_stand_clear_of_the_plot(self) -> None:
-        captions = [node for node in _axes(graph(), CORNER) if isinstance(node, Text)]
+        captions = [node for node in _axes(graph(), CORNER, SHEET) if isinstance(node, Text)]
         assert len(captions) == 2
         for caption in captions:
             box = caption.bbox()
@@ -109,7 +109,7 @@ class TestAxes:
 
     def test_the_quantity_keeps_the_row_of_its_own_numbers(self) -> None:
         captions = {
-            node.content: node for node in _axes(graph(), CORNER) if isinstance(node, Text)
+            node.content: node for node in _axes(graph(), CORNER, SHEET) if isinstance(node, Text)
         }
         x_numbers = build_svg(graph(), scope="t")
         # Same baseline as the numbers under the x axis, same right edge as
@@ -118,11 +118,11 @@ class TestAxes:
         assert f'x="{num(captions["s, м"].at.x)}"' in x_numbers
 
     def test_each_axis_ends_in_an_arrow(self) -> None:
-        heads = [node for node in _axes(graph(), CORNER) if isinstance(node, Polyline)]
+        heads = [node for node in _axes(graph(), CORNER, SHEET) if isinstance(node, Polyline)]
         assert len(heads) == 2
 
     def test_each_axis_runs_past_its_last_division(self) -> None:
-        shafts = [node for node in _axes(graph(), CORNER) if isinstance(node, Line)]
+        shafts = [node for node in _axes(graph(), CORNER, SHEET) if isinstance(node, Line)]
         assert max(shaft.b.x for shaft in shafts) > PLOT_WIDTH
         assert min(shaft.b.y for shaft in shafts) < 0
 
@@ -208,7 +208,7 @@ class TestNegativeRanges:
         # Negative numbers are printed, and the row of x numbers sits under
         # the axis in the middle, not under the bottom edge of the plot.
         assert ">-4</text>" in svg and ">-8</text>" in svg
-        assert f'y="{num(PLOT_HEIGHT / 2 + _LABEL_DISTANCE_X)}"' in svg
+        assert f'y="{num(PLOT_HEIGHT / 2 + _LABEL_DISTANCE_X * SHEET.number)}"' in svg
 
 
 def _heavy_lines(model: GraphSpec) -> list[Line]:
@@ -216,7 +216,7 @@ def _heavy_lines(model: GraphSpec) -> list[Line]:
         PLOT_WIDTH / 2 if model.x_range[0] < 0 else 0.0,
         PLOT_HEIGHT / 2 if model.y_range[0] < 0 else PLOT_HEIGHT,
     )
-    return [node for node in _axes(model, corner) if isinstance(node, Line)]
+    return [node for node in _axes(model, corner, SHEET) if isinstance(node, Line)]
 
 
 class TestGrid:

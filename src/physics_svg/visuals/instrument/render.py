@@ -22,6 +22,7 @@ from physics_svg.draw import (
     HEAVY,
     LINE,
     OUTLINE,
+    SHEET,
     SOLID,
     THIN,
     WHITE,
@@ -29,6 +30,7 @@ from physics_svg.draw import (
     Canvas,
     Circle,
     Line,
+    Medium,
     Node,
     PathBuilder,
     Pt,
@@ -50,11 +52,55 @@ DIAL_START, DIAL_END = 150.0, 30.0
 #: A stopwatch face starts at the top and goes clockwise, all the way round.
 CLOCK_START, CLOCK_END = 90.0, -270.0
 
-_LABEL_SIZE = 7.0
-_CAPTION_SIZE = 8.0
 #: A real minus sign (U+2212), not a hyphen and not an HTML entity: `Text`
 #: escapes what it is given, so markup written by hand would show through.
 _MINUS = "−"
+
+#: Everything below exists to clear a number, so it is measured in that
+#: number's height rather than in units: at a larger scale the numbers move
+#: off the scale line instead of onto it. Each ratio is the tuned sheet value
+#: over the sheet step it was tuned against, which makes it exactly the old
+#: number on paper — what the goldens hold it to.
+
+#: How far the caption hangs below the instrument.
+_CAPTION_DROP = 10.0 / SHEET.caption
+
+#: A number beside a vertical scale drops by this to sit on its tick instead
+#: of above it.
+_COLUMN_LABEL_SHIFT = 2.4 / SHEET.label
+
+#: The dial: numbers inside the arc, the second row of a dual range, and the
+#: unit's baseline inside the circle that rings it.
+_DIAL_LABEL_DISTANCE = 14.0 / SHEET.label
+_DIAL_LABEL_SHIFT = 2.5 / SHEET.label
+_DIAL_INNER_ROW = 11.0 / SHEET.label
+_UNIT_BASELINE = 2.8 / SHEET.caption
+
+#: The clock face: the same two, with the numbers on the inside of the ring.
+_CLOCK_LABEL_DISTANCE = -14.0 / SHEET.label
+_CLOCK_LABEL_SHIFT = 2.4 / SHEET.label
+
+#: The ruler: numbers hanging under the top edge, and the unit sitting off
+#: the bottom one.
+_RULER_LABEL_DISTANCE = 17.5 / SHEET.label
+_RULER_UNIT_LIFT = 3.5 / SHEET.label
+
+#: The caliper: numbers under the bar, the unit inside it, and the index of
+#: the vernier under its own marks.
+_CALIPER_LABEL_DISTANCE = 9.5 / SHEET.label
+_CALIPER_UNIT_DROP = 8.5 / SHEET.label
+_VERNIER_INDEX_DROP = 14.5 / SHEET.micro
+
+#: The weight on a balance pan carries its mass just above it.
+_WEIGHT_LABEL_LIFT = 4.0 / SHEET.micro
+
+#: The dial's terminals: the sign beside a socket, and the caption above one.
+_TERMINAL_SIGN_GAP = 8.0 / SHEET.caption
+_TERMINAL_SIGN_DROP = 3.0 / SHEET.caption
+_TERMINAL_LABEL_LIFT = 6.0 / SHEET.micro
+
+#: The accuracy class in the corner of a dial, off the bottom edge.
+_CLASS_LIFT = 5.5 / SHEET.label
 
 
 def render(model: InstrumentSpec, canvas: Canvas) -> Layout:
@@ -64,8 +110,14 @@ def render(model: InstrumentSpec, canvas: Canvas) -> Layout:
         # overlaps a tall instrument nor floats away from a short one.
         box = canvas.content_box()
         if box is not None:
+            size = canvas.medium.caption
             canvas.add(
-                Text(Pt(box.center.x, box.y1 + 10), model.caption, _CAPTION_SIZE, "middle")
+                Text(
+                    Pt(box.center.x, box.y1 + _CAPTION_DROP * size),
+                    model.caption,
+                    size,
+                    "middle",
+                )
             )
     return Layout(padding=2.0)
 
@@ -90,7 +142,7 @@ def _value_fraction(model: InstrumentSpec) -> float:
     return (model.value - model.min) / (model.max - model.min)
 
 
-def _unit(at: Pt, model: InstrumentSpec, size: float = _LABEL_SIZE, anchor: str = "middle") -> Node:
+def _unit(at: Pt, model: InstrumentSpec, size: float, anchor: str = "middle") -> Node:
     return Text(at, model.unit, size, anchor)
 
 
@@ -103,6 +155,7 @@ def _build_ruler(model: InstrumentSpec, canvas: Canvas) -> None:
     — the setup for "measure the length" and "write it with its error"."""
     body_top, body_bottom = 17.5, 48.5
     left, right = 12.0, 208.0
+    label = canvas.medium.label
     canvas.add(Rect(Pt(1.5, body_top), 217, body_bottom - body_top, BODY, radius=2))
     axis = LinearAxis(Pt(left, body_top), Pt(right, body_top), Pt(0, 1))
     canvas.extend(
@@ -113,11 +166,13 @@ def _build_ruler(model: InstrumentSpec, canvas: Canvas) -> None:
             minor_length=5,
             # The half-way tick, like the 5 mm mark on a real ruler.
             mid_length=7,
-            label_distance=17.5,
-            label_size=_LABEL_SIZE,
+            label_distance=_RULER_LABEL_DISTANCE * label,
+            label_size=label,
         )
     )
-    canvas.add(_unit(Pt(right, body_bottom - 3.5), model, anchor="end"))
+    canvas.add(
+        _unit(Pt(right, body_bottom - _RULER_UNIT_LIFT * label), model, label, anchor="end")
+    )
     if model.value is not None:
         end = left + _value_fraction(model) * (right - left)
         canvas.add(Rect(Pt(left, 4.5), end - left, 13, BODY))
@@ -139,17 +194,20 @@ def _column_marks(
     label_direction: Pt,
     label_distance: float,
     label_anchor: str,
+    label: float,
 ) -> list[Node]:
+    """`label_distance` arrives in label heights: how far the number stands
+    off the wall it is written beside."""
     return scale_marks(
         axis,
         _ticks(model),
         major_length=9,
         minor_length=5.5,
-        label_distance=label_distance,
+        label_distance=label_distance * label,
         label_direction=label_direction,
         label_anchor=label_anchor,
-        label_shift=2.4,
-        label_size=_LABEL_SIZE,
+        label_shift=_COLUMN_LABEL_SHIFT * label,
+        label_size=label,
         major_style=Style(stroke=BLACK, width=0.8),
     )
 
@@ -166,9 +224,10 @@ def _build_cylinder(model: InstrumentSpec, canvas: Canvas) -> None:
         .line(Pt(right, top))
         .build(OUTLINE)
     )
+    label = canvas.medium.label
     axis = _column_axis(left, top=18, bottom=138, tick_dir=1)
-    canvas.extend(_column_marks(model, axis, Pt(-1, 0), 3, "end"))
-    canvas.add(_unit(Pt(right + 2, top + 5), model, anchor="start"))
+    canvas.extend(_column_marks(model, axis, Pt(-1, 0), 3 / SHEET.label, "end", label))
+    canvas.add(_unit(Pt(right + 2, top + 5), model, label, anchor="start"))
     if model.value is not None:
         level = axis.point(_value_fraction(model)).y
         canvas.add(Line(Pt(left + 1, level), Pt(right - 1, level), OUTLINE))
@@ -185,9 +244,10 @@ def _build_thermometer(model: InstrumentSpec, canvas: Canvas) -> None:
         Rect(Pt(cx - 6, tube_top), 12, tube_bottom - tube_top, BODY, radius=6),
         Circle(Pt(cx, bulb_y), bulb_r, BODY),
     )
+    label = canvas.medium.label
     axis = _column_axis(cx + 6, top=22, bottom=122, tick_dir=1)
-    canvas.extend(_column_marks(model, axis, Pt(1, 0), 8.5, "start"))
-    canvas.add(_unit(Pt(cx, 8.8), model))
+    canvas.extend(_column_marks(model, axis, Pt(1, 0), 8.5 / SHEET.label, "start", label))
+    canvas.add(_unit(Pt(cx, 8.8), model, label))
     column_top = axis.point(_value_fraction(model)).y if model.value is not None else tube_bottom - 4
     canvas.add(
         Rect(Pt(cx - 2.5, column_top), 5, tube_bottom - 2 - column_top, SOLID),
@@ -211,11 +271,13 @@ def _build_dynamometer(model: InstrumentSpec, canvas: Canvas) -> None:
         .curve(Pt(cx - 6, 152), Pt(cx - 8, 148), Pt(cx - 7, 145))
         .build(OUTLINE),
         Rect(Pt(body_left, body_top), body_right - body_left, body_bottom - body_top, BODY, radius=3),
-        _unit(Pt(cx + 8, body_top + 10), model),
+        _unit(Pt(cx + 8, body_top + 10), model, canvas.medium.label),
     )
     scale_x = cx + 2
     axis = _column_axis(scale_x, top=body_top + 14, bottom=body_bottom - 8, tick_dir=1)
-    canvas.extend(_column_marks(model, axis, Pt(-1, 0), 3.5, "end"))
+    canvas.extend(
+        _column_marks(model, axis, Pt(-1, 0), 3.5 / SHEET.label, "end", canvas.medium.label)
+    )
     pointer_y = axis.point(_value_fraction(model)).y
     canvas.add(
         Line(Pt(body_left + 3, pointer_y), Pt(scale_x + 9, pointer_y), Style(stroke=BLACK, width=1.3))
@@ -238,6 +300,7 @@ def _build_dial(model: InstrumentSpec, canvas: Canvas) -> None:
     """
     center = Pt(80.0, 88.0)
     r_arc, r_needle = 58.0, 52.0
+    label, caption = canvas.medium.label, canvas.medium.caption
     electric = model.kind in ("ammeter", "voltmeter")
     # Three labelled terminals need a row of their own: with the body at its
     # normal height their captions would sit on the needle pivot.
@@ -252,23 +315,31 @@ def _build_dial(model: InstrumentSpec, canvas: Canvas) -> None:
             ticks,
             major_length=7.5,
             minor_length=4.5,
-            label_distance=14,
-            label_shift=2.5,
-            label_size=_LABEL_SIZE,
+            label_distance=_DIAL_LABEL_DISTANCE * label,
+            label_shift=_DIAL_LABEL_SHIFT * label,
+            label_size=label,
         )
     )
     if model.ranges:
         ratio = model.ranges[0] / model.ranges[-1]
         for tick in ticks:
             if tick.labeled:
-                at = axis.point(tick.fraction) - axis.outward(tick.fraction) * 11
-                canvas.add(Text(at.shifted(0, 2.5), num(tick.value * ratio), _LABEL_SIZE))
+                at = axis.point(tick.fraction) - axis.outward(tick.fraction) * (
+                    _DIAL_INNER_ROW * label
+                )
+                canvas.add(
+                    Text(
+                        at.shifted(0, _DIAL_LABEL_SHIFT * label),
+                        num(tick.value * ratio),
+                        label,
+                    )
+                )
 
     # A circled unit, as on school electrical meters — but only for a short
     # one: "дел." on a multi-range scale does not fit and is set as text.
     if electric and len(model.unit) <= 2:
         canvas.add(Circle(Pt(center.x, 66), 8, Style(stroke=BLACK, width=0.8, fill=WHITE)))
-    canvas.add(_unit(Pt(center.x, 68.8), model, size=8))
+    canvas.add(_unit(Pt(center.x, 66 + _UNIT_BASELINE * caption), model, caption))
 
     canvas.add(
         Line(center, polar(center, r_needle, axis.angle(_value_fraction(model))), HEAVY),
@@ -278,20 +349,35 @@ def _build_dial(model: InstrumentSpec, canvas: Canvas) -> None:
         # As on a real scale: just the number in the corner. Decoding the
         # marking is the problem's job, not the drawing's.
         canvas.add(
-            Text(Pt(10, body_height - 5.5), num(model.accuracy_class), _LABEL_SIZE, "start")
+            Text(
+                Pt(10, body_height - _CLASS_LIFT * label),
+                num(model.accuracy_class),
+                label,
+                "start",
+            )
         )
     if electric:
-        canvas.extend(_terminals(model, body_height))
+        canvas.extend(_terminals(model, body_height, canvas.medium))
 
 
-def _terminals(model: InstrumentSpec, body_height: float) -> list[Node]:
+def _terminals(model: InstrumentSpec, body_height: float, medium: Medium) -> list[Node]:
     socket = Style(stroke=BLACK, width=1, fill=WHITE)
     nodes: list[Node] = []
     if not model.ranges:
         # Two terminals, signs beside them.
         for x, sign in ((58.0, "+"), (102.0, _MINUS)):
+            gap = _TERMINAL_SIGN_GAP * medium.caption
             nodes.append(Circle(Pt(x, 99), 3, socket))
-            nodes.append(Text(Pt(x + (-8 if sign == "+" else 8), 102), sign, 8))
+            nodes.append(
+                Text(
+                    Pt(
+                        x + (-gap if sign == "+" else gap),
+                        99 + _TERMINAL_SIGN_DROP * medium.caption,
+                    ),
+                    sign,
+                    medium.caption,
+                )
+            )
         return nodes
     # A common terminal plus one per range, each captioned above its socket.
     labels = [_MINUS] + [f"{num(r)}{model.unit}" for r in model.ranges]
@@ -299,7 +385,9 @@ def _terminals(model: InstrumentSpec, body_height: float) -> list[Node]:
     for i, label in enumerate(labels):
         x = 36 + i * 88 / (len(labels) - 1)
         nodes.append(Circle(Pt(x, socket_y), 3, socket))
-        nodes.append(Text(Pt(x, socket_y - 6), label, 6))
+        nodes.append(
+            Text(Pt(x, socket_y - _TERMINAL_LABEL_LIFT * medium.micro), label, medium.micro)
+        )
     return nodes
 
 
@@ -332,14 +420,14 @@ def _build_stopwatch(model: InstrumentSpec, canvas: Canvas) -> None:
             # Ticks point inward on a closed face.
             major_length=-7,
             minor_length=-4,
-            label_distance=-14,
-            label_shift=2.4,
-            label_size=_LABEL_SIZE,
+            label_distance=_CLOCK_LABEL_DISTANCE * canvas.medium.label,
+            label_shift=_CLOCK_LABEL_SHIFT * canvas.medium.label,
+            label_size=canvas.medium.label,
             skip=(0,),
         )
     )
     canvas.add(
-        _unit(Pt(center.x, center.y + 21), model),
+        _unit(Pt(center.x, center.y + 21), model, canvas.medium.label),
         Line(center, polar(center, 38, axis.angle(_value_fraction(model))), Style(stroke=BLACK, width=1.3)),
         Circle(center, 3, SOLID),
     )
@@ -361,6 +449,7 @@ def _build_caliper(model: InstrumentSpec, canvas: Canvas) -> None:
     bar_top, bar_bottom = 16.0, 40.0
     frame_bottom, jaw_bottom = 58.0, 78.0
     divisions = model.vernier_divisions
+    label, micro = canvas.medium.label, canvas.medium.micro
     value = model.value if model.value is not None else model.min
 
     def at(quantity: float) -> float:
@@ -379,11 +468,13 @@ def _build_caliper(model: InstrumentSpec, canvas: Canvas) -> None:
             _ticks(model),
             major_length=7,
             minor_length=4.5,
-            label_distance=9.5,
-            label_size=_LABEL_SIZE,
+            label_distance=_CALIPER_LABEL_DISTANCE * label,
+            label_size=label,
         )
     )
-    canvas.add(_unit(Pt(right, bar_top + 8.5), model, anchor="end"))
+    canvas.add(
+        _unit(Pt(right, bar_top + _CALIPER_UNIT_DROP * label), model, label, anchor="end")
+    )
 
     frame_width = at(value + (divisions - 1) * model.step) - x_value + 8
     canvas.add(
@@ -402,7 +493,7 @@ def _build_caliper(model: InstrumentSpec, canvas: Canvas) -> None:
             )
         )
         if marked:
-            canvas.add(Text(Pt(x, bar_bottom + 14.5), str(i), 6))
+            canvas.add(Text(Pt(x, bar_bottom + _VERNIER_INDEX_DROP * micro), str(i), micro))
     if model.value is not None and model.value > model.min:
         canvas.add(Rect(Pt(left, 60), x_value - left, 14, BODY))
         canvas.extend(hatch(BBox(left, 60, x_value, 74)))
@@ -442,10 +533,12 @@ def _build_balance(model: InstrumentSpec, canvas: Canvas) -> None:
         canvas.add(Rect(Pt(left - 11, pan_y - 13), 22, 13, BODY))
         canvas.extend(hatch(BBox(left - 11, pan_y - 13, left + 11, pan_y)))
     if model.weights:
-        canvas.extend(_weights(model.weights, right, pan_y))
+        canvas.extend(_weights(model.weights, right, pan_y, canvas.medium.micro))
 
 
-def _weights(weights: list[float], center_x: float, pan_y: float) -> list[Node]:
+def _weights(
+    weights: list[float], center_x: float, pan_y: float, micro: float
+) -> list[Node]:
     """Weights on the pan: heaviest first, height proportional to mass, a
     small knob on top and the mass written above."""
     ordered = sorted(weights, reverse=True)
@@ -458,7 +551,9 @@ def _weights(weights: list[float], center_x: float, pan_y: float) -> list[Node]:
         top = pan_y - height
         nodes.append(Rect(Pt(x, top), width, height, BODY))
         nodes.append(Rect(Pt(x + width / 2 - 1.5, top - 2), 3, 2, SOLID))
-        nodes.append(Text(Pt(x + width / 2, top - 4), num(weight), 6))
+        nodes.append(
+            Text(Pt(x + width / 2, top - _WEIGHT_LABEL_LIFT * micro), num(weight), micro)
+        )
         x += width + gap
     return nodes
 
@@ -484,15 +579,15 @@ def _build_digital(model: InstrumentSpec, canvas: Canvas) -> None:
         Text(
             Pt(116, 31.5),
             fixed(value, decimals),
-            15,
+            canvas.medium.display,
             "end",
             Style(fill=BLACK, font_weight="bold", letter_spacing=1),
         ),
-        _unit(Pt(136, 31.5), model, size=8),
+        _unit(Pt(136, 31.5), model, canvas.medium.caption),
         Text(
             Pt(10, 55),
             f"{num(model.min)}…{num(model.max)} {model.unit}",
-            _LABEL_SIZE,
+            canvas.medium.label,
             "start",
         ),
     )

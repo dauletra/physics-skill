@@ -220,9 +220,20 @@ class TestLesson:
         assert "-25000" in properties
 
     def test_a_kind_without_a_layout_says_so(self) -> None:
-        """Silence would give a lesson with slides missing from the middle."""
-        with pytest.raises(NotImplementedError, match="objectives"):
-            self.deck({"type": "objectives", "items": ["понять", "научиться"]})
+        """Silence would give a lesson with slides missing from the middle.
+
+        The kind is taken from `PLAYER_ONLY` rather than named here: that
+        list shrinks with every phase of P4, and a test naming one of its
+        members would have to be rewritten each time the plan advanced.
+        """
+        from physics_svg.presentation.slides.registry import PLAYER_ONLY, load_all
+
+        if not PLAYER_ONLY:  # P4 finished; there is nothing left to refuse
+            return
+        tag = sorted(PLAYER_ONLY)[0]
+        template = load_all()[tag].templates[0]
+        with pytest.raises(NotImplementedError, match=tag):
+            self.deck(template.slide)
 
 
 class TestStability:

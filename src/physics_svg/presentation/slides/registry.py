@@ -51,9 +51,6 @@ PLAYER_ONLY = frozenset(
         "compare",
         "example",
         "formula",
-        "objectives",
-        "prompt",
-        "reflection",
         "tasks",
     }
 )

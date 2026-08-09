@@ -9,7 +9,7 @@ so "ticks every 5, numbers every 10" has to come out exactly that way.
 from __future__ import annotations
 
 from library import EXAMPLES
-from physics_svg.draw import SHEET, Line, Polyline, Pt, Text, num
+from physics_svg.draw import BOARD, SHEET, Line, Medium, Polyline, Pt, Text, num
 from physics_svg.visuals import build_svg, parse_visual
 from physics_svg.visuals.graph.model import (
     MIN_LABEL_GAP_Y,
@@ -18,12 +18,21 @@ from physics_svg.visuals.graph.model import (
     GraphSpec,
 )
 from physics_svg.visuals.graph.render import (
-    _AUTO_LABELS_X,
-    _AUTO_LABELS_Y,
+    _LABEL_CLEARANCE_X,
+    _LABEL_CLEARANCE_Y,
     _LABEL_DISTANCE_X,
     _axes,
     axis_divisions,
+    label_budget,
 )
+
+
+def budget_x(medium: Medium) -> int:
+    return label_budget(PLOT_WIDTH, _LABEL_CLEARANCE_X * medium.number)
+
+
+def budget_y(medium: Medium) -> int:
+    return label_budget(PLOT_HEIGHT, _LABEL_CLEARANCE_Y * medium.number)
 
 BASE = {
     "type": "graph",
@@ -129,10 +138,21 @@ class TestAxes:
 
 class TestLabelDensity:
     """Numbers stack up the y axis and stand apart along the x axis, so the
-    two axes cannot share one budget."""
+    two axes cannot share one budget — and neither can two media."""
 
     def test_the_vertical_budget_is_the_tighter_one(self) -> None:
-        assert _AUTO_LABELS_Y < _AUTO_LABELS_X
+        assert budget_y(SHEET) < budget_x(SHEET)
+
+    def test_the_sheet_is_numbered_exactly_as_it_always_was(self) -> None:
+        """Nine along x and seven down y: the counts the library was drawn
+        with, now arrived at from the label height instead of written down."""
+        assert (budget_x(SHEET), budget_y(SHEET)) == (9, 7)
+
+    def test_a_bigger_number_gets_fewer_of_its_own(self) -> None:
+        """The point of the whole budget: numbers do not multiply as they
+        grow. At the board step the axes hold six and five
+        (docs/visual-scale.md §6.4)."""
+        assert (budget_x(BOARD), budget_y(BOARD)) == (6, 5)
 
     def test_numbers_down_the_y_axis_keep_their_air(self) -> None:
         """Every case in the library, measured: a number and the next one.
@@ -145,7 +165,7 @@ class TestLabelDensity:
                 continue
             model = example.model
             ticks, _ = axis_divisions(
-                *model.y_range, model.y_step, model.y_label_step, _AUTO_LABELS_Y
+                *model.y_range, model.y_step, model.y_label_step, budget_y(SHEET)
             )
             numbered = sum(1 for tick in ticks if tick.labeled)
             gap = PLOT_HEIGHT / (numbered - 1)
@@ -154,7 +174,7 @@ class TestLabelDensity:
     def test_the_horizontal_choice_is_untouched(self) -> None:
         # The x axis was never crowded; these are the counts it has always had.
         for (low, high), expected in {(0, 6): 7, (0, 10): 6, (250, 650): 9}.items():
-            ticks, _ = axis_divisions(low, high, None, None, _AUTO_LABELS_X)
+            ticks, _ = axis_divisions(low, high, None, None, budget_x(SHEET))
             assert sum(1 for tick in ticks if tick.labeled) == expected
 
 

@@ -125,12 +125,25 @@ def render(model: InstrumentSpec, canvas: Canvas) -> Layout:
 # --- shared helpers -----------------------------------------------------
 
 
-def _ticks(model: InstrumentSpec) -> tuple[Tick, ...]:
+def _ticks(model: InstrumentSpec, medium: Medium) -> tuple[Tick, ...]:
+    """The scale's marks, with the ceiling on numbers lowered to the medium.
+
+    `model.max_labels` is how many numbers a face of this family holds at the
+    sheet step, and it is also what the model **validates** an author's pinned
+    step against — which is why the renderer lowers a copy of it and never the
+    thing itself. One spec cannot be valid for a worksheet and invalid for a
+    slide (docs/visual-scale.md §3.6): the board is allowed to print fewer
+    numbers than it is permitted, never to refuse the spec.
+
+    An author who pinned the step is obeyed on both media, crowding and all —
+    that step is usually the question ("determine the scale division"), and
+    thinning it away would change what the picture asks.
+    """
     return tick_layout(
         model.min,
         model.max,
         model.step,
-        max_labels=model.max_labels,
+        max_labels=max(2, int(model.max_labels * SHEET.label / medium.label)),
         label_step=model.label_step,
     )
 
@@ -161,7 +174,7 @@ def _build_ruler(model: InstrumentSpec, canvas: Canvas) -> None:
     canvas.extend(
         scale_marks(
             axis,
-            _ticks(model),
+            _ticks(model, canvas.medium),
             major_length=9,
             minor_length=5,
             # The half-way tick, like the 5 mm mark on a real ruler.
@@ -194,13 +207,14 @@ def _column_marks(
     label_direction: Pt,
     label_distance: float,
     label_anchor: str,
-    label: float,
+    medium: Medium,
 ) -> list[Node]:
     """`label_distance` arrives in label heights: how far the number stands
     off the wall it is written beside."""
+    label = medium.label
     return scale_marks(
         axis,
-        _ticks(model),
+        _ticks(model, medium),
         major_length=9,
         minor_length=5.5,
         label_distance=label_distance * label,
@@ -226,7 +240,7 @@ def _build_cylinder(model: InstrumentSpec, canvas: Canvas) -> None:
     )
     label = canvas.medium.label
     axis = _column_axis(left, top=18, bottom=138, tick_dir=1)
-    canvas.extend(_column_marks(model, axis, Pt(-1, 0), 3 / SHEET.label, "end", label))
+    canvas.extend(_column_marks(model, axis, Pt(-1, 0), 3 / SHEET.label, "end", canvas.medium))
     canvas.add(_unit(Pt(right + 2, top + 5), model, label, anchor="start"))
     if model.value is not None:
         level = axis.point(_value_fraction(model)).y
@@ -246,7 +260,7 @@ def _build_thermometer(model: InstrumentSpec, canvas: Canvas) -> None:
     )
     label = canvas.medium.label
     axis = _column_axis(cx + 6, top=22, bottom=122, tick_dir=1)
-    canvas.extend(_column_marks(model, axis, Pt(1, 0), 8.5 / SHEET.label, "start", label))
+    canvas.extend(_column_marks(model, axis, Pt(1, 0), 8.5 / SHEET.label, "start", canvas.medium))
     canvas.add(_unit(Pt(cx, 8.8), model, label))
     column_top = axis.point(_value_fraction(model)).y if model.value is not None else tube_bottom - 4
     canvas.add(
@@ -276,7 +290,7 @@ def _build_dynamometer(model: InstrumentSpec, canvas: Canvas) -> None:
     scale_x = cx + 2
     axis = _column_axis(scale_x, top=body_top + 14, bottom=body_bottom - 8, tick_dir=1)
     canvas.extend(
-        _column_marks(model, axis, Pt(-1, 0), 3.5 / SHEET.label, "end", canvas.medium.label)
+        _column_marks(model, axis, Pt(-1, 0), 3.5 / SHEET.label, "end", canvas.medium)
     )
     pointer_y = axis.point(_value_fraction(model)).y
     canvas.add(
@@ -308,7 +322,7 @@ def _build_dial(model: InstrumentSpec, canvas: Canvas) -> None:
     canvas.add(Rect(Pt(1.5, 1.5), 157, body_height, BODY, radius=6))
     axis = ArcAxis(center, r_arc, DIAL_START, DIAL_END)
     canvas.add(_arc_path(axis, LINE))
-    ticks = _ticks(model)
+    ticks = _ticks(model, canvas.medium)
     canvas.extend(
         scale_marks(
             axis,
@@ -416,7 +430,7 @@ def _build_stopwatch(model: InstrumentSpec, canvas: Canvas) -> None:
     canvas.extend(
         scale_marks(
             axis,
-            _ticks(model),
+            _ticks(model, canvas.medium),
             # Ticks point inward on a closed face.
             major_length=-7,
             minor_length=-4,
@@ -465,7 +479,7 @@ def _build_caliper(model: InstrumentSpec, canvas: Canvas) -> None:
     canvas.extend(
         scale_marks(
             axis,
-            _ticks(model),
+            _ticks(model, canvas.medium),
             major_length=7,
             minor_length=4.5,
             label_distance=_CALIPER_LABEL_DISTANCE * label,

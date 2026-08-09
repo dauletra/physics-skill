@@ -105,14 +105,23 @@ _LEGEND_GAP = 10.0 / SHEET.number
 _SAMPLE_LIFT = 2.5 / SHEET.number
 _SAMPLE_WIDTH = 16.0
 
-#: How many numbers the renderer prints along an axis when nobody pinned the
-#: label step. Not the same as how finely the axis is divided: divisions carry
-#: ticks, and a tick without a number is normal — it is what a student counts
-#: cells by. The two budgets differ because numbers stack up the y axis with
-#: only their own line height between them, while along the x axis they stand
-#: apart; nine of them read comfortably across 174 units and crowd down 92.
-_AUTO_LABELS_X = 9
-_AUTO_LABELS_Y = 7
+#: How much room one number wants along its axis, in label heights, when
+#: nobody pinned the label step. Not the same as how finely the axis is
+#: divided: divisions carry ticks, and a tick without a number is normal — it
+#: is what a student counts cells by.
+#:
+#: The two clearances differ because the neighbour differs. Along x a number
+#: stands beside a number and what crowds is width; up y a number stands over
+#: a number and what crowds is line height. It is the same distinction the
+#: model validates an author's pinned step by (`MIN_LABEL_GAP_X` against
+#: `MIN_LABEL_GAP_Y`).
+#:
+#: Written in label heights rather than in units because the label is what
+#: has to fit: at the sheet step these give back exactly the nine and seven
+#: the library has always drawn, and at the board step they give six and five
+#: — the numbers stop multiplying as they grow (docs/visual-scale.md §6.4).
+_LABEL_CLEARANCE_X = 2.4
+_LABEL_CLEARANCE_Y = 1.7
 
 #: Marker shapes cycle per series: a scatter plot distinguishes series by
 #: marker, not by line, because there is no line to dash.
@@ -144,8 +153,13 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
     def sy(y: float) -> float:
         return PLOT_HEIGHT - (y - y0) / (y1 - y0) * PLOT_HEIGHT
 
-    x_ticks, x_fine = axis_divisions(x0, x1, model.x_step, model.x_label_step, _AUTO_LABELS_X)
-    y_ticks, y_fine = axis_divisions(y0, y1, model.y_step, model.y_label_step, _AUTO_LABELS_Y)
+    number = canvas.medium.number
+    x_ticks, x_fine = axis_divisions(
+        x0, x1, model.x_step, model.x_label_step, label_budget(PLOT_WIDTH, _LABEL_CLEARANCE_X * number)
+    )
+    y_ticks, y_fine = axis_divisions(
+        y0, y1, model.y_step, model.y_label_step, label_budget(PLOT_HEIGHT, _LABEL_CLEARANCE_Y * number)
+    )
 
     if model.grid != "none":
         x_minor, x_major = _grid_values(x_ticks, x_fine, model.grid)
@@ -189,6 +203,17 @@ def render(model: GraphSpec, canvas: Canvas) -> Layout:
     if any(series.label for series in model.series):
         canvas.extend(_legend(model, canvas.medium))
     return Layout(padding=2.0)
+
+
+def label_budget(length: float, clearance: float) -> int:
+    """How many numbers an axis of `length` holds at this clearance.
+
+    Numbers stand at the ends of the axis as well as between them, so a run
+    of n gaps carries n+1 of them. Two is the floor: an axis numbered at one
+    end only is not a scale, and a picture too small for two numbers is a
+    problem of the picture, not of the thinning.
+    """
+    return max(2, int(length / clearance) + 1)
 
 
 def axis_divisions(

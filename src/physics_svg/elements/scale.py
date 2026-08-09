@@ -228,7 +228,7 @@ def scale_marks(
     label_distance: float | None = None,
     label_direction: Pt | None = None,
     label_anchor: str = "middle",
-    label_size: float = 7.0,
+    label_size: float | None = None,
     label_shift: float = 0.0,
     formatter: Callable[[float], str] = num,
     major_style: Style = LINE,
@@ -242,7 +242,15 @@ def scale_marks(
     step is even. `label_distance` of `None` draws ticks without numbers.
     `skip` drops ticks by index — a full clock face needs it, because its
     first and last tick are the same point.
+
+    A number has no size of its own to fall back on: the size belongs to the
+    medium the picture is drawn for, and a default here would be one label
+    silently drawn at the wrong scale (docs/visual-scale.md §6.1). Ticks
+    without numbers need none, which is why the pair is checked rather than
+    demanded.
     """
+    if label_distance is not None and label_size is None:
+        raise ValueError("scale_marks: numbering an axis needs label_size")
     labeled_indices = [i for i, tick in enumerate(ticks) if tick.labeled]
     every = labeled_indices[1] - labeled_indices[0] if len(labeled_indices) > 1 else 1
     nodes: list[Node] = []
@@ -258,7 +266,7 @@ def scale_marks(
         else:
             length, style = minor_length, minor_style
         nodes.append(Line(base, base + outward * length, style))
-        if tick.labeled and label_distance is not None:
+        if tick.labeled and label_distance is not None and label_size is not None:
             towards = (label_direction or outward).normalized()
             at = base + towards * label_distance
             nodes.append(

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from physics_svg.draw import BBox, Pt
+from physics_svg.draw import SHEET, BBox, Pt
 from physics_svg.elements import (
     ArcAxis,
     LinearAxis,
@@ -172,7 +172,7 @@ class TestScaleMarks:
         axis = LinearAxis(Pt(0, 0), Pt(100, 0), Pt(0, 1))
         nodes = scale_marks(
             axis, tick_layout(0, 10, 1, max_labels=16), major_length=9, minor_length=5,
-            label_distance=17,
+            label_distance=17, label_size=SHEET.label,
         )
         texts = [n for n in nodes if type(n).__name__ == "Text"]
         assert texts and all(t.at.y == 17 for t in texts)
@@ -182,6 +182,7 @@ class TestScaleMarks:
         nodes = scale_marks(
             axis, tick_layout(0, 4, 1, max_labels=8), major_length=9, minor_length=5,
             label_distance=3, label_direction=Pt(-1, 0), label_anchor="end",
+            label_size=SHEET.label,
         )
         texts = [n for n in nodes if type(n).__name__ == "Text"]
         assert all(t.at.x == 17 for t in texts)

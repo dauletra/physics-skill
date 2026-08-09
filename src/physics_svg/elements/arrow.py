@@ -32,9 +32,10 @@ from physics_svg.draw import (
 HEAD_LENGTH = 7.0
 HEAD_HALF_WIDTH = 3.0
 
-#: Where a label sits relative to the point it names.
+#: Where a label sits relative to the point it names. The size is not
+#: among them: it is the medium's, and a default here would be a label
+#: silently drawn at the sheet's scale on a board (docs/visual-scale.md).
 LABEL_GAP = 4.0
-LABEL_SIZE = 9.0
 
 #: How far an angle label leans from the bisector towards the first arm.
 LABEL_BIAS = 0.2
@@ -58,7 +59,7 @@ def arrow(start: Pt, end: Pt, style: Style = HEAVY, head_length: float = HEAD_LE
     ]
 
 
-def label_near(at: Pt, away: Pt, text: str, size: float = LABEL_SIZE) -> Text:
+def label_near(at: Pt, away: Pt, text: str, size: float) -> Text:
     """Place a label beside a point, pushed along `away`.
 
     The anchor follows the direction, so a label to the left of the drawing
@@ -85,11 +86,18 @@ def angle_mark(
     radius: float,
     label: str | None = None,
     style: Style = Style(stroke=BLACK, width=0.8, fill="none"),
-    size: float = 8.0,
+    size: float | None = None,
 ) -> list[Node]:
-    """An arc between two directions, with its label on the bisector."""
+    """An arc between two directions, with its label on the bisector.
+
+    A named angle needs the size to name it at — the medium's, never a
+    default of this module's own (see `label_near`). An unnamed one is just
+    an arc and needs nothing.
+    """
+    if label and size is None:
+        raise ValueError("angle_mark: naming an angle needs size")
     nodes: list[Node] = [arc(center, radius, from_deg, to_deg, style)]
-    if label:
+    if label and size is not None:
         # Leaning towards the first arm rather than sitting exactly on the
         # bisector: on a common vertex that is where a resultant runs.
         middle = from_deg + (to_deg - from_deg) * (0.5 - LABEL_BIAS)

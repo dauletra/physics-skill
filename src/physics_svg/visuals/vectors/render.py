@@ -23,11 +23,13 @@ from physics_svg.draw import (
     DASH,
     GREY,
     HEAVY,
+    SHEET,
     SOLID,
     BBox,
     Canvas,
     Circle,
     Line,
+    Medium,
     Node,
     Pt,
     Rect,
@@ -61,7 +63,10 @@ _CONSTRUCTION = Style(stroke=BLACK, width=1.0, dash=DASH["dashed"], fill="none")
 _RESULTANT = Style(stroke=BLACK, width=2.6, fill="none")
 _GRID = Style(stroke=GREY, width=0.5, fill="none")
 _PARALLELOGRAM = Style(stroke=GREY, width=0.9, dash=DASH["dashed"], fill="none")
-_CAPTION_SIZE = 8.0
+
+#: How far the caption hangs below the drawing, in caption heights — so a
+#: larger caption moves down instead of climbing into the picture.
+_CAPTION_DROP = 11.0 / SHEET.caption
 
 
 @dataclass(frozen=True)
@@ -95,7 +100,9 @@ def render(model: VectorsSpec, canvas: Canvas) -> Layout:
         style = _CONSTRUCTION if item.spec.style == "dashed" else _VECTOR
         canvas.extend(arrow(at(item.start), at(item.end), style))
         if item.spec.label:
-            canvas.add(label_near(at(item.end), item.direction, item.spec.label))
+            canvas.add(
+                label_near(at(item.end), item.direction, item.spec.label, canvas.medium.number)
+            )
 
     if resultant is not None:
         if model.arrangement == "parallelogram":
@@ -111,15 +118,18 @@ def render(model: VectorsSpec, canvas: Canvas) -> Layout:
         # ends exactly where the last vector does, and the two labels would
         # sit on top of each other.
         canvas.extend(arrow(start, end, _RESULTANT))
-        canvas.add(label_near(start.lerp(end, 0.5), aside, model.resultant or ""))
+        canvas.add(
+            label_near(start.lerp(end, 0.5), aside, model.resultant or "", canvas.medium.number)
+        )
 
-    canvas.extend(_angles(model, placed, cell))
+    canvas.extend(_angles(model, placed, cell, canvas.medium))
 
     if model.caption:
         box = canvas.content_box()
         if box is not None:
+            size = canvas.medium.caption
             canvas.add(
-                Text(Pt(box.center.x, box.y1 + 11), model.caption, _CAPTION_SIZE, "middle")
+                Text(Pt(box.center.x, box.y1 + _CAPTION_DROP * size), model.caption, size, "middle")
             )
     return Layout(padding=3.0)
 
@@ -209,7 +219,9 @@ def _parallelogram(placed: list[Placed], resultant: Placed, cell: float) -> list
     ]
 
 
-def _angles(model: VectorsSpec, placed: list[Placed], cell: float) -> list[Node]:
+def _angles(
+    model: VectorsSpec, placed: list[Placed], cell: float, medium: Medium
+) -> list[Node]:
     by_id = {item.spec.id: item for item in placed if item.spec.id}
     nodes: list[Node] = []
     for i, mark in enumerate(model.angles):
@@ -219,7 +231,12 @@ def _angles(model: VectorsSpec, placed: list[Placed], cell: float) -> list[Node]
         radius = min(first.spec.length, second.spec.length) * cell * 0.34 + i * 4.0
         nodes.extend(
             angle_mark(
-                first.start * cell, first.spec.angle, second.spec.angle, radius, mark.label
+                first.start * cell,
+                first.spec.angle,
+                second.spec.angle,
+                radius,
+                mark.label,
+                size=medium.caption,
             )
         )
     return nodes

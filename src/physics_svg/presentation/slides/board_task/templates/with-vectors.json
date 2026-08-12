@@ -1,0 +1,20 @@
+{
+  "template": "with-vectors",
+  "when": "задача по чертежу сил: диаграмма рядом с условием, длины считают по клеткам",
+  "slide": {
+    "type": "board_task",
+    "text": "На тело действуют две силы. По рисунку определите модуль равнодействующей.",
+    "visual": {
+      "type": "vectors",
+      "arrangement": "common",
+      "body": "point",
+      "grid": true,
+      "vectors": [
+        { "length": 4, "angle": 0, "label": "F₁" },
+        { "length": 3, "angle": 90, "label": "F₂" }
+      ],
+      "caption": "1 клетка = 10 Н"
+    },
+    "answer": "50 Н"
+  }
+}

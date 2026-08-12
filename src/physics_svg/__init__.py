@@ -12,4 +12,4 @@ Layers, strictly bottom-up (no reverse imports):
 See docs/architecture.md for the rationale behind the split.
 """
 
-__version__ = "0.6.2"
+__version__ = "0.6.2+dev"

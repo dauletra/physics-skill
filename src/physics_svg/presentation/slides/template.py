@@ -2,7 +2,7 @@
 
 The difference from a slide kind is the difference between a contract and a
 starting point (docs/slide-templates.md §2): a kind brings fields, a
-validator, an emitter and a branch in the player; a template brings one JSON
+validator, an emitter and a layout of its own; a template brings one JSON
 file and a line saying when to take it. The model copies the file and edits
 it, exactly as it copies an illustration spec out of `library/`.
 

@@ -1,8 +1,8 @@
 """The presentation manifest — `presentation.json`.
 
-The name of the lesson and the order of the slides, and nothing else: the
-player puts `title` in the browser tab and on an opening screen when the
-author gave no `title` slide. The slides themselves live one per file in
+The name of the lesson and the order of the slides, and nothing else:
+`title` becomes the deck's document title, what PowerPoint shows in its
+window and in a file listing. The slides themselves live one per file in
 `slides/<id>.json`, so a targeted edit — «переделай третий слайд» — touches
 one small file instead of the whole lesson.
 """
@@ -26,7 +26,7 @@ class PresentationSpec:
 
     title: str = field(
         default="",
-        doc="Название урока: вкладка браузера и титул, если нет слайда 'title'",
+        doc="Название урока: уходит в свойства файла презентации",
     )
     order: Optional[list[str]] = field(
         default=None, doc="Порядок слайдов: имена файлов из slides/ без расширения"

@@ -2,7 +2,7 @@
 
 The same shape as `objectives` and `reflection`, and deliberately a kind of
 its own: what the list means decides where it stands in the lesson and how
-the player labels it. A slide type is a meaning, not a set of fields.
+the deck labels it. A slide type is a meaning, not a set of fields.
 """
 
 from __future__ import annotations

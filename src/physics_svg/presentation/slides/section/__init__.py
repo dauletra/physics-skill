@@ -3,7 +3,8 @@
 A slide, not a container: the top of a presentation is a flat list, and a
 stage that swallowed its slides would be a layout that changes meaning
 (docs/presentation.md §3, principle 8). The data only marks where a stage
-begins; building navigation out of those markers is the player's affair.
+begins; finding one's way by them is the teacher's affair, in the slide
+sorter of PowerPoint.
 """
 
 from __future__ import annotations

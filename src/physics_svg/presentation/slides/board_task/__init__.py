@@ -2,7 +2,7 @@
 
 Deliberately not the document's `open` question: there is no writing
 surface, no sheet numbering and no answers section here. The answer, when
-given, is for the teacher — when and how to reveal it is the player's
+given, is for the teacher — when and how to reveal it is the deck's
 decision, not a field.
 """
 
@@ -31,7 +31,7 @@ class BoardTaskSpec:
     text: str = field(doc="Условие задачи")
     visual: Optional[VISUAL] = field(default=None, doc="Иллюстрация к условию")
     answer: Optional[str] = field(
-        default=None, doc="Ответ для учителя; когда его показать, решает плеер"
+        default=None, doc="Ответ для учителя; когда его показать, решает показ"
     )
     id: Optional[str] = None
 

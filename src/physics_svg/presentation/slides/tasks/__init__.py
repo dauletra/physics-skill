@@ -1,12 +1,12 @@
 """Several tasks on one screen — for rows, variants, or a quick round.
 
 Not a list inside `content`: each task carries its own answer and may carry
-its own picture, and the player opens those answers one at a time. A list of
+its own picture, and the deck opens those answers one at a time. A list of
 strings cannot say that, which is exactly the test a new kind has to pass
 (docs/slide-templates.md §2). One task is `board_task` — at the board the
 class solves one at a time, and a set of one is a set only on paper.
 
-Numbering lives in the player, not here: the number of a task is its place
+Numbering lives in the deck, not here: the number of a task is its place
 in the list, as it is on a sheet (principle 2).
 """
 

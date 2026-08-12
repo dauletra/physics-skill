@@ -1,7 +1,7 @@
 """A worked example — the teacher solving at the board while the class follows.
 
 Steps are a list, not one paragraph with line breaks inside: showing them one
-at a time is the player's business, and it can only do that if the data says
+at a time is the deck's business, and it can only do that if the data says
 where a step ends. That is the whole reason this kind exists next to
 `content` — the shape of the field carries the meaning, not the styling
 (docs/presentation.md §5).
@@ -32,7 +32,7 @@ class ExampleSpec:
     text: str = field(doc="Условие разбираемой задачи")
     steps: list[str] = field(min_items=1, doc="Шаги разбора, по строке на шаг")
     answer: Optional[str] = field(
-        default=None, doc="Ответ; когда его показать, решает плеер"
+        default=None, doc="Ответ; когда его показать, решает показ"
     )
     visual: Optional[VISUAL] = field(default=None, doc="Иллюстрация к условию")
     id: Optional[str] = None

@@ -26,7 +26,6 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from physics_svg import __version__  # noqa: E402
-from physics_svg.document.blocks import doc_block_annotation  # noqa: E402
 from physics_svg.document.components import (  # noqa: E402
     AnswerLineSpec,
     HeadingSpec,
@@ -37,9 +36,7 @@ from physics_svg.document.components import (  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
 from physics_svg.presentation.slides import SlideTemplate, SlideType  # noqa: E402
 from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
-from physics_svg.schema import emit_schema  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
-from physics_svg.visuals import visual_annotation  # noqa: E402
 
 BUNDLE_NAME = "physics-materials"
 SOURCE = REPO / "skill"
@@ -83,7 +80,6 @@ def build(destination: Path, make_zip: bool = True) -> Path:
     _copy_tree(PACKAGE, root / "physics_svg")
     _copy_tree(EXAMPLES, root / "examples")
     _write_library(root / "library")
-    _write_schema(root / "schema.json")
     (root / "VERSION").write_text(f"{__version__}\n", encoding="utf-8")
 
     _check_promises(root)
@@ -128,13 +124,23 @@ def _write_references(directory: Path) -> None:
             "Презентация сверху — плоский список слайдов; порядок в списке и есть "
             "порядок показа. У каждого вида свои поля, общее — `type` и "
             "необязательный `id`. Раскладку слайд не задаёт: где встанет "
-            "картинка и когда откроется ответ, решает плеер. Заготовки, которые "
-            "можно взять и заполнить, перечислены в `references/templates.md`.",
+            "картинка и когда откроется ответ, решает показ. Читается, когда "
+            "заготовки из `references/presentation.md` не хватило: работу над "
+            "презентацией начинают там. У каждого вида показан один заполненный "
+            "слайд целиком, остальные заготовки названы файлами — их содержимое "
+            "лежит в `library/slides/<вид>/` и копируется оттуда, а не "
+            "перепечатывается.",
             [_slide_fragment(entry) for entry in load_slides().values()],
         ),
         encoding="utf-8",
     )
-    (directory / "templates.md").write_text(_template_catalogue(), encoding="utf-8")
+    (directory / "presentation.md").write_text(
+        _fill(
+            (SOURCE / "references" / "presentation.md").read_text(encoding="utf-8"),
+            {"SLIDE_COUNT": str(len(load_slides())), "TEMPLATE_TABLE": _template_table()},
+        ),
+        encoding="utf-8",
+    )
     (directory / "visuals.md").write_text(
         _concatenate(
             "Иллюстрации",
@@ -168,52 +174,64 @@ def _slide_fragment(entry: SlideType) -> str:
     card gets for its specs, and it has the same consequence: adding a
     template stays "add a file", and a template cannot go missing from the
     reference (docs/slide-templates.md §3).
+
+    Only the **first** template of a kind is written out in full. The rest
+    are named, because that is all the model needs of them: it copies the
+    file out of `library/slides/`, it does not retype what the page shows.
+    Printing all twenty-eight cost more than half of `slides.md`, and the
+    twenty-seventh taught nothing the first had not — the shape of the kind
+    is the same shape in every one of them.
     """
     text = _read(entry.doc).rstrip()
-    blocks = {template.slug: _template_block(entry, template) for template in entry.templates}
+    remaining = {template.slug: template for template in entry.templates}
+    written_in_full = False
     parts: list[str] = []
     cursor = 0
     for match in _TEMPLATE_FENCE.finditer(text):
         slug = match.group(1).strip()
-        if slug not in blocks:
+        if slug not in remaining:
             raise SystemExit(
                 f"{entry.tag}/doc.md: шаблона '{slug}' нет; "
-                f"есть {', '.join(sorted(blocks))}"
+                f"есть {', '.join(sorted(remaining))}"
             )
-        parts += [text[cursor : match.start()], blocks.pop(slug)]
+        parts += [
+            text[cursor : match.start()],
+            _template_block(entry, remaining.pop(slug), full=not written_in_full),
+        ]
+        written_in_full = True
         cursor = match.end()
     parts.append(text[cursor:])
-    parts += [f"\n\n{block}" for block in blocks.values()]
+    parts += [
+        f"\n\n{_template_block(entry, template, full=False)}" for template in remaining.values()
+    ]
     return "".join(parts)
 
 
-def _template_block(entry: SlideType, template: SlideTemplate) -> str:
+def _template_block(entry: SlideType, template: SlideTemplate, *, full: bool) -> str:
     """One template as the model meets it: where to copy it from, when to
-    take it, and what is inside. Written to stand where a fence stood, so it
-    carries no blank lines of its own."""
-    return (
-        f"`{_LIBRARY_SLIDES}/{entry.tag}/{template.slug}.json` — {template.when}\n\n"
-        f"```json\n{json.dumps(template.slide, ensure_ascii=False, indent=2)}\n```"
-    )
+    take it, and — for the first one of its kind — what is inside. Written to
+    stand where a fence stood, so it carries no blank lines of its own."""
+    line = f"`{_LIBRARY_SLIDES}/{entry.tag}/{template.slug}.json` — {template.when}"
+    if not full:
+        return line
+    return f"{line}\n\n```json\n{json.dumps(template.slide, ensure_ascii=False, indent=2)}\n```"
 
 
-def _template_catalogue() -> str:
+def _template_table() -> str:
     """Every template of every kind in one table — the cheap read before
-    picking one, without the field tables of `slides.md`."""
+    picking one, without the field tables of `slides.md`.
+
+    It stands inside `presentation.md` rather than in a file of its own: the
+    catalogue is the first thing the work needs and the last thing the page
+    says, so the model that came for the workflow leaves with a template
+    already chosen.
+    """
     rows = [
         (f"{_LIBRARY_SLIDES}/{entry.tag}/{template.slug}.json", template.when)
         for entry in load_slides().values()
         for template in entry.templates
     ]
-    return (
-        "# Шаблоны слайдов\n\n"
-        "Готовые слайды: скопируй файл в `slides/<id>.json`, поставь `id` по имени "
-        "файла и замени содержимое полей своим. Шаблон — это заполненный слайд "
-        "обычного вида, а не отдельная сущность: поля, инварианты и всё, чего в "
-        "шаблоне не оказалось, — в `references/slides.md`.\n\n"
-        + _table(("файл", "когда брать"), rows)
-        + "\n"
-    )
+    return _table(("файл", "когда брать"), rows)
 
 
 def _component_table() -> str:
@@ -301,7 +319,12 @@ def _fill(template: str, values: dict[str, str]) -> str:
     return re.sub(r"\{\{(\w+)\}\}", replace, template)
 
 
-# --- library, schema, plumbing -----------------------------------------
+# --- library and plumbing ----------------------------------------------
+#
+# The JSON Schema used to ship here as `schema.json`. It stopped: nothing in
+# SKILL.md or the references pointed at it, so it was 49 КБ nobody opened —
+# and `render.py schema` prints the same thing on demand, from the same
+# models, whenever anyone actually wants it.
 
 
 def _write_library(directory: Path) -> None:
@@ -325,14 +348,6 @@ def _write_library(directory: Path) -> None:
                 json.dumps(template.slide, ensure_ascii=False, indent=2) + "\n",
                 encoding="utf-8",
             )
-
-
-def _write_schema(destination: Path) -> None:
-    schema = emit_schema(
-        {"block": doc_block_annotation(), "visual": visual_annotation()},
-        title="physics-svg: блок документа и иллюстрация",
-    )
-    destination.write_text(json.dumps(schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def _copy_tree(source: Path, destination: Path) -> None:

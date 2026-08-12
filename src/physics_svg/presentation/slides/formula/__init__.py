@@ -1,9 +1,9 @@
 """A formula said large, with its symbols spelled out underneath.
 
-Why this is a kind and not a `content` slide with a paragraph: the player
-has to know which string is *the formula*. Inside a paragraph KaTeX sets it
-in text style — a fraction shrinks to fit the line and stops being readable
-from the back row. Here the formula is a field of its own, so the player can
+Why this is a kind and not a `content` slide with a paragraph: the emitter
+has to know which string is *the formula*. Inside a paragraph it is set in
+text style — a fraction shrinks to fit the line and stops being readable
+from the back row. Here the formula is a field of its own, so the deck can
 give it display style and the height it needs, and the symbols get the shape
 they actually have: a pair «обозначение — что это», not a list of sentences
 (docs/slide-templates.md §5).

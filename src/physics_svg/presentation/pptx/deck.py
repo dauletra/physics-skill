@@ -1,9 +1,10 @@
 """A lesson as a deck: every slide asks its kind to lay itself out.
 
-The counterpart of `presentation/emit.py:build_data`, and deliberately the
-same shape — one pass over the validated models, each handing its own kind
-the work. What differs is the destination: there the lesson became data for
-the player to arrange, here it becomes the arrangement.
+The counterpart of the document's `build_docx`, and deliberately the same
+shape — one pass over the validated models, each handing its own kind the
+work. The player's emitter stood here before and had the same shape; what
+differs is the destination: there the lesson became data to be arranged at
+show time, here it becomes the arrangement itself.
 
 Every kind lays itself out — `register` will not take one that does not, so
 there is no case here where a slide could be silently dropped.

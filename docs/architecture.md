@@ -157,6 +157,7 @@ dist/                артефакты сборки (гитигнор)
 `tools/build_skill.py` собирает `dist/skill/physics-materials/` и zip.
 Руками в репозитории лежит только то, что нельзя вывести: `skill/SKILL.md`
 с плейсхолдерами, `skill/references/document.md` (проза схемы),
+`skill/references/presentation.md` (порядок работы над презентацией),
 `skill/references/symbols.md`, `skill/scripts/render.py`. Остальное —
 производная реестров:
 
@@ -164,12 +165,15 @@ dist/                артефакты сборки (гитигнор)
 |---|---|
 | `references/questions.md` | склейка `document/questions/<вид>.md` |
 | `references/slides.md` | склейка `presentation/slides/<вид>/doc.md` с заготовками внутри |
-| `references/templates.md` | каталог заготовок слайдов: `templates/*.json` всех видов |
+| `references/presentation.md` | рукописный порядок работы + каталог заготовок: `templates/*.json` всех видов |
 | `references/visuals.md` | склейка `visuals/<тип>/doc.md` |
 | таблицы типов в `document.md` и счётчики в SKILL.md | реестры |
 | `library/<тип>/*.json` | те же спеки, что рендерят тесты и галерея |
 | `library/slides/<вид>/*.json` | те же заготовки, уже без конверта |
-| `schema.json`, `VERSION` | модели и `__version__` |
+| `VERSION` | `__version__` |
+
+JSON Schema в бандл **не кладётся**: на неё никто не ссылался, а
+`render.py schema` печатает её из тех же моделей по требованию.
 
 Расхождение «SKILL.md обещает файл, которого нет» роняет сборку.
 `tests/test_bundle.py` дополнительно распаковывает бандл и запускает его

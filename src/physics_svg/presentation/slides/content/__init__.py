@@ -3,7 +3,7 @@
 One flexible shape instead of a slide kind per rhetorical device: a heading,
 a paragraph, a list, an illustration, in any combination that is not empty.
 How they sit on the screen — the illustration beside the text or under it —
-is the player's decision, not a field (docs/presentation.md §5).
+is the deck's decision, not a field (docs/presentation.md §5).
 """
 
 from __future__ import annotations

@@ -119,7 +119,7 @@ PowerPoint — это OMML, который уже написан для Word. С
 просит «восстановить»; PowerPoint такой же. Тест докажет, что XML валиден, и
 не докажет, что PowerPoint его откроет. Поэтому `evals/pptx.md` — не
 формальность, а обязательная часть каждой фазы, ровно как
-[`evals/word.md`](../evals/word.md).
+[`evals/word.md`](https://github.com/dauletra/physics-skill/blob/main/evals/word.md).
 
 ## 5. Устройство
 

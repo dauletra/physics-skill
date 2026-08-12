@@ -49,10 +49,10 @@ class TestContents:
         names = {path.name for path in (bundle / "references").glob("*.md")}
         assert names == {
             "document.md",
+            "presentation.md",
             "questions.md",
             "slides.md",
             "symbols.md",
-            "templates.md",
             "visuals.md",
         }
 
@@ -83,9 +83,14 @@ class TestContents:
         assert (lesson / "presentation.json").exists()
         assert list((lesson / "slides").glob("*.json"))
 
-    def test_the_schema_and_version_ship(self, bundle: Path) -> None:
-        assert (bundle / "schema.json").exists()
+    def test_the_version_ships(self, bundle: Path) -> None:
         assert (bundle / "VERSION").read_text(encoding="utf-8").strip()
+
+    def test_the_json_schema_does_not_ship(self, bundle: Path) -> None:
+        """Nothing pointed at it, so it was weight in the archive and a
+        wrong turn for a model listing the folder. `render.py schema` still
+        prints it, from the same models, on demand."""
+        assert not (bundle / "schema.json").exists()
 
     def test_no_generated_junk(self, bundle: Path) -> None:
         junk = [
@@ -104,7 +109,9 @@ class TestSkillMd:
     def test_the_counts_match_the_registries(self, bundle: Path) -> None:
         text = (bundle / "SKILL.md").read_text(encoding="utf-8")
         assert f"все {len(load_questions())} видов" in text
-        assert f"все {len(load_visuals())} типов" in text
+        # Not «все N типов»: with four of them that reads as a grammar slip,
+        # and the count is what has to stay true, not the case ending.
+        assert f"типы иллюстраций ({len(load_visuals())})" in text
         assert f"все {len(load_slides())} видов слайдов" in text
 
     def test_it_promises_only_formats_the_cli_has(self, bundle: Path) -> None:
@@ -127,6 +134,51 @@ class TestSkillMd:
             assert target.exists() or target.parent.exists(), mentioned
 
 
+#: What the model is allowed to read, in characters. Not tokens: a tokeniser
+#: is a dependency and the bundle has none — for Russian prose the two move
+#: together closely enough (roughly two characters to a token).
+#:
+#: SKILL.md is the strict one: it is read **whole, on every trigger**,
+#: including the triggers that turn out to be a miss. A reference is read
+#: when its genre comes up, so it may be larger — but only until it stops
+#: being read selectively.
+SKILL_BUDGET = 15_000
+REFERENCE_BUDGET = 21_000
+
+
+class TestContextBudget:
+    """The bundle's real cost is what the model reads, and it grows quietly.
+
+    Every other test here asks whether something is *present*: the kind is
+    documented, the template ships, the path resolves. Nothing asked what it
+    weighs, and the answer drifted — a workflow for one genre sat in SKILL.md
+    where the other genre paid for it, and twenty-eight templates were
+    printed in full inside the reference that also names their files.
+
+    A number that fails is not a verdict that the text is bad. It is the
+    moment to decide where the new text belongs: in the entry point, in a
+    reference the genre reads, or in `library/` where nothing pays for it
+    until it is opened.
+    """
+
+    def test_the_entry_point_stays_readable_in_one_go(self, bundle: Path) -> None:
+        text = (bundle / "SKILL.md").read_text(encoding="utf-8")
+        assert len(text) <= SKILL_BUDGET, (
+            f"SKILL.md — {len(text)} символов при бюджете {SKILL_BUDGET}: "
+            "он читается целиком на каждое срабатывание, в том числе ложное. "
+            "Унеси добавленное в references/ того жанра, которому оно нужно"
+        )
+
+    def test_no_reference_outgrows_a_selective_read(self, bundle: Path) -> None:
+        for path in sorted((bundle / "references").glob("*.md")):
+            size = len(path.read_text(encoding="utf-8"))
+            assert size <= REFERENCE_BUDGET, (
+                f"references/{path.name} — {size} символов при бюджете "
+                f"{REFERENCE_BUDGET}: справочник такого размера читают целиком "
+                "ради одного вида. Разрежь по видам или унеси примеры в library/"
+            )
+
+
 class TestReferencesFollowTheRegistries:
     def test_every_question_kind_is_documented(self, bundle: Path) -> None:
         text = (bundle / "references" / "questions.md").read_text(encoding="utf-8")
@@ -144,7 +196,7 @@ class TestReferencesFollowTheRegistries:
             assert f"`{tag}`" in text, f"вид слайда '{tag}' не попал в справочник"
 
     def test_every_template_reaches_the_catalogue_and_the_fragment(self, bundle: Path) -> None:
-        catalogue = (bundle / "references" / "templates.md").read_text(encoding="utf-8")
+        catalogue = (bundle / "references" / "presentation.md").read_text(encoding="utf-8")
         fragments = (bundle / "references" / "slides.md").read_text(encoding="utf-8")
         for entry in load_slides().values():
             for template in entry.templates:
@@ -165,6 +217,25 @@ class TestReferencesFollowTheRegistries:
         text = (bundle / "references" / "questions.md").read_text(encoding="utf-8")
         assert text.count("\n# ") == 0  # only the very first line is an H1
         assert text.startswith("# ")
+
+    def test_nothing_shipped_talks_about_the_player(self, bundle: Path) -> None:
+        """The player was withdrawn (docs/pptx.md, phase P6) and the deck took
+        its place. What the model reads has to say so.
+
+        A reference that still describes the player teaches the model to
+        promise a teacher behaviour PowerPoint does not have — clicking a
+        plate to open one answer out of turn, an Esc list of stages, a title
+        screen assembled from the manifest. The word survived the removal
+        once, in eleven places; a grep is cheaper than finding out again from
+        a lesson.
+        """
+        for path in [bundle / "SKILL.md", *sorted((bundle / "references").glob("*.md"))]:
+            text = path.read_text(encoding="utf-8")
+            stale = [line for line in text.splitlines() if "плеер" in line.lower()]
+            assert not stale, (
+                f"{path.name}: справочник описывает снятый плеер — "
+                f"{len(stale)} строк, первая: {stale[0].strip()[:80]}"
+            )
 
 
 class TestZeroDependencies:

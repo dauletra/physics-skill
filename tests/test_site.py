@@ -17,6 +17,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 
 import build_site  # noqa: E402
+import build_skill  # noqa: E402
 from physics_svg.document.assets import BASE_CSS  # noqa: E402
 from physics_svg.presentation import load_workspace as load_lesson  # noqa: E402
 from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
@@ -82,6 +83,33 @@ class TestSlidesPage:
         lesson = load_lesson(build_site.EXAMPLE)
         deck, _ = build_deck(lesson.presentation, lesson.slides)
         assert deck.startswith(b"PK")
+
+
+class TestHandwrittenPages:
+    """A page may only offer a download the site actually produces.
+
+    `--strict` checks links between pages and says nothing about what lives
+    in `assets/`, so a stale download breaks silently: the front page went on
+    offering `example-presentation.html` for a while after the presentation
+    had become a `.pptx`, and the build stayed green.
+    """
+
+    def test_every_offered_asset_is_one_the_build_writes(self) -> None:
+        builder = (REPO / "tools" / "build_site.py").read_text(encoding="utf-8")
+        # The archive is the one asset named at run time, out of the bundle's
+        # own name; everything else stands in the builder as a literal.
+        by_name = f"{build_skill.BUNDLE_NAME}-skill.zip"
+        pages = sorted(p for p in build_site.DOCS.glob("*.md") if p.name not in GENERATED_PAGES)
+        for page in pages:
+            for name in set(re.findall(r"assets/([A-Za-z0-9._-]+)", page.read_text("utf-8"))):
+                assert name in builder or name == by_name, (
+                    f"{page.name} предлагает assets/{name}, "
+                    "а tools/build_site.py такого файла не пишет"
+                )
+
+
+#: Pages the builder generates itself — their links are its own business.
+GENERATED_PAGES = {"questions.md", "slides.md"}
 
 
 class TestScopedStylesheet:

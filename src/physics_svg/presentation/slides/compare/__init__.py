@@ -1,8 +1,8 @@
 """Two or three cases held side by side — equal, parallel, comparable.
 
 The parallel is the meaning, not the layout: a case carries its own name and
-its own body, and the player is free to stand them in columns, in rows, or
-one under another on a narrow screen. What the schema must not say is
+its own body, and the deck is free to stand them in columns, in rows, or
+one under another. What the schema must not say is
 «columns» — that would be layout in the data (principle 10). What it must
 say is that these bodies are peers, because that is what a comparison is and
 what a list of paragraphs is not.

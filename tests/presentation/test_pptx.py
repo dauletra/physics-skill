@@ -23,7 +23,7 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from physics_svg.ooxml import PACKAGE_RELS
-from physics_svg.presentation.pptx import build_pptx, layouts, slide
+from physics_svg.presentation.pptx import build_pptx, design, layouts, slide
 
 CONTENT_TYPES = "http://schemas.openxmlformats.org/package/2006/content-types"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -498,6 +498,61 @@ class TestLesson:
         assert builds <= shapes
         node_ids = [node.attrib["id"] for node in root.iter(f"{p}cTn")]
         assert len(node_ids) == len(set(node_ids)), "повторяющиеся id узлов анимации"
+
+
+class TestDesignIsDocumented:
+    """`docs/slide-metrics.md` is where a number is looked up, so it has to
+    be the number.
+
+    The page exists because the alternative was reading 57 КБ about a player
+    that no longer runs to find out what size body text is. A short page only
+    stays worth opening while it is true, and prose does not fail a build —
+    so it is checked here, against the module it describes.
+    """
+
+    @staticmethod
+    def _cells(row: str) -> list[str]:
+        return [cell.strip() for cell in row.strip().strip("|").split("|")]
+
+    @staticmethod
+    def _number(cell: str) -> float:
+        """The page writes numbers the way the rest of it is written — in
+        Russian, with a comma."""
+        return float(cell.strip("*").replace(",", "."))
+
+    def rows(self) -> dict[str, list[str]]:
+        page = (
+            Path(__file__).resolve().parents[2] / "docs" / "slide-metrics.md"
+        ).read_text(encoding="utf-8")
+        table = {}
+        for line in page.splitlines():
+            if line.startswith("| `") and "|" in line[3:]:
+                cells = self._cells(line)
+                table[cells[0].strip("`")] = cells[1:]
+        return table
+
+    def test_every_size_token_is_quoted_correctly(self) -> None:
+        rows = self.rows()
+        for name in ("HERO", "DISPLAY", "HEADING", "LEAD", "TEXT", "SMALL", "TINY"):
+            assert name in rows, f"ступень {name} не описана в docs/slide-metrics.md"
+            printed = self._number(rows[name][0])
+            assert printed == round(getattr(design, name)), (
+                f"{name}: на странице {printed} pt, в design.py {getattr(design, name)}"
+            )
+
+    def test_the_frame_and_the_colours_are_quoted_correctly(self) -> None:
+        rows = self.rows()
+        for name in ("PAD_Y", "PAD_X", "VISUAL_MIN"):
+            assert self._number(rows[name][0]) == pytest.approx(getattr(design, name)), name
+        for name in ("INK", "INK_SOFT", "INK_FAINT", "PAPER", "PAPER_SUNK", "LINE", "PANEL"):
+            assert rows[name][0] == f"`#{getattr(design, name)}`", name
+
+    def test_the_conversion_the_whole_scale_rests_on_is_named(self) -> None:
+        page = (
+            Path(__file__).resolve().parents[2] / "docs" / "slide-metrics.md"
+        ).read_text(encoding="utf-8")
+        assert f"1 cqh = {design.PT_PER_CQH} pt".replace(".", ",") in page
+        assert f"×{design.LEADING}".replace(".", ",") in page
 
 
 class TestStability:

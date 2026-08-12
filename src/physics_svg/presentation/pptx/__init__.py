@@ -1,9 +1,9 @@
 """The lesson as a PowerPoint deck.
 
-The second emitter of the presentation genre, and the one that replaces the
-player (docs/pptx.md). It stands where the player stands — over the same
-slide models, the same illustrations, the same parsed author text — and
-differs only in what it writes at the end.
+The emitter of the presentation genre, and the one that replaced the player
+(docs/pptx.md). It stands where the player stood — over the same slide
+models, the same illustrations, the same parsed author text — and differs
+only in what it writes at the end.
 
 The layering rule holds: nothing above `presentation/` is imported here, and
 the drawing library is used the way the document's Word backend uses it.

@@ -134,7 +134,8 @@ golden-тесты, справочник в бандле и библиотека 
 ```bash
 python -m pytest tests -q
 python -m ruff check . && python -m mypy
-python tools/build_skill.py        # бандл собирается, SKILL.md ничего не врёт
+python tools/build_skill.py        # бандл собирается, SKILL.md ничего не врёт,
+                                   # файлов не больше 200 — иначе не загрузится
 python tools/build_site.py && zensical build --clean --strict
 ```
 

@@ -47,6 +47,12 @@ EXAMPLES = REPO / "examples"
 JUNK_DIRS = {"__pycache__", "output", ".mypy_cache", ".pytest_cache", ".ruff_cache"}
 JUNK_SUFFIXES = (".pyc", ".preview.html", ".svg.tmp")
 
+#: How many files the bundle may hold. The uploader counts files, not bytes:
+#: the archive weighs a third of a megabyte against a limit measured in tens,
+#: and still got refused. A nested archive is one entry to it, which is why
+#: the package ships as one — see `_write_package`.
+FILE_LIMIT = 200
+
 #: Paths mentioned in SKILL.md that have to exist in the bundle.
 MENTIONED_PATH = re.compile(r"\b((?:references|scripts|examples|library|physics_svg)/[\w./-]*\w)")
 
@@ -77,12 +83,13 @@ def build(destination: Path, make_zip: bool = True) -> Path:
     _write_references(root / "references")
     _write_skill_md(root / "SKILL.md")
     _copy_tree(SOURCE / "scripts", root / "scripts")
-    _copy_tree(PACKAGE, root / "physics_svg")
+    _write_package(root / "physics_svg.zip")
     _copy_tree(EXAMPLES, root / "examples")
     _write_library(root / "library")
     (root / "VERSION").write_text(f"{__version__}\n", encoding="utf-8")
 
     _check_promises(root)
+    _check_file_count(root)
     if not make_zip:
         return root
 
@@ -350,6 +357,48 @@ def _write_library(directory: Path) -> None:
             )
 
 
+def _write_package(archive: Path) -> None:
+    """The package as one importable file, imported straight from the zip.
+
+    Two reasons, and the second is the one that forced it. **Only modules
+    ship**: the `specs/*.json`, `templates/*.json`, `doc.md` and `card.md`
+    that live beside them in the source tree are already in `library/` and
+    `references/`, and nothing reads them at run time — `VisualType.specs`,
+    `SlideType.templates`, `.doc` and `.card` are properties the build, the
+    suite and the site use, never the CLI. And **one file instead of a
+    hundred and one**: the uploader counts files (FILE_LIMIT), a nested
+    archive is one entry, and the two changes together take the bundle from
+    329 files to 113.
+
+    What it costs: a traceback from an unexpected crash keeps file names and
+    line numbers but loses the source lines, because `linecache` will not
+    read into a zip. Validation errors are unaffected — they are printed
+    without a traceback either way. To see a line:
+
+        python -c "import zipfile;print(zipfile.ZipFile('physics_svg.zip').read('physics_svg/cli.py').decode())"
+
+    Timestamps are fixed rather than taken from the file system, so two
+    builds of the same source are the same bytes and a release diff means
+    something.
+    """
+    modules = sorted(
+        path
+        for path in PACKAGE.rglob("*.py")
+        if not any(part in JUNK_DIRS for part in path.parts)
+    )
+    if not modules:
+        raise SystemExit(f"в {PACKAGE} не нашлось ни одного модуля — пакет не соберётся")
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
+        for path in modules:
+            info = zipfile.ZipInfo(
+                f"{PACKAGE.name}/{path.relative_to(PACKAGE).as_posix()}",
+                date_time=(1980, 1, 1, 0, 0, 0),
+            )
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            package.writestr(info, path.read_bytes())
+
+
 def _copy_tree(source: Path, destination: Path) -> None:
     shutil.copytree(source, destination, ignore=_ignore_junk)
 
@@ -376,6 +425,22 @@ def _check_promises(root: Path) -> None:
     if missing:
         raise SystemExit(
             "SKILL.md обещает пути, которых нет в бандле:\n  " + "\n  ".join(missing)
+        )
+
+
+def _check_file_count(root: Path) -> None:
+    """The bundle has to fit through the uploader, and it grew past it once.
+
+    Every other check here asks whether something is right; this one asks
+    whether the teacher can install it at all. It failed silently before —
+    the archive built, and the refusal came from claude.ai.
+    """
+    files = [path for path in root.rglob("*") if path.is_file()]
+    if len(files) > FILE_LIMIT:
+        raise SystemExit(
+            f"в бандле {len(files)} файлов при лимите {FILE_LIMIT}: claude.ai такой "
+            "архив не примет. Ищи, что уехало вторым экземпляром: спеки и заготовки "
+            "уже лежат в library/, а doc.md — в references/"
         )
 
 

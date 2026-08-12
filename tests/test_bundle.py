@@ -43,7 +43,30 @@ class TestContents:
     def test_the_entry_point_and_manifest_are_there(self, bundle: Path) -> None:
         assert (bundle / "SKILL.md").exists()
         assert (bundle / "scripts" / "render.py").exists()
-        assert (bundle / "physics_svg" / "cli.py").exists()
+        assert (bundle / "physics_svg.zip").exists()
+
+    def test_the_package_ships_modules_only(self, bundle: Path) -> None:
+        """The archive carries code and nothing else.
+
+        The specs and the docs that live beside the modules in the source
+        tree are already in `library/` and `references/`; a second copy is
+        weight in an archive whose files are counted. Nothing reads them at
+        run time — the properties that open them belong to the build, the
+        suite and the site.
+        """
+        with zipfile.ZipFile(bundle / "physics_svg.zip") as package:
+            extra = [name for name in package.namelist() if not name.endswith(".py")]
+        assert extra == [], f"в архив пакета попали не-модули: {extra[:5]}"
+
+    def test_the_packaged_modules_are_importable_where_they_are_looked_for(
+        self, bundle: Path
+    ) -> None:
+        """`render.py` puts the archive on the path, so the package has to be
+        rooted inside it — a zip of loose modules imports as nothing."""
+        with zipfile.ZipFile(bundle / "physics_svg.zip") as package:
+            names = package.namelist()
+        assert "physics_svg/__init__.py" in names
+        assert "physics_svg/cli.py" in names
 
     def test_every_reference_is_generated(self, bundle: Path) -> None:
         names = {path.name for path in (bundle / "references").glob("*.md")}
@@ -169,6 +192,20 @@ class TestContextBudget:
             "Унеси добавленное в references/ того жанра, которому оно нужно"
         )
 
+    def test_the_bundle_fits_through_the_uploader(self, bundle: Path) -> None:
+        """The other budget here is context; this one is installation.
+
+        claude.ai counts files, not bytes, and refuses past FILE_LIMIT. The
+        bundle went over quietly — it built, it passed, and the refusal came
+        from the uploader — so the number belongs where the other budgets
+        are. `build` fails on it too; asserting here documents the rule.
+        """
+        files = [path for path in bundle.rglob("*") if path.is_file()]
+        assert len(files) <= build_skill.FILE_LIMIT, (
+            f"в бандле {len(files)} файлов при лимите {build_skill.FILE_LIMIT}: "
+            "claude.ai такой архив не примет. Ищи, что уехало вторым экземпляром"
+        )
+
     def test_no_reference_outgrows_a_selective_read(self, bundle: Path) -> None:
         for path in sorted((bundle / "references").glob("*.md")):
             size = len(path.read_text(encoding="utf-8"))
@@ -248,8 +285,14 @@ class TestZeroDependencies:
 
     def test_the_shipped_package_imports_only_stdlib(self, bundle: Path) -> None:
         foreign = set()
-        for path in (bundle / "physics_svg").rglob("*.py"):
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        with zipfile.ZipFile(bundle / "physics_svg.zip") as package:
+            modules = [name for name in package.namelist() if name.endswith(".py")]
+            # Without this the check passes on an empty archive — it would
+            # have nothing to walk and no way to say so.
+            assert modules, "в архиве пакета нет модулей: проверять было нечего"
+            sources = {name: package.read(name).decode("utf-8") for name in modules}
+        for module, source in sources.items():
+            tree = ast.parse(source, filename=module)
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     names = [alias.name for alias in node.names]
@@ -257,10 +300,10 @@ class TestZeroDependencies:
                     names = [node.module or ""] if node.level == 0 else []
                 else:
                     continue
-                for name in names:
-                    root = name.split(".")[0]
+                for imported in names:
+                    root = imported.split(".")[0]
                     if root and root != "physics_svg" and root not in sys.stdlib_module_names:
-                        foreign.add(f"{path.name}: {name}")
+                        foreign.add(f"{Path(module).name}: {imported}")
         assert foreign == set(), f"в бандл просочились сторонние импорты: {sorted(foreign)}"
 
 

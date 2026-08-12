@@ -100,6 +100,11 @@ class TestCoverage:
         assert "<w:p>" not in xml and "<p:txBody>" in xml
         # The index the author typed survives as an offset, not as a tag.
         assert 'baseline="-25000"' in xml
+        # `w:t` needs `xml:space` or Word eats the spaces; `a:t` takes no
+        # attribute at all, and PowerPoint offers to repair a deck that
+        # gives it one.
+        assert "<a:t>" in xml and "<a:t " not in xml
+        assert '<w:t xml:space="preserve">' in WordDrawing(FRAME).group([SAMPLES[Text]])
 
     def test_raw_is_refused_with_a_way_out(self) -> None:
         with pytest.raises(Unsupported, match="заведи узел"):

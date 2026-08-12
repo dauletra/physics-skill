@@ -467,9 +467,12 @@ def _label_paragraph(node: Text, frame: Frame) -> str:
 def _slide_label(node: Text, frame: Frame) -> str:
     """The same label, set the way a slide sets text.
 
-    Sizes are hundredths of a point here against halves in Word, and an index
-    is an offset in per mille rather than a named position — the two places
-    where the dialects are not simply renamed elements.
+    Sizes are hundredths of a point here against halves in Word, an index is
+    an offset in per mille rather than a named position, and the text element
+    carries no `xml:space` — three places where the dialects are not simply
+    renamed elements. The last one is not a nicety: `a:t` takes no attributes
+    at all, and a deck that gives it one PowerPoint offers to repair. Nor is
+    it needed, since a slide keeps the spaces it is given.
     """
     size = max(1, round(frame.points(node.size) * 100))
     colour = _colour(node.style.fill or "#000")
@@ -486,7 +489,7 @@ def _slide_label(node: Text, frame: Frame) -> str:
         f'<a:r><a:rPr lang="ru-RU" sz="{size}"{bold}{spacing}{_slide_script(script)}>'
         f'<a:solidFill><a:srgbClr val="{colour}"/></a:solidFill>'
         f'<a:latin typeface="{font}"/></a:rPr>'
-        f'<a:t xml:space="preserve">{_xml_text(chunk)}</a:t></a:r>'
+        f"<a:t>{_xml_text(chunk)}</a:t></a:r>"
         for chunk, script in split_scripts(node.content)
     )
     return f'<a:p><a:pPr algn="{_SLIDE_ALIGN[node.anchor]}"/>{runs}</a:p>'

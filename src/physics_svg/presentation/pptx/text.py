@@ -182,10 +182,16 @@ def _math(piece: Math, style: Style, notes: Optional[list[str]]) -> str:
 
 
 def _text_run(text: str, style: Style, script: str = "") -> str:
+    """One run of slide text.
+
+    No `xml:space` on `a:t`, unlike `w:t` next door: DrawingML has no
+    attributes on that element at all, and PowerPoint refuses to open a deck
+    that puts one there. It is not needed either — a slide keeps the spaces
+    it is given; it is Word that eats them.
+    """
     return el(
         "a:r",
-        children=_run_properties(style, script)
-        + el("a:t", {"xml:space": "preserve"} if text.strip() != text else None, escape(text)),
+        children=_run_properties(style, script) + el("a:t", None, escape(text)),
     )
 
 

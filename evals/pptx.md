@@ -23,6 +23,19 @@ python -c "import sys;sys.path.insert(0,'src');from pathlib import Path;from phy
 открыть в LibreOffice Impress, чтобы знать, что теряется у учителя без
 Office (это ограничение скилла, а не дефект).
 
+Перед тем как открывать — прогнать линтер: он назовёт часть и строку, а
+PowerPoint скажет только «в презентации обнаружена ошибка».
+
+```bash
+python tools/ooxml_lint.py --fetch
+python tools/ooxml_lint.py examples/kinematics-9th-grade/output/presentation.pptx
+```
+
+`--fetch` разовый: качает схемы ECMA-376 в `.cache/`. Нужен `lxml`, поэтому
+это инструмент, а не тест. Чистый прогон **не** заменяет открытие в
+PowerPoint: схема не знает, что колода должна читаться с задней парты, а
+PowerPoint придирчив и там, где схема молчит.
+
 ## Что смотреть
 
 ### P1. Пакет открывается

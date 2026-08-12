@@ -307,6 +307,43 @@ class TestLesson:
         wanted = layouts.layout_index("task_stack")
         assert any(target.endswith(f"slideLayout{wanted}.xml") for target in targets)
 
+    def test_no_text_element_on_a_slide_carries_an_attribute(self) -> None:
+        """`a:t` takes no attributes, and PowerPoint enforces it: a deck with
+        `xml:space="preserve"` there — the habit of `w:t`, which needs it —
+        opens as «found a problem with the content». Nor is the attribute
+        needed, since a slide keeps the spaces it is given.
+
+        The deck is built to hold the runs that used to carry it: a label
+        drawn by the slide dialect of `draw/shapes.py`, a formula's fallback,
+        and «Ответ: » with its trailing space.
+        """
+        graph = {
+            "type": "graph",
+            "x_label": "t, с",
+            "y_label": "υ, м/с",
+            "x_range": [0, 6],
+            "y_range": [0, 8],
+            "series": [{"label": "υ(t)", "points": [[0, 0], [6, 8]]}],
+        }
+        package = self.deck(
+            {
+                "type": "board_task",
+                "text": "Путь по графику: $s = \\upsilon t$. Найдите его.",
+                "visual": graph,
+                "answer": "24 м",
+            }
+        )
+        marked = [
+            (part, node.attrib)
+            for part in package.namelist()
+            if part.endswith(".xml")
+            for node in read(package, part).iter(
+                "{http://schemas.openxmlformats.org/drawingml/2006/main}t"
+            )
+            if node.attrib
+        ]
+        assert not marked, f"a:t с атрибутами: {marked}"
+
     def test_the_genre_is_named_on_the_layout(self) -> None:
         """«Задача» belongs to the kind, not to the slide: it is written once
         on the layout, where no author can retype it."""

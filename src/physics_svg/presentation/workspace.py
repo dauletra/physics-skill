@@ -43,6 +43,13 @@ class Workspace:
     raw_presentation: Any
     raw_slides: list[Any]
 
+    @property
+    def source(self) -> dict[str, Any]:
+        """The draft as one object — the shape `draft.py` packs and unpacks.
+        Named the same as the document's, and for the same reason: what the
+        author wrote, not a normalised round-trip."""
+        return {"presentation": self.raw_presentation, "slides": self.raw_slides}
+
 
 def load_workspace(directory: str | Path) -> Workspace:
     folder = Path(directory)

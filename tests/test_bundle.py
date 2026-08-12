@@ -26,8 +26,11 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 
 import build_skill  # noqa: E402
+from physics_svg import draft  # noqa: E402
 from physics_svg.cli import FORMATS  # noqa: E402
+from physics_svg.document import load_workspace as load_document_draft  # noqa: E402
 from physics_svg.document.questions import load_all as load_questions  # noqa: E402
+from physics_svg.presentation import load_workspace as load_presentation_draft  # noqa: E402
 from physics_svg.presentation import parse_slide  # noqa: E402
 from physics_svg.presentation.slides import load_all as load_slides  # noqa: E402
 from physics_svg.visuals import load_all as load_visuals  # noqa: E402
@@ -43,30 +46,24 @@ class TestContents:
     def test_the_entry_point_and_manifest_are_there(self, bundle: Path) -> None:
         assert (bundle / "SKILL.md").exists()
         assert (bundle / "scripts" / "render.py").exists()
-        assert (bundle / "physics_svg.zip").exists()
+        assert (bundle / "physics_svg" / "__init__.py").exists()
+        assert (bundle / "physics_svg" / "cli.py").exists()
 
     def test_the_package_ships_modules_only(self, bundle: Path) -> None:
-        """The archive carries code and nothing else.
+        """The package travels as code and nothing else.
 
-        The specs and the docs that live beside the modules in the source
-        tree are already in `library/` and `references/`; a second copy is
-        weight in an archive whose files are counted. Nothing reads them at
-        run time — the properties that open them belong to the build, the
-        suite and the site.
+        The `specs/*.json`, `templates/*.json`, `doc.md` and `card.md` that
+        sit beside the modules are already in `library/` and `references/`,
+        and nothing reads them at run time — the properties that open them
+        belong to the build, the suite and the site. Shipping them again was
+        116 of the 329 files that got the bundle refused (FILE_LIMIT).
         """
-        with zipfile.ZipFile(bundle / "physics_svg.zip") as package:
-            extra = [name for name in package.namelist() if not name.endswith(".py")]
-        assert extra == [], f"в архив пакета попали не-модули: {extra[:5]}"
-
-    def test_the_packaged_modules_are_importable_where_they_are_looked_for(
-        self, bundle: Path
-    ) -> None:
-        """`render.py` puts the archive on the path, so the package has to be
-        rooted inside it — a zip of loose modules imports as nothing."""
-        with zipfile.ZipFile(bundle / "physics_svg.zip") as package:
-            names = package.namelist()
-        assert "physics_svg/__init__.py" in names
-        assert "physics_svg/cli.py" in names
+        extra = [
+            path.relative_to(bundle).as_posix()
+            for path in (bundle / "physics_svg").rglob("*")
+            if path.is_file() and path.suffix != ".py"
+        ]
+        assert extra == [], f"в пакет попали не-модули: {extra[:5]}"
 
     def test_every_reference_is_generated(self, bundle: Path) -> None:
         names = {path.name for path in (bundle / "references").glob("*.md")}
@@ -98,13 +95,23 @@ class TestContents:
                 assert shipped == template.slide
                 assert parse_slide(shipped, template.slug) is not None
 
-    def test_the_worked_example_ships(self, bundle: Path) -> None:
-        lesson = bundle / "examples" / "kinematics-9th-grade"
-        assert (lesson / "document.json").exists()
-        # One lesson, two drafts side by side — the example teaches the folder
-        # shape as much as the content.
-        assert (lesson / "presentation.json").exists()
-        assert list((lesson / "slides").glob("*.json"))
+    def test_the_worked_example_ships_packed(self, bundle: Path, tmp_path: Path) -> None:
+        """One file, and `unpack` gives back the folder it came from.
+
+        Thirty-five files bought one example in a bundle whose files are
+        counted. Packed they buy the same example for one — but only if the
+        way back works, so this checks the round trip rather than the file.
+        """
+        packed = bundle / "examples" / "kinematics-9th-grade.json"
+        assert packed.exists()
+        draft.unpack(draft.read(packed), tmp_path / "lesson")
+        workspace = load_document_draft(tmp_path / "lesson")
+        assert workspace.document.title
+        assert len(workspace.blocks) > 1
+        # One lesson, two drafts side by side — the example teaches the shape
+        # of a lesson as much as the content.
+        lesson = load_presentation_draft(tmp_path / "lesson")
+        assert len(lesson.slides) > 1
 
     def test_the_version_ships(self, bundle: Path) -> None:
         assert (bundle / "VERSION").read_text(encoding="utf-8").strip()
@@ -285,14 +292,13 @@ class TestZeroDependencies:
 
     def test_the_shipped_package_imports_only_stdlib(self, bundle: Path) -> None:
         foreign = set()
-        with zipfile.ZipFile(bundle / "physics_svg.zip") as package:
-            modules = [name for name in package.namelist() if name.endswith(".py")]
-            # Without this the check passes on an empty archive — it would
-            # have nothing to walk and no way to say so.
-            assert modules, "в архиве пакета нет модулей: проверять было нечего"
-            sources = {name: package.read(name).decode("utf-8") for name in modules}
-        for module, source in sources.items():
-            tree = ast.parse(source, filename=module)
+        modules = sorted((bundle / "physics_svg").rglob("*.py"))
+        # Without this the check passes on an empty folder — it would have
+        # nothing to walk and no way to say so.
+        assert modules, "в пакете нет модулей: проверять было нечего"
+        for path in modules:
+            module = path.relative_to(bundle).as_posix()
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=module)
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     names = [alias.name for alias in node.names]
@@ -318,15 +324,35 @@ class TestEndToEnd:
         environment.pop("PYTHONPATH", None)
         return environment
 
-    def test_it_builds_the_shipped_example(
+    def _unpack_the_example(
+        self, bundle: Path, clean_env: dict[str, str], tmp_path: Path
+    ) -> Path:
+        """The shipped example, in the folder shape, through the shipped
+        command — the first thing a teacher's session does with it."""
+        lesson = tmp_path / "lesson"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(bundle / "scripts" / "render.py"),
+                "unpack",
+                str(bundle / "examples" / "kinematics-9th-grade.json"),
+                str(lesson),
+            ],
+            capture_output=True, text=True, encoding="utf-8", env=clean_env, cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        return lesson
+
+    def test_it_unpacks_and_builds_the_shipped_example(
         self, bundle: Path, clean_env: dict[str, str], tmp_path: Path
     ) -> None:
+        lesson = self._unpack_the_example(bundle, clean_env, tmp_path)
         result = subprocess.run(
             [
                 sys.executable,
                 str(bundle / "scripts" / "render.py"),
                 "build",
-                str(bundle / "examples" / "kinematics-9th-grade"),
+                str(lesson),
                 "-o",
                 str(tmp_path / "out"),
             ],
@@ -381,12 +407,13 @@ class TestEndToEnd:
         packaged copy with nothing but the standard library — the picture
         drawn offline as native shapes, the formulas as OMML inside the
         file."""
+        lesson = self._unpack_the_example(bundle, clean_env, tmp_path)
         result = subprocess.run(
             [
                 sys.executable,
                 str(bundle / "scripts" / "render.py"),
                 "present",
-                str(bundle / "examples" / "kinematics-9th-grade"),
+                str(lesson),
                 "-o",
                 str(tmp_path / "out"),
             ],

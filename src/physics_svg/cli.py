@@ -5,6 +5,7 @@
     physics-svg build <draft> --format docx   the same document as a Word file
     physics-svg build <draft> --block ID a preview of one block
     physics-svg present <draft>          presentation.pptx (колода PowerPoint)
+    physics-svg unpack <file> <draft>    a packed draft back into a folder
     physics-svg visual <spec.json>       one standalone SVG
     physics-svg schema                   the published JSON Schema
 
@@ -22,7 +23,7 @@ from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import Any, Iterator
 
-from physics_svg import __version__
+from physics_svg import __version__, draft
 from physics_svg.document import (
     WorkspaceError,
     build_document,
@@ -81,6 +82,14 @@ def main(argv: list[str] | None = None) -> int:
         "-o", "--out", help="куда положить результат (по умолчанию <draft>/output)"
     )
 
+    unpack = commands.add_parser(
+        "unpack", help="развернуть черновик из одного файла обратно в папку"
+    )
+    unpack.add_argument(
+        "source", help="файл черновика (.json) или собранный document.html со встроенным"
+    )
+    unpack.add_argument("draft", help="папка, в которую разложить (создаётся)")
+
     visual = commands.add_parser("visual", help="отрисовать одну иллюстрацию в самодостаточный SVG")
     visual.add_argument("spec", help="JSON-спека одного визуального блока")
     visual.add_argument("-o", "--out", help="выходной .svg (по умолчанию рядом со спекой)")
@@ -93,10 +102,16 @@ def main(argv: list[str] | None = None) -> int:
     schema.add_argument("-o", "--out", help="файл вместо стандартного вывода")
 
     args = parser.parse_args(argv)
-    handlers = {"build": _build, "present": _present, "visual": _visual, "schema": _schema}
+    handlers = {
+        "build": _build,
+        "present": _present,
+        "unpack": _unpack,
+        "visual": _visual,
+        "schema": _schema,
+    }
     try:
         return handlers[args.command](args)
-    except (WorkspaceError, PresentationError, SchemaError) as error:
+    except (WorkspaceError, PresentationError, SchemaError, draft.DraftError) as error:
         print(str(error), file=sys.stderr)
         return 1
 
@@ -247,6 +262,20 @@ def _walk(value: Any) -> Iterator[Any]:
     elif isinstance(value, (list, tuple)):
         for item in value:
             yield from _walk(item)
+
+
+def _unpack(args: argparse.Namespace) -> int:
+    """A packed draft back into the folder that is edited.
+
+    The folder is the shape work happens in — one file per block, so a fix
+    touches one file. Laying it out was prose in SKILL.md and twenty-two
+    files of hand copying; it is a command now.
+    """
+    destination = Path(args.draft)
+    written = draft.unpack(draft.read(args.source), destination)
+    counts = ", ".join(f"{items}: {count}" for items, count in written.items())
+    print(f"Готово: {destination} ({counts})")
+    return 0
 
 
 def _visual(args: argparse.Namespace) -> int:

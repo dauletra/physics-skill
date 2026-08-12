@@ -25,7 +25,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
-from physics_svg import __version__  # noqa: E402
+from physics_svg import __version__, draft  # noqa: E402
 from physics_svg.document.components import (  # noqa: E402
     AnswerLineSpec,
     HeadingSpec,
@@ -83,8 +83,8 @@ def build(destination: Path, make_zip: bool = True) -> Path:
     _write_references(root / "references")
     _write_skill_md(root / "SKILL.md")
     _copy_tree(SOURCE / "scripts", root / "scripts")
-    _write_package(root / "physics_svg.zip")
-    _copy_tree(EXAMPLES, root / "examples")
+    _copy_modules(PACKAGE, root / "physics_svg")
+    _write_examples(root / "examples")
     _write_library(root / "library")
     (root / "VERSION").write_text(f"{__version__}\n", encoding="utf-8")
 
@@ -357,50 +357,48 @@ def _write_library(directory: Path) -> None:
             )
 
 
-def _write_package(archive: Path) -> None:
-    """The package as one importable file, imported straight from the zip.
+def _write_examples(directory: Path) -> None:
+    """The worked lesson as one file per lesson.
 
-    Two reasons, and the second is the one that forced it. **Only modules
-    ship**: the `specs/*.json`, `templates/*.json`, `doc.md` and `card.md`
-    that live beside them in the source tree are already in `library/` and
-    `references/`, and nothing reads them at run time — `VisualType.specs`,
-    `SlideType.templates`, `.doc` and `.card` are properties the build, the
-    suite and the site use, never the CLI. And **one file instead of a
-    hundred and one**: the uploader counts files (FILE_LIMIT), a nested
-    archive is one entry, and the two changes together take the bundle from
-    329 files to 113.
+    A lesson is thirty-five files in the repository — twenty-two blocks,
+    eleven slides, two manifests — and that is the right shape to *edit*. It
+    is the wrong shape to *ship*: the bundle is counted in files, and those
+    thirty-five bought one example. Packed, they buy the same example for
+    one, and `render.py unpack` puts the folder back.
 
-    What it costs: a traceback from an unexpected crash keeps file names and
-    line numbers but loses the source lines, because `linecache` will not
-    read into a zip. Validation errors are unaffected — they are printed
-    without a traceback either way. To see a line:
-
-        python -c "import zipfile;print(zipfile.ZipFile('physics_svg.zip').read('physics_svg/cli.py').decode())"
-
-    Timestamps are fixed rather than taken from the file system, so two
-    builds of the same source are the same bytes and a release diff means
-    something.
+    Packing goes through the loaders, so an example that stopped validating
+    fails the build instead of shipping.
     """
-    modules = sorted(
-        path
-        for path in PACKAGE.rglob("*.py")
-        if not any(part in JUNK_DIRS for part in path.parts)
-    )
-    if not modules:
-        raise SystemExit(f"в {PACKAGE} не нашлось ни одного модуля — пакет не соберётся")
-    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
-        for path in modules:
-            info = zipfile.ZipInfo(
-                f"{PACKAGE.name}/{path.relative_to(PACKAGE).as_posix()}",
-                date_time=(1980, 1, 1, 0, 0, 0),
-            )
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = 0o644 << 16
-            package.writestr(info, path.read_bytes())
+    directory.mkdir(parents=True, exist_ok=True)
+    lessons = sorted(path for path in EXAMPLES.iterdir() if path.is_dir())
+    for lesson in lessons:
+        packed = draft.pack(lesson)
+        (directory / f"{lesson.name}.json").write_text(
+            json.dumps(packed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+    if not lessons:
+        raise SystemExit(f"в {EXAMPLES} нет ни одного примера")
 
 
 def _copy_tree(source: Path, destination: Path) -> None:
     shutil.copytree(source, destination, ignore=_ignore_junk)
+
+
+def _copy_modules(source: Path, destination: Path) -> None:
+    """The package, code only.
+
+    The `specs/*.json`, `templates/*.json`, `doc.md` and `card.md` that live
+    beside the modules are already in `library/` and `references/`, and
+    nothing reads them at run time: `VisualType.specs`, `SlideType.templates`,
+    `.doc` and `.card` are properties the build, the suite and the site use,
+    never the CLI. Shipping them again cost 116 of the 329 files the uploader
+    counted — a sixth of the bundle spent on second copies.
+
+    The package cannot travel as one archive: the uploader refuses a zip that
+    contains a zip. So the file count is paid module by module, and that is
+    the floor everything else is measured against (FILE_LIMIT).
+    """
+    shutil.copytree(source, destination, ignore=_ignore_data)
 
 
 def _ignore_junk(directory: str, names: list[str]) -> set[str]:
@@ -411,6 +409,20 @@ def _ignore_junk(directory: str, names: list[str]) -> set[str]:
         or name.startswith(".")
         or name.endswith(JUNK_SUFFIXES)
         or name.endswith(".egg-info")
+    }
+
+
+#: Directories inside the package that hold data rather than code.
+DATA_DIRS = {"specs", "templates"}
+
+
+def _ignore_data(directory: str, names: list[str]) -> set[str]:
+    root = Path(directory)
+    return _ignore_junk(directory, names) | {
+        name
+        for name in names
+        if (name in DATA_DIRS and (root / name).is_dir())
+        or ((root / name).is_file() and not name.endswith(".py"))
     }
 
 

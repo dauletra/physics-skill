@@ -9,25 +9,26 @@ bundle and depends only on the standard library. Earlier versions had to
 fetch a validation library on first use, which meant network access, a wait,
 and a way to fail before drawing anything.
 
-The package ships as `physics_svg.zip` and is imported from there — the
-uploader counts files, so a hundred and one modules travel as one. Only the
-archive goes on the path: a second entry would let an unpacked copy lying
-beside it win over the one that was built.
+The package ships as a plain folder of modules beside this script. It cannot
+travel as one archive — the skill uploader refuses a zip holding a zip — so
+the bundle carries the modules and nothing else: the specs and the reference
+fragments that sit next to them in the source tree are already in `library/`
+and `references/`.
 """
 
 import sys
 from pathlib import Path
 
 BUNDLE = Path(__file__).resolve().parent.parent
-PACKAGE = BUNDLE / "physics_svg.zip"
+PACKAGE = BUNDLE / "physics_svg"
 
-if not PACKAGE.exists():  # pragma: no cover - guard for a half-unpacked archive
+if not (PACKAGE / "__init__.py").exists():  # pragma: no cover - half-unpacked archive
     sys.exit(
-        f"рядом со скриптом нет {PACKAGE.name} — похоже, архив скилла распакован "
-        "не полностью. Распакуйте его целиком и запустите снова."
+        f"рядом со скриптом нет папки {PACKAGE.name} — похоже, архив скилла "
+        "распакован не полностью. Распакуйте его целиком и запустите снова."
     )
 
-sys.path.insert(0, str(PACKAGE))
+sys.path.insert(0, str(BUNDLE))
 
 if sys.version_info < (3, 10):  # pragma: no cover - guard for old sandboxes
     sys.exit(

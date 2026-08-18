@@ -33,6 +33,7 @@ from physics_svg.elements.scale import (
     tick_layout,
     ticks_at,
 )
+from physics_svg.elements.strobe import MARK_RADIUS, strobe
 
 __all__ = [
     "ArcAxis",
@@ -44,6 +45,7 @@ __all__ = [
     "LABEL_GAP",
     "LIQUID_SPACING",
     "LinearAxis",
+    "MARK_RADIUS",
     "Tick",
     "angle_mark",
     "arrow",
@@ -56,6 +58,7 @@ __all__ = [
     "nice_ticks",
     "scale_marks",
     "signed_angle_span",
+    "strobe",
     "subdivisions",
     "tick_layout",
     "ticks_at",

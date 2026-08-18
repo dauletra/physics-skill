@@ -1,0 +1,12 @@
+{
+  "type": "frames",
+  "motion": "uniform",
+  "travel": [3, 0],
+  "shift": 9,
+  "carrier": "вагон",
+  "ground": "перрон",
+  "marks": 5,
+  "grid": true,
+  "axes": true,
+  "caption": "1 клетка = 1 м"
+}

@@ -1,0 +1,11 @@
+{
+  "type": "frames",
+  "motion": "toss",
+  "rise": 3,
+  "shift": 8,
+  "carrier": "вагон",
+  "ground": "земля",
+  "marks": 5,
+  "grid": true,
+  "caption": "1 клетка = 1 м"
+}

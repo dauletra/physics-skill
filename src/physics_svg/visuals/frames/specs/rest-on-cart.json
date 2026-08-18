@@ -1,0 +1,10 @@
+{
+  "type": "frames",
+  "motion": "still",
+  "shift": 6,
+  "carrier": "тележка",
+  "ground": "дорога",
+  "marks": 5,
+  "grid": true,
+  "axes": true
+}

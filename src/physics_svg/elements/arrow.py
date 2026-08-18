@@ -40,11 +40,13 @@ LABEL_GAP = 4.0
 #: How far an angle label leans from the bisector towards the first arm.
 LABEL_BIAS = 0.2
 
-_HEAD = Style(fill=BLACK)
-
-
 def arrow(start: Pt, end: Pt, style: Style = HEAVY, head_length: float = HEAD_LENGTH) -> list[Node]:
-    """A vector from `start` to `end`."""
+    """A vector from `start` to `end`.
+
+    The head is filled with the colour the shaft is drawn in: an arrow that
+    is service grey — a frame's own axis, a construction direction — must be
+    grey all the way to its point, or the point reads as the drawing.
+    """
     span = end - start
     length = span.length()
     if length == 0:
@@ -55,7 +57,7 @@ def arrow(start: Pt, end: Pt, style: Style = HEAVY, head_length: float = HEAD_LE
     across = unit.perpendicular() * HEAD_HALF_WIDTH
     return [
         Line(start, base, style),
-        Polyline((end, base + across, base - across), _HEAD, closed=True),
+        Polyline((end, base + across, base - across), Style(fill=style.stroke or BLACK), closed=True),
     ]
 
 

@@ -1,0 +1,10 @@
+{
+  "type": "frames",
+  "motion": "drop",
+  "rise": 5,
+  "shift": 7,
+  "carrier": "самолёт",
+  "ground": "земля",
+  "marks": 5,
+  "caption": "1 клетка = 100 м"
+}

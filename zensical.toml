@@ -26,6 +26,7 @@ nav = [
     { "Приборы со шкалой" = "gallery/instrument.md" },
     { "Бумага" = "gallery/paper.md" },
     { "Векторные диаграммы" = "gallery/vectors.md" },
+    { "Системы отсчёта" = "gallery/frames.md" },
   ] },
   { "Презентация" = [
     { "Как показывать" = "present.md" },
@@ -41,6 +42,7 @@ nav = [
     { "Оформление слайда: числа" = "slide-metrics.md" },
     { "Дизайн слайда" = "slide-design.md" },
     { "Масштаб иллюстрации" = "visual-scale.md" },
+    { "Системы отсчёта: тип frames" = "frames.md" },
     { "Презентация в PowerPoint" = "pptx.md" },
     { "Справочник: документ" = "reference/document.md" },
     { "Справочник: виды заданий" = "reference/questions.md" },
